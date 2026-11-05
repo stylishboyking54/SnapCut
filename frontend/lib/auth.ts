@@ -1,10 +1,12 @@
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
 const SESSION_KEY = 'snapcut_session';
 
+export type AuthRole = 'customer' | 'barber' | 'salon' | 'admin';
+
 export type AuthProfile = {
   id: string;
   full_name: string;
-  role: 'customer' | 'barber' | 'admin';
+  role: AuthRole;
   phone?: string | null;
   avatar_url?: string | null;
 };
@@ -70,7 +72,7 @@ export async function register(
   email: string,
   password: string,
   fullName: string,
-  role: 'customer' | 'barber' = 'customer',
+  role: AuthRole = 'customer',
 ): Promise<AuthSession> {
   const res = await fetch(`${API_BASE_URL}/auth/register`, {
     method: 'POST',

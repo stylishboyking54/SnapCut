@@ -15,7 +15,7 @@ CREATE TABLE profiles (
   avatar_url  TEXT,
   phone       TEXT,
   role        TEXT NOT NULL DEFAULT 'customer'
-              CHECK (role IN ('customer', 'barber', 'admin')),
+              CHECK (role IN ('customer', 'barber', 'salon', 'admin')),
   created_at  TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -59,6 +59,8 @@ CREATE TABLE shops (
   emergency_reason     TEXT,
   is_verified          BOOLEAN DEFAULT FALSE,
   avg_service_duration INT DEFAULT 30,  -- minutes
+  shop_type            TEXT NOT NULL DEFAULT 'barber'
+                       CHECK (shop_type IN ('barber', 'salon')),
   created_at           TIMESTAMPTZ DEFAULT NOW()
 );
 

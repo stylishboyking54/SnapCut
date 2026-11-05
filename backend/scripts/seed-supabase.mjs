@@ -44,6 +44,7 @@ const SHOPS = [
   {
     name: 'Blade & Fade Studio',
     tagline: 'Precision fades & classic beard grooming',
+    shop_type: 'barber',
     address: '142 Market St, Downtown',
     city: 'Metro City',
     lat: 40.7128,
@@ -66,6 +67,7 @@ const SHOPS = [
   {
     name: 'Apex Grooming Lounge',
     tagline: 'Modern styling & luxury lounge atmosphere',
+    shop_type: 'barber',
     address: '88 Kingfisher Ave, Westside',
     city: 'Metro City',
     lat: 40.7182,
@@ -87,6 +89,7 @@ const SHOPS = [
   {
     name: 'Iron & Oak Barbers',
     tagline: 'Fast turnaround, zero-nonsense classic cuts',
+    shop_type: 'barber',
     address: '304 Elmwood Blvd',
     city: 'Metro City',
     lat: 40.725,
@@ -106,24 +109,25 @@ const SHOPS = [
     ],
   },
   {
-    name: 'Crown Heritage Cuts',
-    tagline: 'Walk-ins always welcome, traditional gentleman cuts',
+    name: 'Crown Heritage Salon',
+    tagline: 'Women’s cuts, color, and finish — walk-ins welcome',
+    shop_type: 'salon',
     address: '512 Oakridge Parkway',
     city: 'Metro City',
     lat: 40.705,
     lng: -74.02,
     phone: '+1 (555) 999-1122',
     cover_image_url:
-      'https://images.unsplash.com/photo-1599351431202-1e0f0137899a?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=800&q=80',
     rating: 4.9,
     review_count: 76,
     is_open: true,
     is_emergency: false,
-    avg_service_duration: 35,
+    avg_service_duration: 45,
     services: [
-      { name: 'Precision Lineup & Taper', duration: 25, price: 30 },
-      { name: 'Deluxe Beard Wash & Oil', duration: 20, price: 25 },
-      { name: 'The Royal Treatment (Cut + Beard + Facial)', duration: 60, price: 85 },
+      { name: 'Silk Blowout', duration: 40, price: 45 },
+      { name: 'Cut & Style', duration: 50, price: 70 },
+      { name: 'Color Refresh', duration: 90, price: 120 },
     ],
   },
 ];

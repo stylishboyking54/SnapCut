@@ -7,14 +7,12 @@ import { BellIcon, AlertTriangleIcon } from '@/components/ui/Icons';
 export type ThemeType = 'paper' | 'ink';
 
 interface NavbarProps {
-  currentRole: 'customer' | 'barber' | 'admin';
-  onRoleChange?: (role: 'customer' | 'barber' | 'admin') => void;
+  currentRole: 'customer' | 'barber' | 'salon' | 'admin';
   notificationCount?: number;
 }
 
 export default function Navbar({
   currentRole,
-  onRoleChange,
   notificationCount = 2,
 }: NavbarProps) {
   const [currentTheme, setCurrentTheme] = useState<ThemeType>('paper');
@@ -69,19 +67,7 @@ export default function Navbar({
           <span className="theme-switch-knob" />
         </button>
 
-        {onRoleChange && (
-          <select
-            className="role-select"
-            value={currentRole === 'admin' ? 'customer' : currentRole}
-            onChange={(e) => onRoleChange(e.target.value as 'customer' | 'barber')}
-            aria-label="Switch role"
-          >
-            <option value="customer">Customer</option>
-            <option value="barber">Barber</option>
-          </select>
-        )}
-
-        {currentRole === 'barber' && (
+        {(currentRole === 'barber' || currentRole === 'salon') && (
           <Link
             href="/barber/emergency"
             className="btn-secondary"

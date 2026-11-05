@@ -25,14 +25,55 @@ function mapQueueItem(q: any, shopId?: string): QueueItem {
   };
 }
 
+function mapShop(s: any): Shop {
+  return {
+    id: s.id,
+    name: s.name,
+    tagline: s.tagline || '',
+    ownerName: s.owner_name || s.ownerName || 'Master Barber',
+    address: s.address,
+    city: s.city,
+    shopType: (s.shop_type || s.shopType || 'barber') === 'salon' ? 'salon' : 'barber',
+    distanceKm: s.distance_km ?? s.distanceKm ?? 1.2,
+    lat: s.lat,
+    lng: s.lng,
+    phone: s.phone,
+    rating: s.rating,
+    reviewCount: s.review_count ?? s.reviewCount ?? 50,
+    isOpen: s.is_open ?? s.isOpen ?? true,
+    isEmergency: s.is_emergency ?? s.isEmergency ?? false,
+    emergencyReason: s.emergency_reason ?? s.emergencyReason,
+    avgDurationPerClient: s.avg_service_duration ?? s.avgDurationPerClient ?? 25,
+    currentQueueCount: s.current_queue_count ?? s.currentQueueCount ?? 0,
+    estimatedWaitMinutes: s.estimated_wait_minutes ?? s.estimatedWaitMinutes ?? 0,
+    coverImage: s.cover_image_url ?? s.cover_image ?? s.coverImage,
+    services: (s.services || []).map((srv: any) => ({
+      id: srv.id,
+      name: srv.name,
+      duration: srv.duration,
+      price: Number(srv.price),
+      description: srv.description,
+    })),
+    workingHours: s.working_hours || s.workingHours || [],
+    breaks: s.breaks || [],
+  };
+}
+
 /**
- * Fetch all barbershops with live turn counts & estimated wait times
+ * Fetch all shops with live turn counts & estimated wait times
  */
-export async function getShops(filters?: { city?: string; search?: string }): Promise<Shop[]> {
+export async function getShops(filters?: {
+  city?: string;
+  search?: string;
+  shopType?: 'barber' | 'salon' | 'all';
+}): Promise<Shop[]> {
   try {
     const params = new URLSearchParams();
     if (filters?.city) params.append('city', filters.city);
     if (filters?.search) params.append('search', filters.search);
+    if (filters?.shopType && filters.shopType !== 'all') {
+      params.append('shop_type', filters.shopType);
+    }
 
     const res = await fetch(`${API_BASE_URL}/shops?${params.toString()}`, {
       next: { revalidate: 10 },
@@ -41,41 +82,14 @@ export async function getShops(filters?: { city?: string; search?: string }): Pr
 
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
-
-    // Map backend snake_case to frontend camelCase if needed
-    return data.map((s: any) => ({
-      id: s.id,
-      name: s.name,
-      tagline: s.tagline || '',
-      ownerName: s.owner_name || s.ownerName || 'Master Barber',
-      address: s.address,
-      city: s.city,
-      distanceKm: s.distance_km ?? s.distanceKm ?? 1.2,
-      lat: s.lat,
-      lng: s.lng,
-      phone: s.phone,
-      rating: s.rating,
-      reviewCount: s.review_count ?? s.reviewCount ?? 50,
-      isOpen: s.is_open ?? s.isOpen ?? true,
-      isEmergency: s.is_emergency ?? s.isEmergency ?? false,
-      emergencyReason: s.emergency_reason ?? s.emergencyReason,
-      avgDurationPerClient: s.avg_service_duration ?? s.avgDurationPerClient ?? 25,
-      currentQueueCount: s.current_queue_count ?? s.currentQueueCount ?? 0,
-      estimatedWaitMinutes: s.estimated_wait_minutes ?? s.estimatedWaitMinutes ?? 0,
-      coverImage: s.cover_image_url ?? s.cover_image ?? s.coverImage,
-      services: (s.services || []).map((srv: any) => ({
-        id: srv.id,
-        name: srv.name,
-        duration: srv.duration,
-        price: Number(srv.price),
-        description: srv.description,
-      })),
-      workingHours: s.working_hours || s.workingHours || [],
-      breaks: s.breaks || [],
-    }));
+    return data.map(mapShop);
   } catch (error) {
     console.warn('[Snapcut API] Using fallback shop data:', error);
-    return INITIAL_SHOPS;
+    let shops = INITIAL_SHOPS;
+    if (filters?.shopType && filters.shopType !== 'all') {
+      shops = shops.filter((s) => s.shopType === filters.shopType);
+    }
+    return shops;
   }
 }
 
@@ -90,38 +104,7 @@ export async function getShopById(id: string): Promise<Shop | null> {
     });
 
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const s = await res.json();
-
-    return {
-      id: s.id,
-      name: s.name,
-      tagline: s.tagline || '',
-      ownerName: s.owner_name || s.ownerName || 'Master Barber',
-      address: s.address,
-      city: s.city,
-      distanceKm: s.distance_km ?? s.distanceKm ?? 1.2,
-      lat: s.lat,
-      lng: s.lng,
-      phone: s.phone,
-      rating: s.rating,
-      reviewCount: s.review_count ?? s.reviewCount ?? 50,
-      isOpen: s.is_open ?? s.isOpen ?? true,
-      isEmergency: s.is_emergency ?? s.isEmergency ?? false,
-      emergencyReason: s.emergency_reason ?? s.emergencyReason,
-      avgDurationPerClient: s.avg_service_duration ?? s.avgDurationPerClient ?? 25,
-      currentQueueCount: s.current_queue_count ?? s.currentQueueCount ?? 0,
-      estimatedWaitMinutes: s.estimated_wait_minutes ?? s.estimatedWaitMinutes ?? 0,
-      coverImage: s.cover_image_url ?? s.cover_image ?? s.coverImage,
-      services: (s.services || []).map((srv: any) => ({
-        id: srv.id,
-        name: srv.name,
-        duration: srv.duration,
-        price: Number(srv.price),
-        description: srv.description,
-      })),
-      workingHours: s.working_hours || s.workingHours || [],
-      breaks: s.breaks || [],
-    };
+    return mapShop(await res.json());
   } catch (error) {
     console.warn(`[Snapcut API] Fallback for shop ${id}:`, error);
     return INITIAL_SHOPS.find((s) => s.id === id) || null;

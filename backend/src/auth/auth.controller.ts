@@ -14,8 +14,8 @@ class RegisterDto {
   @IsString()
   full_name: string;
 
-  @IsEnum(['customer', 'barber'])
-  role: 'customer' | 'barber';
+  @IsEnum(['customer', 'barber', 'salon'])
+  role: 'customer' | 'barber' | 'salon';
 }
 
 class LoginDto {

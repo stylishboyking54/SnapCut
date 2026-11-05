@@ -10,6 +10,7 @@ const SEED_SHOPS = [
     owner_id: 'barber-1',
     address: '142 Mercer Street, Soho',
     city: 'Metro City',
+    shop_type: 'barber',
     lat: 40.7223,
     lng: -73.9987,
     phone: '+1 (555) 234-5678',
@@ -49,6 +50,7 @@ const SEED_SHOPS = [
     owner_id: 'barber-2',
     address: '88 Kingfisher Ave, Westside',
     city: 'Metro City',
+    shop_type: 'barber',
     lat: 40.7182,
     lng: -74.015,
     phone: '+1 (555) 876-5432',
@@ -86,6 +88,7 @@ const SEED_SHOPS = [
     owner_id: 'barber-3',
     address: '304 Elmwood Blvd',
     city: 'Metro City',
+    shop_type: 'barber',
     lat: 40.725,
     lng: -73.998,
     phone: '+1 (555) 432-1098',
@@ -121,6 +124,7 @@ const SEED_SHOPS = [
     owner_id: 'barber-4',
     address: '512 Oakridge Parkway',
     city: 'Metro City',
+    shop_type: 'salon',
     lat: 40.705,
     lng: -74.02,
     phone: '+1 (555) 999-1122',
@@ -261,7 +265,7 @@ export class ShopsService {
     this.localShops[shopIndex].estimated_wait_minutes = active.length * avg;
   }
 
-  async findAll(filters?: { city?: string; search?: string }) {
+  async findAll(filters?: { city?: string; search?: string; shopType?: string }) {
     if (this.isSupabaseLive()) {
       try {
         let query = this.supabase
@@ -270,10 +274,14 @@ export class ShopsService {
           .order('name');
         if (filters?.city) query = query.ilike('city', `%${filters.city}%`);
         if (filters?.search) query = query.ilike('name', `%${filters.search}%`);
+        if (filters?.shopType === 'barber' || filters?.shopType === 'salon') {
+          query = query.eq('shop_type', filters.shopType);
+        }
         const { data, error } = await query;
         if (!error && data?.length) {
           return data.map((s: any) => ({
             ...s,
+            shop_type: s.shop_type || 'barber',
             cover_image: s.cover_image_url || s.cover_image,
             owner_name: s.profiles?.full_name,
             current_queue_count: 0,
@@ -293,6 +301,9 @@ export class ShopsService {
     if (filters?.search) {
       const q = filters.search.toLowerCase();
       result = result.filter((s) => s.name.toLowerCase().includes(q) || s.address.toLowerCase().includes(q));
+    }
+    if (filters?.shopType === 'barber' || filters?.shopType === 'salon') {
+      result = result.filter((s: any) => (s.shop_type || 'barber') === filters.shopType);
     }
     return result;
   }

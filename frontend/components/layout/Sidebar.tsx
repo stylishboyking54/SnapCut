@@ -24,7 +24,7 @@ interface NavItem {
 
 interface SidebarProps {
   navItems: NavItem[];
-  role?: 'customer' | 'barber' | 'admin';
+  role?: 'customer' | 'barber' | 'salon' | 'admin';
 }
 
 function renderNavIcon(name: string) {

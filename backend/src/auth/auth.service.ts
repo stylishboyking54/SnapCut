@@ -8,7 +8,12 @@ export class AuthService {
     @Inject(SUPABASE_ADMIN) private readonly supabase: SupabaseClient,
   ) {}
 
-  async register(email: string, password: string, fullName: string, role: 'customer' | 'barber' = 'customer') {
+  async register(
+    email: string,
+    password: string,
+    fullName: string,
+    role: 'customer' | 'barber' | 'salon' = 'customer',
+  ) {
     const { data, error } = await this.supabase.auth.admin.createUser({
       email,
       password,

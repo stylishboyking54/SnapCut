@@ -20,8 +20,9 @@ export class ShopsController {
   findAll(
     @Query('city') city?: string,
     @Query('search') search?: string,
+    @Query('shop_type') shopType?: string,
   ) {
-    return this.shopsService.findAll({ city, search });
+    return this.shopsService.findAll({ city, search, shopType });
   }
 
   @Get('nearby')

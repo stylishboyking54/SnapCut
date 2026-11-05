@@ -12,6 +12,7 @@ export default function HomePage() {
   const [shops, setShops] = useState<Shop[]>(INITIAL_SHOPS);
   const [searchQuery, setSearchQuery] = useState('');
   const [filter, setFilter] = useState<'all' | 'quick' | 'nearest' | 'top'>('all');
+  const [shopType, setShopType] = useState<'all' | 'barber' | 'salon'>('all');
   const [bookingToast, setBookingToast] = useState<string | null>(null);
   const [joiningId, setJoiningId] = useState<string | null>(null);
 
@@ -29,6 +30,10 @@ export default function HomePage() {
 
   const filteredShops = useMemo(() => {
     let result = [...shops];
+
+    if (shopType !== 'all') {
+      result = result.filter((s) => s.shopType === shopType);
+    }
 
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
@@ -49,7 +54,7 @@ export default function HomePage() {
     }
 
     return result;
-  }, [shops, searchQuery, filter]);
+  }, [shops, searchQuery, filter, shopType]);
 
   const handleQuickJoin = async (shop: Shop) => {
     if (joiningId) return;
@@ -124,9 +129,28 @@ export default function HomePage() {
           )}
         </div>
 
-        <div className="filter-pills-row" role="tablist" aria-label="Sort shops">
+        <div className="filter-pills-row" role="tablist" aria-label="Shop type">
           {[
             { id: 'all', label: 'All' },
+            { id: 'barber', label: 'Barber (men)' },
+            { id: 'salon', label: 'Salon (women)' },
+          ].map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              role="tab"
+              aria-selected={shopType === item.id}
+              className={`filter-seg ${shopType === item.id ? 'active' : ''}`}
+              onClick={() => setShopType(item.id as typeof shopType)}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="filter-pills-row" role="tablist" aria-label="Sort shops">
+          {[
+            { id: 'all', label: 'Any wait' },
             { id: 'quick', label: 'Shortest wait' },
             { id: 'nearest', label: 'Closest' },
             { id: 'top', label: 'Top rated' },
@@ -171,7 +195,8 @@ export default function HomePage() {
                 <div>
                   <h3 style={{ fontSize: 20, fontWeight: 600 }}>{shop.name}</h3>
                   <p className="muted" style={{ fontSize: 13.5, marginTop: 4 }}>
-                    {shop.address} · {shop.distanceKm} km · {shop.reviewCount} reviews
+                    {shop.shopType === 'salon' ? 'Salon' : 'Barbershop'} · {shop.address} ·{' '}
+                    {shop.distanceKm} km · {shop.reviewCount} reviews
                   </p>
                 </div>
 

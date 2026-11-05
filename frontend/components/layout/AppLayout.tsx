@@ -6,6 +6,7 @@ import Sidebar from './Sidebar';
 import BottomNav from './BottomNav';
 import Navbar from './Navbar';
 import RoleWelcome, { AppRole } from './RoleWelcome';
+import { getSession } from '@/lib/auth';
 
 type UserRole = AppRole | 'admin';
 
@@ -13,6 +14,12 @@ const ROLE_KEY = 'qb_role';
 
 interface AppLayoutProps {
   children: React.ReactNode;
+}
+
+function homeForRole(role: UserRole) {
+  if (role === 'barber' || role === 'salon') return '/barber/dashboard';
+  if (role === 'admin') return '/admin';
+  return '/';
 }
 
 export default function AppLayout({ children }: AppLayoutProps) {
@@ -23,8 +30,13 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
   useEffect(() => {
     const saved = localStorage.getItem(ROLE_KEY);
-    if (saved === 'customer' || saved === 'barber' || saved === 'admin') {
+    const session = getSession();
+    if (saved === 'customer' || saved === 'barber' || saved === 'salon' || saved === 'admin') {
       setRole(saved);
+    } else if (session?.profile.role) {
+      const r = session.profile.role as UserRole;
+      localStorage.setItem(ROLE_KEY, r);
+      setRole(r);
     } else {
       setRole(null);
     }
@@ -32,8 +44,22 @@ export default function AppLayout({ children }: AppLayoutProps) {
   }, []);
 
   useEffect(() => {
+    const onAuth = () => {
+      const session = getSession();
+      if (!session) return;
+      const r = session.profile.role as UserRole;
+      if (r === 'customer' || r === 'barber' || r === 'salon' || r === 'admin') {
+        localStorage.setItem(ROLE_KEY, r);
+        setRole(r);
+      }
+    };
+    window.addEventListener('snapcut-auth', onAuth);
+    return () => window.removeEventListener('snapcut-auth', onAuth);
+  }, []);
+
+  useEffect(() => {
     if (!ready || !role) return;
-    if (role === 'barber' && (pathname === '/' || pathname.startsWith('/map') || pathname.startsWith('/bookings'))) {
+    if ((role === 'barber' || role === 'salon') && (pathname === '/' || pathname.startsWith('/map') || pathname.startsWith('/bookings'))) {
       router.replace('/barber/dashboard');
     }
     if (role === 'customer' && pathname.startsWith('/barber')) {
@@ -41,18 +67,10 @@ export default function AppLayout({ children }: AppLayoutProps) {
     }
   }, [ready, role, pathname, router]);
 
-  const handleSelectRole = (next: AppRole) => {
+  const handleWelcomeComplete = (next: AppRole) => {
     localStorage.setItem(ROLE_KEY, next);
     setRole(next);
-    router.replace(next === 'barber' ? '/barber/dashboard' : '/');
-  };
-
-  const handleRoleChange = (next: UserRole) => {
-    localStorage.setItem(ROLE_KEY, next);
-    setRole(next);
-    if (next === 'barber') router.replace('/barber/dashboard');
-    else if (next === 'admin') router.replace('/admin');
-    else router.replace('/');
+    router.replace(homeForRole(next));
   };
 
   const customerNavItems = [
@@ -63,7 +81,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
     { href: '/profile', label: 'Profile', iconName: 'account' },
   ];
 
-  const barberNavItems = [
+  const proNavItems = [
     { href: '/barber/dashboard', label: 'Queue', iconName: 'queue', badge: 3 },
     { href: '/barber/schedule', label: 'Hours', iconName: 'schedule' },
     { href: '/barber/bookings', label: 'Bookings', iconName: 'bookings' },
@@ -78,8 +96,8 @@ export default function AppLayout({ children }: AppLayoutProps) {
   ];
 
   const currentNavItems =
-    role === 'barber'
-      ? barberNavItems
+    role === 'barber' || role === 'salon'
+      ? proNavItems
       : role === 'admin'
       ? adminNavItems
       : customerNavItems;
@@ -92,7 +110,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
             <div className="muted" style={{ fontSize: 14 }}>Loading…</div>
           </div>
         ) : (
-          <RoleWelcome onSelect={handleSelectRole} />
+          <RoleWelcome onComplete={handleWelcomeComplete} />
         )}
         <div hidden aria-hidden="true">
           {children}
@@ -108,11 +126,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
       </Suspense>
 
       <div className="main-content">
-        <Navbar
-          currentRole={role}
-          onRoleChange={handleRoleChange}
-          notificationCount={2}
-        />
+        <Navbar currentRole={role} notificationCount={2} />
         <main className="page-content">
           <Suspense
             fallback={
@@ -126,11 +140,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
         </main>
       </div>
 
-      <Suspense
-        fallback={
-          <nav className="bottom-nav" aria-hidden="true" />
-        }
-      >
+      <Suspense fallback={<nav className="bottom-nav" aria-hidden="true" />}>
         <BottomNav navItems={currentNavItems} />
       </Suspense>
     </div>

@@ -22,6 +22,8 @@ export interface WorkingHour {
   isOpen: boolean;
 }
 
+export type ShopType = 'barber' | 'salon';
+
 export interface Shop {
   id: string;
   name: string;
@@ -29,6 +31,8 @@ export interface Shop {
   ownerName: string;
   address: string;
   city: string;
+  /** barber = men, salon = women */
+  shopType: ShopType;
   distanceKm: number;
   lat: number;
   lng: number;
