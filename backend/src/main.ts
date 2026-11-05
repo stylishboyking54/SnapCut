@@ -14,9 +14,19 @@ async function bootstrap() {
     }),
   );
 
-  // CORS for Next.js frontend
+  // CORS — comma-separated FRONTEND_URL allowed (e.g. prod + localhost)
+  const allowedOrigins = (process.env.FRONTEND_URL || 'http://localhost:3000')
+    .split(',')
+    .map((o) => o.trim())
+    .filter(Boolean);
   app.enableCors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
+        callback(null, true);
+        return;
+      }
+      callback(null, allowedOrigins.includes(origin));
+    },
     credentials: true,
   });
 
