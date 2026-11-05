@@ -1,9 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
-  cacheComponents: true,
-  partialPrefetching: true,
+  // Keep deploy stable: Cache Components + usePathname in the shell
+  // was failing Vercel prerender for /shops/[id].
+  // Re-enable later with route-level Suspense boundaries.
   devIndicators: false,
 };
 
