@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { Suspense } from 'react';
 import './globals.css';
 import AppLayout from '@/components/layout/AppLayout';
 
@@ -24,7 +25,15 @@ export default function RootLayout({
         />
       </head>
       <body>
-        <AppLayout>{children}</AppLayout>
+        <Suspense
+          fallback={
+            <div style={{ padding: 40, textAlign: 'center', color: '#6b6560' }}>
+              Loading Snapcut…
+            </div>
+          }
+        >
+          <AppLayout>{children}</AppLayout>
+        </Suspense>
       </body>
     </html>
   );
