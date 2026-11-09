@@ -122,7 +122,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
     };
   }, [pathname, router, openSignIn]);
 
-  // Gate protected routes with the modal
+  // If a guest somehow lands on a gated URL, bounce to Explore and show popup instead
   useEffect(() => {
     if (!ready || !role) return;
     const session = getSession();
@@ -134,11 +134,11 @@ export default function AppLayout({ children }: AppLayoutProps) {
     }
 
     if (isProtectedCustomerPath(pathname) && !session) {
+      sessionStorage.setItem('snapcut_after_signin', pathname);
+      router.replace('/');
       openSignIn(reasonForPath(pathname));
-    } else if (!isProtectedCustomerPath(pathname)) {
-      setAuthOpen(false);
     }
-  }, [ready, role, pathname, openSignIn]);
+  }, [ready, role, pathname, openSignIn, router]);
 
   useEffect(() => {
     if (!ready || !role) return;
@@ -159,10 +159,15 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
   const handleAuthClose = () => {
     setAuthOpen(false);
-    // Leaving a gated page without signing in → back to Explore
-    if (!getSession() && role === 'customer' && isProtectedCustomerPath(pathname)) {
-      router.replace('/');
-    }
+    sessionStorage.removeItem('snapcut_after_signin');
+  };
+
+  const handleAuthSuccess = () => {
+    setSignedIn(true);
+    setAuthOpen(false);
+    const next = sessionStorage.getItem('snapcut_after_signin');
+    sessionStorage.removeItem('snapcut_after_signin');
+    if (next) router.push(next);
   };
 
   const customerNavItems = [
@@ -251,10 +256,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
         reason={authReason}
         defaultRole={modalRole === 'admin' ? 'customer' : modalRole}
         onClose={handleAuthClose}
-        onSuccess={() => {
-          setSignedIn(true);
-          setAuthOpen(false);
-        }}
+        onSuccess={handleAuthSuccess}
       />
     </div>
   );

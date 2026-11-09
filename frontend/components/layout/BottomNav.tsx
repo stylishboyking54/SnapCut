@@ -14,6 +14,7 @@ import {
   CalendarIcon,
   StoreIcon,
 } from '@/components/ui/Icons';
+import { getSession, isProtectedCustomerPath, requestSignIn } from '@/lib/auth';
 
 interface NavItem {
   href: string;
@@ -42,6 +43,13 @@ function renderBottomIcon(name: string, isActive: boolean) {
   }
 }
 
+function reasonForHref(href: string) {
+  if (href.startsWith('/bookings')) return 'Sign in to see your live ticket.';
+  if (href.startsWith('/notifications')) return 'Sign in to get alerts for your place in line.';
+  if (href.startsWith('/profile')) return 'Sign in to manage your Snapcut account.';
+  return 'Sign in to continue.';
+}
+
 export default function BottomNav({ navItems }: BottomNavProps) {
   const pathname = usePathname();
 
@@ -52,10 +60,19 @@ export default function BottomNav({ navItems }: BottomNavProps) {
           pathname === item.href ||
           (item.href !== '/' && pathname.startsWith(item.href));
 
+        const handleClick = (e: React.MouseEvent) => {
+          if (!isProtectedCustomerPath(item.href)) return;
+          if (getSession()) return;
+          e.preventDefault();
+          sessionStorage.setItem('snapcut_after_signin', item.href);
+          requestSignIn(reasonForHref(item.href));
+        };
+
         return (
           <Link
             key={item.href}
             href={item.href}
+            onClick={handleClick}
             className={`bottom-nav-item ${isActive ? 'active' : ''}`}
           >
             <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>

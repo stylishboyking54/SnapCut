@@ -1,10 +1,10 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { GoogleIcon } from '@/components/ui/Icons';
 import {
   AuthRole,
-  getSession,
   login,
   loginWithGoogle,
   register,
@@ -27,6 +27,7 @@ export default function SignInModal({
   onClose,
   onSuccess,
 }: SignInModalProps) {
+  const [mounted, setMounted] = useState(false);
   const [mode, setMode] = useState<Mode>('login');
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
@@ -35,17 +36,26 @@ export default function SignInModal({
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
     if (!open) return;
     setError(null);
     setBusy(false);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
     };
     window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    return () => {
+      document.body.style.overflow = prev;
+      window.removeEventListener('keydown', onKey);
+    };
   }, [open, onClose]);
 
-  if (!open) return null;
+  if (!mounted || !open) return null;
 
   const roleLabel =
     defaultRole === 'salon' ? 'Salon' : defaultRole === 'barber' ? 'Barber' : 'Customer';
@@ -84,7 +94,7 @@ export default function SignInModal({
     }
   };
 
-  return (
+  return createPortal(
     <div className="auth-modal-overlay" role="presentation" onClick={onClose}>
       <div
         className="auth-modal"
@@ -93,6 +103,7 @@ export default function SignInModal({
         aria-labelledby="auth-modal-title"
         onClick={(e) => e.stopPropagation()}
       >
+        <div className="auth-modal-handle" aria-hidden="true" />
         <button type="button" className="auth-modal-close" onClick={onClose} aria-label="Close">
           ×
         </button>
@@ -173,13 +184,8 @@ export default function SignInModal({
             {mode === 'login' ? 'Need an account? Sign up' : 'Have an account? Sign in'}
           </button>
         </form>
-
-        {getSession() ? null : (
-          <p className="muted" style={{ marginTop: 14, fontSize: 12, textAlign: 'center' }}>
-            You can still browse shops without an account.
-          </p>
-        )}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

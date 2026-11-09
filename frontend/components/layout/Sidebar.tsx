@@ -14,7 +14,7 @@ import {
   CalendarIcon,
   StoreIcon,
 } from '@/components/ui/Icons';
-import { AuthSession, getSession } from '@/lib/auth';
+import { AuthSession, getSession, isProtectedCustomerPath, requestSignIn } from '@/lib/auth';
 
 interface NavItem {
   href: string;
@@ -87,10 +87,25 @@ export default function Sidebar({ navItems, role, onSignIn }: SidebarProps) {
             pathname === item.href ||
             (item.href !== '/' && pathname.startsWith(item.href));
 
+          const handleClick = (e: React.MouseEvent) => {
+            if (!isProtectedCustomerPath(item.href)) return;
+            if (getSession()) return;
+            e.preventDefault();
+            sessionStorage.setItem('snapcut_after_signin', item.href);
+            const reason =
+              item.href.startsWith('/bookings')
+                ? 'Sign in to see your live ticket.'
+                : item.href.startsWith('/notifications')
+                ? 'Sign in to get alerts for your place in line.'
+                : 'Sign in to manage your Snapcut account.';
+            requestSignIn(reason);
+          };
+
           return (
             <Link
               key={item.href}
               href={item.href}
+              onClick={handleClick}
               className={`nav-item ${isActive ? 'active' : ''}`}
             >
               {renderNavIcon(item.iconName)}
