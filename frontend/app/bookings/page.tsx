@@ -1,10 +1,9 @@
 'use client';
 
 import React, { useCallback, useEffect, useState } from 'react';
-import Link from 'next/link';
 import { QueueItem } from '@/lib/types';
 import { cancelBooking, getMyBookings } from '@/lib/api';
-import { getSession } from '@/lib/auth';
+import { getSession, requestSignIn } from '@/lib/auth';
 import { ClockIcon, MapPinIcon, ScissorsIcon } from '@/components/ui/Icons';
 
 export default function BookingsPage() {
@@ -111,9 +110,13 @@ export default function BookingsPage() {
           <p className="secondary" style={{ fontSize: 14, maxWidth: 340, margin: '8px auto 20px', lineHeight: 1.5 }}>
             Your live bookings are tied to your account.
           </p>
-          <Link href="/profile" className="btn-primary">
+          <button
+            type="button"
+            className="btn-primary"
+            onClick={() => requestSignIn('Sign in to see your live ticket.')}
+          >
             Sign in
-          </Link>
+          </button>
         </div>
       ) : activeBookings.length > 0 ? (
         <div className="list-stack">

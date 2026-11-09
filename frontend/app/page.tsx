@@ -4,7 +4,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { INITIAL_SHOPS } from '@/lib/mockData';
 import { getShops, joinShopQueue } from '@/lib/api';
-import { getSession } from '@/lib/auth';
+import { getSession, requestSignIn } from '@/lib/auth';
 import { Shop } from '@/lib/types';
 import { SearchIcon, CompassIcon } from '@/components/ui/Icons';
 
@@ -60,7 +60,7 @@ export default function HomePage() {
     if (joiningId) return;
     const session = getSession();
     if (!session) {
-      window.location.href = '/profile';
+      requestSignIn('Sign in to join the queue and get a ticket.');
       return;
     }
     setJoiningId(shop.id);

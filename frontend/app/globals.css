@@ -1066,3 +1066,63 @@ img { max-width: 100%; height: auto; display: block; }
     padding: 14px !important;
   }
 }
+
+/* Sign-in gate modal */
+.auth-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  background: rgba(18, 18, 18, 0.45);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: authOverlayIn 0.18s ease-out;
+}
+
+@keyframes authOverlayIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.auth-modal {
+  position: relative;
+  width: min(420px, 100%);
+  max-height: min(92vh, 720px);
+  overflow: auto;
+  background: var(--bg-surface);
+  border: 1px solid var(--bg-border);
+  border-radius: var(--radius-lg, 16px);
+  box-shadow: 0 24px 60px rgba(18, 18, 18, 0.18);
+  padding: 22px 22px 20px;
+  animation: authModalIn 0.22s ease-out;
+}
+
+@keyframes authModalIn {
+  from { opacity: 0; transform: translateY(10px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.auth-modal-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--bg-border);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 22px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.auth-modal-close:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}

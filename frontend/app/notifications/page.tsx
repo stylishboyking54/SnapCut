@@ -1,12 +1,21 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { INITIAL_NOTIFICATIONS } from '@/lib/mockData';
 import { AppNotification } from '@/lib/types';
+import { getSession, requestSignIn } from '@/lib/auth';
 import { ClockIcon, AlertTriangleIcon } from '@/components/ui/Icons';
 
 export default function NotificationsPage() {
+  const [signedIn, setSignedIn] = useState(false);
   const [notifications, setNotifications] = useState<AppNotification[]>(INITIAL_NOTIFICATIONS);
+
+  useEffect(() => {
+    const sync = () => setSignedIn(!!getSession());
+    sync();
+    window.addEventListener('snapcut-auth', sync);
+    return () => window.removeEventListener('snapcut-auth', sync);
+  }, []);
 
   const handleMarkAllRead = () => {
     setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
@@ -17,6 +26,30 @@ export default function NotificationsPage() {
   };
 
   const unreadCount = notifications.filter((n) => !n.isRead).length;
+
+  if (!signedIn) {
+    return (
+      <div className="page-enter" style={{ maxWidth: 680, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 22 }}>
+        <div>
+          <div className="eyebrow">Updates from the chair</div>
+          <h1 style={{ fontSize: 28, fontWeight: 600, marginTop: 4 }}>Alerts</h1>
+        </div>
+        <div className="panel" style={{ textAlign: 'center', padding: '40px 24px' }}>
+          <h2 style={{ fontSize: 20, fontWeight: 600 }}>Sign in for alerts</h2>
+          <p className="secondary" style={{ fontSize: 14, maxWidth: 340, margin: '8px auto 20px', lineHeight: 1.5 }}>
+            Get notified when your turn is close or the shop updates the line.
+          </p>
+          <button
+            type="button"
+            className="btn-primary"
+            onClick={() => requestSignIn('Sign in to get alerts for your place in line.')}
+          >
+            Sign in
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="page-enter" style={{ maxWidth: 680, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 22 }}>

@@ -60,6 +60,26 @@ export function clearSession() {
   window.dispatchEvent(new Event('snapcut-auth'));
 }
 
+/** Ask the app shell to open the sign-in modal (real-app gate). */
+export function requestSignIn(reason?: string) {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(
+    new CustomEvent('snapcut-signin', { detail: { reason: reason || '' } }),
+  );
+}
+
+export function isProtectedCustomerPath(pathname: string | null | undefined) {
+  if (!pathname) return false;
+  return (
+    pathname === '/bookings' ||
+    pathname.startsWith('/bookings/') ||
+    pathname === '/notifications' ||
+    pathname.startsWith('/notifications/') ||
+    pathname === '/profile' ||
+    pathname.startsWith('/profile/')
+  );
+}
+
 export async function login(email: string, password: string): Promise<AuthSession> {
   const res = await fetch(`${getApiBaseUrl()}/auth/login`, {
     method: 'POST',

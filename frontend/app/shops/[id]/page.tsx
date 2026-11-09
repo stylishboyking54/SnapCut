@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { INITIAL_SHOPS, INITIAL_QUEUE } from '@/lib/mockData';
 import { getShopById, getShopLiveQueue, joinShopQueue } from '@/lib/api';
-import { getSession } from '@/lib/auth';
+import { getSession, requestSignIn } from '@/lib/auth';
 import { Shop, Service, QueueItem } from '@/lib/types';
 import { CoffeeIcon } from '@/components/ui/Icons';
 
@@ -62,7 +62,7 @@ function ShopDetailContent() {
     if (!selectedService || !customerName.trim() || shop.isEmergency || isJoining) return;
 
     if (!getSession()) {
-      window.location.href = '/profile';
+      requestSignIn('Sign in to join the queue and get a ticket.');
       return;
     }
 

@@ -1,12 +1,17 @@
 'use client';
 
-import React, { useState, useEffect, Suspense } from 'react';
+import React, { useState, useEffect, useCallback, Suspense } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Sidebar from './Sidebar';
 import BottomNav from './BottomNav';
 import Navbar from './Navbar';
 import RoleWelcome, { AppRole } from './RoleWelcome';
-import { getSession } from '@/lib/auth';
+import SignInModal from '@/components/auth/SignInModal';
+import {
+  AuthRole,
+  getSession,
+  isProtectedCustomerPath,
+} from '@/lib/auth';
 
 type UserRole = AppRole | 'admin';
 
@@ -22,11 +27,28 @@ function homeForRole(role: UserRole) {
   return '/';
 }
 
+function reasonForPath(pathname: string | null) {
+  if (!pathname) return 'Sign in to continue.';
+  if (pathname.startsWith('/bookings')) return 'Sign in to see your live ticket.';
+  if (pathname.startsWith('/notifications')) return 'Sign in to get alerts for your place in line.';
+  if (pathname.startsWith('/profile')) return 'Sign in to manage your Snapcut account.';
+  if (pathname.startsWith('/barber')) return 'Sign in to run your shop queue.';
+  return 'Sign in to continue.';
+}
+
 export default function AppLayout({ children }: AppLayoutProps) {
   const router = useRouter();
   const pathname = usePathname();
   const [role, setRole] = useState<UserRole | null>(null);
   const [ready, setReady] = useState(false);
+  const [signedIn, setSignedIn] = useState(false);
+  const [authOpen, setAuthOpen] = useState(false);
+  const [authReason, setAuthReason] = useState('Sign in to continue.');
+
+  const openSignIn = useCallback((reason?: string) => {
+    setAuthReason(reason || reasonForPath(pathname));
+    setAuthOpen(true);
+  }, [pathname]);
 
   // If Supabase dumps ?code= on Site URL (/), forward to the real callback route
   useEffect(() => {
@@ -35,15 +57,16 @@ export default function AppLayout({ children }: AppLayoutProps) {
     const params = new URLSearchParams(window.location.search);
     const code = params.get('code');
     if (!code) return;
-    const role = params.get('role');
+    const roleParam = params.get('role');
     const qs = new URLSearchParams({ code });
-    if (role) qs.set('role', role);
+    if (roleParam) qs.set('role', roleParam);
     router.replace(`/auth/callback?${qs.toString()}`);
   }, [pathname, router]);
 
   useEffect(() => {
     const saved = localStorage.getItem(ROLE_KEY);
     const session = getSession();
+    setSignedIn(!!session);
     if (saved === 'customer' || saved === 'barber' || saved === 'salon' || saved === 'admin') {
       setRole(saved);
     } else if (session?.profile.role) {
@@ -59,16 +82,63 @@ export default function AppLayout({ children }: AppLayoutProps) {
   useEffect(() => {
     const onAuth = () => {
       const session = getSession();
-      if (!session) return;
+      setSignedIn(!!session);
+
+      if (!session) {
+        const saved = localStorage.getItem(ROLE_KEY) as UserRole | null;
+        // Pros can't browse the floor logged out — back to welcome
+        if (saved === 'barber' || saved === 'salon' || saved === 'admin') {
+          localStorage.removeItem(ROLE_KEY);
+          setRole(null);
+          setAuthOpen(false);
+          router.replace('/');
+          return;
+        }
+        // Customers stay as guests and can keep browsing
+        if (isProtectedCustomerPath(pathname)) {
+          openSignIn(reasonForPath(pathname));
+        }
+        return;
+      }
+
       const r = session.profile.role as UserRole;
       if (r === 'customer' || r === 'barber' || r === 'salon' || r === 'admin') {
         localStorage.setItem(ROLE_KEY, r);
         setRole(r);
       }
+      setAuthOpen(false);
     };
+
+    const onSignInRequest = (e: Event) => {
+      const detail = (e as CustomEvent<{ reason?: string }>).detail;
+      openSignIn(detail?.reason);
+    };
+
     window.addEventListener('snapcut-auth', onAuth);
-    return () => window.removeEventListener('snapcut-auth', onAuth);
-  }, []);
+    window.addEventListener('snapcut-signin', onSignInRequest as EventListener);
+    return () => {
+      window.removeEventListener('snapcut-auth', onAuth);
+      window.removeEventListener('snapcut-signin', onSignInRequest as EventListener);
+    };
+  }, [pathname, router, openSignIn]);
+
+  // Gate protected routes with the modal
+  useEffect(() => {
+    if (!ready || !role) return;
+    const session = getSession();
+    setSignedIn(!!session);
+
+    if (role === 'barber' || role === 'salon' || role === 'admin') {
+      if (!session) openSignIn(reasonForPath(pathname));
+      return;
+    }
+
+    if (isProtectedCustomerPath(pathname) && !session) {
+      openSignIn(reasonForPath(pathname));
+    } else if (!isProtectedCustomerPath(pathname)) {
+      setAuthOpen(false);
+    }
+  }, [ready, role, pathname, openSignIn]);
 
   useEffect(() => {
     if (!ready || !role) return;
@@ -83,14 +153,23 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const handleWelcomeComplete = (next: AppRole) => {
     localStorage.setItem(ROLE_KEY, next);
     setRole(next);
+    setSignedIn(!!getSession());
     router.replace(homeForRole(next));
+  };
+
+  const handleAuthClose = () => {
+    setAuthOpen(false);
+    // Leaving a gated page without signing in → back to Explore
+    if (!getSession() && role === 'customer' && isProtectedCustomerPath(pathname)) {
+      router.replace('/');
+    }
   };
 
   const customerNavItems = [
     { href: '/', label: 'Explore', iconName: 'explore' },
     { href: '/map', label: 'Map', iconName: 'map' },
-    { href: '/bookings', label: 'Ticket', iconName: 'queue', badge: 1 },
-    { href: '/notifications', label: 'Alerts', iconName: 'alerts', badge: 2 },
+    { href: '/bookings', label: 'Ticket', iconName: 'queue', badge: signedIn ? 1 : undefined },
+    { href: '/notifications', label: 'Alerts', iconName: 'alerts', badge: signedIn ? 2 : undefined },
     { href: '/profile', label: 'Profile', iconName: 'account' },
   ];
 
@@ -137,14 +216,19 @@ export default function AppLayout({ children }: AppLayoutProps) {
     );
   }
 
+  const modalRole: AuthRole =
+    role === 'barber' || role === 'salon' || role === 'admin' || role === 'customer'
+      ? role
+      : 'customer';
+
   return (
     <div className="app-layout">
       <Suspense fallback={<aside className="sidebar" />}>
-        <Sidebar navItems={currentNavItems} role={role} />
+        <Sidebar navItems={currentNavItems} role={role} onSignIn={() => openSignIn('Sign in to your Snapcut account.')} />
       </Suspense>
 
       <div className="main-content">
-        <Navbar currentRole={role} notificationCount={2} />
+        <Navbar currentRole={role} notificationCount={signedIn ? 2 : 0} />
         <main className="page-content">
           <Suspense
             fallback={
@@ -161,6 +245,17 @@ export default function AppLayout({ children }: AppLayoutProps) {
       <Suspense fallback={<nav className="bottom-nav" aria-hidden="true" />}>
         <BottomNav navItems={currentNavItems} />
       </Suspense>
+
+      <SignInModal
+        open={authOpen}
+        reason={authReason}
+        defaultRole={modalRole === 'admin' ? 'customer' : modalRole}
+        onClose={handleAuthClose}
+        onSuccess={() => {
+          setSignedIn(true);
+          setAuthOpen(false);
+        }}
+      />
     </div>
   );
 }

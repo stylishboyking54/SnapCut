@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -14,6 +14,7 @@ import {
   CalendarIcon,
   StoreIcon,
 } from '@/components/ui/Icons';
+import { AuthSession, getSession } from '@/lib/auth';
 
 interface NavItem {
   href: string;
@@ -25,6 +26,7 @@ interface NavItem {
 interface SidebarProps {
   navItems: NavItem[];
   role?: 'customer' | 'barber' | 'salon' | 'admin';
+  onSignIn?: () => void;
 }
 
 function renderNavIcon(name: string) {
@@ -42,11 +44,33 @@ function renderNavIcon(name: string) {
   }
 }
 
-export default function Sidebar({ navItems, role }: SidebarProps) {
+export default function Sidebar({ navItems, role, onSignIn }: SidebarProps) {
   const pathname = usePathname();
+  const [session, setSession] = useState<AuthSession | null>(null);
+
+  useEffect(() => {
+    const sync = () => setSession(getSession());
+    sync();
+    window.addEventListener('snapcut-auth', sync);
+    return () => window.removeEventListener('snapcut-auth', sync);
+  }, []);
 
   const sectionLabel =
-    role === 'barber' ? 'Shop floor' : role === 'admin' ? 'Admin' : 'Find a cut';
+    role === 'barber' || role === 'salon'
+      ? 'Shop floor'
+      : role === 'admin'
+      ? 'Admin'
+      : 'Find a cut';
+
+  const displayName = session?.profile.full_name || null;
+  const initials = displayName
+    ? displayName
+        .split(' ')
+        .map((p) => p[0])
+        .join('')
+        .slice(0, 2)
+        .toUpperCase()
+    : '?';
 
   return (
     <aside className="sidebar">
@@ -102,15 +126,38 @@ export default function Sidebar({ navItems, role }: SidebarProps) {
             color: 'var(--brand-primary)',
           }}
         >
-          {role === 'barber' ? 'MV' : 'AJ'}
+          {initials}
         </div>
-        <div>
-          <div style={{ fontSize: 13, fontWeight: 600 }}>
-            {role === 'barber' ? 'Marcus Vance' : 'Alex Johnson'}
-          </div>
-          <div style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>
-            {role === 'barber' ? 'At the chair' : 'Downtown'}
-          </div>
+        <div style={{ minWidth: 0, flex: 1 }}>
+          {session ? (
+            <>
+              <div style={{ fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {displayName}
+              </div>
+              <div style={{ fontSize: 11.5, color: 'var(--text-muted)', textTransform: 'capitalize' }}>
+                {session.profile.role}
+              </div>
+            </>
+          ) : (
+            <>
+              <div style={{ fontSize: 13, fontWeight: 600 }}>Guest</div>
+              <button
+                type="button"
+                onClick={onSignIn}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  padding: 0,
+                  fontSize: 11.5,
+                  fontWeight: 600,
+                  color: 'var(--brand-primary)',
+                  cursor: 'pointer',
+                }}
+              >
+                Sign in
+              </button>
+            </>
+          )}
         </div>
       </div>
     </aside>
