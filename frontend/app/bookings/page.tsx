@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useState } from 'react';
+import Link from 'next/link';
 import { QueueItem } from '@/lib/types';
 import { cancelBooking, getMyBookings } from '@/lib/api';
 import { getSession } from '@/lib/auth';
