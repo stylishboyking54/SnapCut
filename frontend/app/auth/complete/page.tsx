@@ -1,19 +1,38 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { completeOAuthSession, homeForRole } from '@/lib/auth';
+import { Suspense, useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { AuthRole, completeOAuthSession, homeForRole } from '@/lib/auth';
 
-export default function AuthCallbackPage() {
+function AuthCompleteInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
+    let started = false;
 
     (async () => {
+      if (started) return;
+      started = true;
+
+      const presetError = searchParams.get('error');
+      if (presetError) {
+        setError(presetError);
+        return;
+      }
+
       try {
-        const session = await completeOAuthSession();
+        const roleParam = searchParams.get('role');
+        const preferred: AuthRole | undefined =
+          roleParam === 'customer' ||
+          roleParam === 'barber' ||
+          roleParam === 'salon' ||
+          roleParam === 'admin'
+            ? roleParam
+            : undefined;
+        const session = await completeOAuthSession(preferred);
         if (cancelled) return;
         router.replace(homeForRole(session.profile.role));
       } catch (err) {
@@ -25,7 +44,7 @@ export default function AuthCallbackPage() {
     return () => {
       cancelled = true;
     };
-  }, [router]);
+  }, [router, searchParams]);
 
   return (
     <div className="role-welcome">
@@ -42,10 +61,6 @@ export default function AuthCallbackPage() {
             >
               {error}
             </div>
-            <p className="secondary" style={{ marginTop: 14, fontSize: 14, lineHeight: 1.45 }}>
-              Enable Google under Supabase → Authentication → Providers, add this site’s
-              <code> /auth/callback</code> to Redirect URLs, then try again.
-            </p>
             <button
               type="button"
               className="btn-primary"
@@ -68,5 +83,21 @@ export default function AuthCallbackPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function AuthCompletePage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="role-welcome">
+          <div className="muted" style={{ fontSize: 14 }}>
+            Signing you in…
+          </div>
+        </div>
+      }
+    >
+      <AuthCompleteInner />
+    </Suspense>
   );
 }

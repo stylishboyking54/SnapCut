@@ -124,7 +124,7 @@ export async function logout() {
   clearSession();
 }
 
-/** Starts Google OAuth; returns after redirect to /auth/callback */
+/** Starts Google OAuth; server route /auth/callback exchanges the PKCE code */
 export async function loginWithGoogle(role: AuthRole = 'customer') {
   if (typeof window === 'undefined') return;
   sessionStorage.setItem(PENDING_ROLE_KEY, role);
@@ -132,7 +132,8 @@ export async function loginWithGoogle(role: AuthRole = 'customer') {
   const { error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: `${window.location.origin}/auth/callback`,
+      // Role travels on the redirect URL so it survives the Google hop
+      redirectTo: `${window.location.origin}/auth/callback?role=${encodeURIComponent(role)}`,
       queryParams: {
         access_type: 'offline',
         prompt: 'select_account',
@@ -145,37 +146,37 @@ export async function loginWithGoogle(role: AuthRole = 'customer') {
   }
 }
 
-export function takePendingRole(): AuthRole {
-  if (typeof window === 'undefined') return 'customer';
+export function takePendingRole(fallback?: AuthRole): AuthRole {
+  if (typeof window === 'undefined') return fallback || 'customer';
   const raw = sessionStorage.getItem(PENDING_ROLE_KEY);
   sessionStorage.removeItem(PENDING_ROLE_KEY);
   if (raw === 'customer' || raw === 'barber' || raw === 'salon' || raw === 'admin') {
     return raw;
   }
+  if (fallback === 'customer' || fallback === 'barber' || fallback === 'salon' || fallback === 'admin') {
+    return fallback;
+  }
   return 'customer';
 }
 
-/** Finish OAuth: exchange code, sync profile, save Snapcut session */
-export async function completeOAuthSession(): Promise<AuthSession> {
+/**
+ * After server /auth/callback exchanged the code into cookies,
+ * read the session and sync Snapcut profile/role.
+ */
+export async function completeOAuthSession(preferredRole?: AuthRole): Promise<AuthSession> {
   const supabase = createClient();
-  const params = new URLSearchParams(window.location.search);
-  const code = params.get('code');
-  const oauthError = params.get('error_description') || params.get('error');
-  if (oauthError) throw new Error(oauthError);
 
-  if (code) {
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
-    if (error) throw new Error(error.message || 'Could not finish Google sign-in');
+  // Brief retry — cookies from the route handler may need a tick to be readable
+  let sbSession = (await supabase.auth.getSession()).data.session;
+  if (!sbSession?.access_token) {
+    await new Promise((r) => setTimeout(r, 150));
+    sbSession = (await supabase.auth.getSession()).data.session;
   }
-
-  const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-  if (sessionError) throw new Error(sessionError.message);
-  const sbSession = sessionData.session;
   if (!sbSession?.access_token) {
     throw new Error('No session after Google sign-in. Try again.');
   }
 
-  const pendingRole = takePendingRole();
+  const pendingRole = takePendingRole(preferredRole);
   const res = await fetch(`${API_BASE_URL}/auth/oauth`, {
     method: 'POST',
     headers: {
