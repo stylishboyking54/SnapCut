@@ -12,6 +12,7 @@ import {
   getSession,
   isProtectedCustomerPath,
 } from '@/lib/auth';
+import { getMyShop } from '@/lib/api';
 
 type UserRole = AppRole | 'admin';
 
@@ -151,10 +152,19 @@ export default function AppLayout({ children }: AppLayoutProps) {
     }
   }, [ready, role, pathname, router]);
 
-  const handleWelcomeComplete = (next: AppRole) => {
+  const handleWelcomeComplete = async (next: AppRole) => {
     localStorage.setItem(ROLE_KEY, next);
     setRole(next);
     setSignedIn(!!getSession());
+    if (next === 'barber' || next === 'salon') {
+      try {
+        const mine = await getMyShop();
+        router.replace(mine ? '/barber/dashboard' : '/barber/shop?setup=1');
+      } catch {
+        router.replace('/barber/shop?setup=1');
+      }
+      return;
+    }
     router.replace(homeForRole(next));
   };
 
@@ -172,7 +182,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
     sessionStorage.removeItem('snapcut_after_signin');
   };
 
-  const handleAuthSuccess = () => {
+  const handleAuthSuccess = async () => {
     setSignedIn(true);
     setAuthOpen(false);
     setRolePickOpen(false);
@@ -184,7 +194,16 @@ export default function AppLayout({ children }: AppLayoutProps) {
     }
     const pending = sessionStorage.getItem('snapcut_after_signin');
     sessionStorage.removeItem('snapcut_after_signin');
-    if (r === 'barber' || r === 'salon' || r === 'admin') {
+    if (r === 'barber' || r === 'salon') {
+      try {
+        const mine = await getMyShop();
+        router.push(mine ? '/barber/dashboard' : '/barber/shop?setup=1');
+      } catch {
+        router.push('/barber/shop?setup=1');
+      }
+      return;
+    }
+    if (r === 'admin') {
       router.push(homeForRole(r));
       return;
     }

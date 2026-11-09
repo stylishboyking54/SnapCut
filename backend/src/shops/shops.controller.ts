@@ -34,6 +34,14 @@ export class ShopsController {
     return this.shopsService.findNearby(lat, lng, radius);
   }
 
+  /** Owner's shop — must stay above :id */
+  @Get('mine')
+  @UseGuards(SupabaseAuthGuard, RolesGuard)
+  @Roles('barber', 'salon')
+  findMine(@Req() req: any) {
+    return this.shopsService.findMine(req.user.id);
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.shopsService.findOne(id);
@@ -62,21 +70,22 @@ export class ShopsController {
 
   @Post()
   @UseGuards(SupabaseAuthGuard, RolesGuard)
-  @Roles('barber')
+  @Roles('barber', 'salon')
   create(@Req() req: any, @Body() dto: any) {
-    return this.shopsService.create(req.user.id, dto);
+    const role = req.user?.role === 'salon' ? 'salon' : 'barber';
+    return this.shopsService.create(req.user.id, { ...dto, shop_type: dto?.shop_type || role });
   }
 
   @Patch(':id')
   @UseGuards(SupabaseAuthGuard, RolesGuard)
-  @Roles('barber')
+  @Roles('barber', 'salon')
   update(@Param('id') id: string, @Req() req: any, @Body() dto: any) {
     return this.shopsService.update(id, req.user.id, dto);
   }
 
   @Patch(':id/emergency')
   @UseGuards(SupabaseAuthGuard, RolesGuard)
-  @Roles('barber')
+  @Roles('barber', 'salon')
   toggleEmergency(
     @Param('id') id: string,
     @Req() req: any,

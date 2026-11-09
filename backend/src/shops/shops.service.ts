@@ -531,17 +531,109 @@ export class ShopsService {
     };
   }
 
+  async findMine(ownerId: string) {
+    if (this.isSupabaseLive()) {
+      const { data, error } = await this.supabase
+        .from('shops')
+        .select(`*, services(*), working_hours(*), breaks(*)`)
+        .eq('owner_id', ownerId)
+        .order('created_at', { ascending: true })
+        .limit(1)
+        .maybeSingle();
+      if (error) throw new BadRequestException(error.message);
+      if (!data) return null;
+      return {
+        ...data,
+        shop_type: data.shop_type || 'barber',
+        cover_image: data.cover_image_url || data.cover_image,
+      };
+    }
+
+    const local = this.localShops.find((s) => s.owner_id === ownerId) || null;
+    return local;
+  }
+
   async create(ownerId: string, dto: any) {
+    const shopType = dto.shop_type === 'salon' ? 'salon' : 'barber';
+    const name = (dto.name || '').trim();
+    const address = (dto.address || '').trim();
+    const city = (dto.city || '').trim() || 'Accra';
+    if (!name || !address) {
+      throw new BadRequestException('Name and address are required');
+    }
+
+    if (this.isSupabaseLive()) {
+      const existing = await this.findMine(ownerId);
+      if (existing) {
+        throw new BadRequestException('You already have a shop. Edit it instead.');
+      }
+
+      const { data: shop, error } = await this.supabase
+        .from('shops')
+        .insert({
+          owner_id: ownerId,
+          name,
+          tagline: dto.tagline || null,
+          description: dto.description || null,
+          address,
+          city,
+          phone: dto.phone || null,
+          shop_type: shopType,
+          avg_service_duration: Number(dto.avg_service_duration) || (shopType === 'salon' ? 45 : 30),
+          is_open: true,
+          is_emergency: false,
+          lat: dto.lat ?? null,
+          lng: dto.lng ?? null,
+        })
+        .select()
+        .single();
+      if (error) throw new BadRequestException(error.message);
+
+      const defaultServices =
+        shopType === 'salon'
+          ? [
+              { shop_id: shop.id, name: 'Wash & Style', duration: 45, price: 80 },
+              { shop_id: shop.id, name: 'Braids', duration: 90, price: 150 },
+              { shop_id: shop.id, name: 'Treatment', duration: 60, price: 120 },
+            ]
+          : [
+              { shop_id: shop.id, name: 'Haircut', duration: 30, price: 40 },
+              { shop_id: shop.id, name: 'Fade', duration: 35, price: 50 },
+              { shop_id: shop.id, name: 'Beard trim', duration: 20, price: 25 },
+            ];
+      await this.supabase.from('services').insert(defaultServices);
+
+      // Mon–Sat open; Sunday omitted = closed
+      const hours = [1, 2, 3, 4, 5, 6].map((day) => ({
+        shop_id: shop.id,
+        day_of_week: day,
+        start_time: '09:00',
+        end_time: '18:00',
+      }));
+      await this.supabase.from('working_hours').insert(hours);
+
+      return this.findMine(ownerId);
+    }
+
     const newShop = {
       id: `shop-${Date.now()}`,
-      ...dto,
+      name,
+      tagline: dto.tagline || '',
+      address,
+      city,
+      phone: dto.phone || '',
+      shop_type: shopType,
       owner_id: ownerId,
+      avg_service_duration: Number(dto.avg_service_duration) || 30,
       rating: 5.0,
       review_count: 0,
       is_open: true,
       is_emergency: false,
       current_queue_count: 0,
       estimated_wait_minutes: 0,
+      services: [],
+      working_hours: [],
+      breaks: [],
     };
     this.localShops.push(newShop);
     this.localQueues.set(newShop.id, []);
@@ -549,14 +641,59 @@ export class ShopsService {
   }
 
   async update(id: string, ownerId: string, dto: any) {
-    const shopIndex = this.localShops.findIndex((s) => s.id === id);
+    if (this.isSupabaseLive()) {
+      const { data: owned } = await this.supabase
+        .from('shops')
+        .select('id')
+        .eq('id', id)
+        .eq('owner_id', ownerId)
+        .maybeSingle();
+      if (!owned) throw new ForbiddenException('Not your shop');
+
+      const patch: Record<string, unknown> = {};
+      if (dto.name !== undefined) patch.name = String(dto.name).trim();
+      if (dto.tagline !== undefined) patch.tagline = dto.tagline;
+      if (dto.address !== undefined) patch.address = String(dto.address).trim();
+      if (dto.city !== undefined) patch.city = String(dto.city).trim();
+      if (dto.phone !== undefined) patch.phone = dto.phone;
+      if (dto.avg_service_duration !== undefined) {
+        patch.avg_service_duration = Number(dto.avg_service_duration);
+      }
+      if (dto.is_open !== undefined) patch.is_open = Boolean(dto.is_open);
+
+      const { error } = await this.supabase.from('shops').update(patch).eq('id', id);
+      if (error) throw new BadRequestException(error.message);
+      return this.findMine(ownerId);
+    }
+
+    const shopIndex = this.localShops.findIndex((s) => s.id === id && s.owner_id === ownerId);
     if (shopIndex === -1) throw new NotFoundException('Shop not found');
     this.localShops[shopIndex] = { ...this.localShops[shopIndex], ...dto };
     return this.localShops[shopIndex];
   }
 
   async toggleEmergency(shopId: string, ownerId: string, isEmergency: boolean, reason?: string) {
-    const shopIndex = this.localShops.findIndex((s) => s.id === shopId);
+    if (this.isSupabaseLive()) {
+      const { data: owned } = await this.supabase
+        .from('shops')
+        .select('id')
+        .eq('id', shopId)
+        .eq('owner_id', ownerId)
+        .maybeSingle();
+      if (!owned) throw new ForbiddenException('Not your shop');
+
+      const { error } = await this.supabase
+        .from('shops')
+        .update({
+          is_emergency: isEmergency,
+          emergency_reason: isEmergency ? reason || null : null,
+        })
+        .eq('id', shopId);
+      if (error) throw new BadRequestException(error.message);
+      return { is_emergency: isEmergency, shop_id: shopId, emergency_reason: reason };
+    }
+
+    const shopIndex = this.localShops.findIndex((s) => s.id === shopId && s.owner_id === ownerId);
     if (shopIndex !== -1) {
       this.localShops[shopIndex].is_emergency = isEmergency;
       (this.localShops[shopIndex] as any).emergency_reason = reason;

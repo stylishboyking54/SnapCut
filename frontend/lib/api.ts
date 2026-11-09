@@ -232,3 +232,51 @@ export async function cancelBooking(bookingId: string): Promise<void> {
     throw new Error(err.message || `Cancel failed (${res.status})`);
   }
 }
+
+export type OwnShopPayload = {
+  name: string;
+  tagline?: string;
+  address: string;
+  city: string;
+  phone?: string;
+  avg_service_duration?: number;
+  shop_type?: 'barber' | 'salon';
+};
+
+/** Current pro's shop, or null if not set up yet */
+export async function getMyShop(): Promise<Shop | null> {
+  const res = await fetch(`${API_BASE_URL()}/shops/mine`, {
+    cache: 'no-store',
+    headers: authHeaders(),
+  });
+  if (res.status === 404) return null;
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || `Could not load shop (${res.status})`);
+  }
+  const data = await res.json();
+  if (!data) return null;
+  return mapShop(data);
+}
+
+export async function createShop(payload: OwnShopPayload): Promise<Shop> {
+  const res = await fetch(`${API_BASE_URL()}/shops`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.message || data.error || 'Could not create shop');
+  return mapShop(data);
+}
+
+export async function updateShop(shopId: string, payload: Partial<OwnShopPayload>): Promise<Shop> {
+  const res = await fetch(`${API_BASE_URL()}/shops/${shopId}`, {
+    method: 'PATCH',
+    headers: authHeaders(),
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.message || data.error || 'Could not update shop');
+  return mapShop(data);
+}

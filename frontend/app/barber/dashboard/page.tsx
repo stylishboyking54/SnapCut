@@ -1,18 +1,41 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { INITIAL_QUEUE, INITIAL_SHOPS } from '@/lib/mockData';
-import { QueueItem } from '@/lib/types';
+import { getMyShop } from '@/lib/api';
+import { QueueItem, Shop } from '@/lib/types';
 import { ScissorsIcon, CoffeeIcon, AlertTriangleIcon } from '@/components/ui/Icons';
 import { proCopy, useProKind } from '@/lib/proRole';
 
 export default function BarberDashboardPage() {
   const kind = useProKind();
   const copy = proCopy(kind);
-  const [shop] = useState(INITIAL_SHOPS[0]);
+  const [shop, setShop] = useState<Shop | null>(null);
+  const [shopLoading, setShopLoading] = useState(true);
   const [queue, setQueue] = useState<QueueItem[]>(INITIAL_QUEUE.filter((q) => q.shopId === 'shop-1'));
   const [notice, setNotice] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const mine = await getMyShop();
+        if (cancelled) return;
+        setShop(mine);
+        if (mine) {
+          setQueue(INITIAL_QUEUE.filter((q) => q.shopId === mine.id));
+        }
+      } catch {
+        if (!cancelled) setShop(INITIAL_SHOPS[0]);
+      } finally {
+        if (!cancelled) setShopLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const showNotice = (msg: string) => {
     setNotice(msg);
@@ -49,6 +72,28 @@ export default function BarberDashboardPage() {
   const inChairClient = queue.find((q) => q.status === 'in_progress');
   const waitingClients = queue.filter((q) => q.status !== 'in_progress');
 
+  if (shopLoading) {
+    return (
+      <div className="page-enter" style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>
+        Loading…
+      </div>
+    );
+  }
+
+  if (!shop) {
+    return (
+      <div className="page-enter" style={{ maxWidth: 520, margin: '0 auto', textAlign: 'center', padding: '48px 20px' }}>
+        <h1 style={{ fontSize: 26, fontWeight: 600 }}>Set up your {copy.shopTitle.toLowerCase()}</h1>
+        <p className="secondary" style={{ marginTop: 10, fontSize: 14, lineHeight: 1.45 }}>
+          Add your name and address so customers can find you and join your line.
+        </p>
+        <Link href="/barber/shop?setup=1" className="btn-primary" style={{ marginTop: 20, display: 'inline-flex' }}>
+          Continue
+        </Link>
+      </div>
+    );
+  }
+
   return (
     <div className="page-enter" style={{ maxWidth: 960, width: '100%', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 22 }}>
       <div className="page-header-row">
@@ -60,7 +105,7 @@ export default function BarberDashboardPage() {
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <Link href="/barber/schedule" className="btn-secondary" style={{ fontSize: 12.5 }}>
             <CoffeeIcon size={14} />
-            Breaks ({shop.breaks.length})
+            Breaks ({shop.breaks?.length || 0})
           </Link>
           <Link
             href="/barber/emergency"
