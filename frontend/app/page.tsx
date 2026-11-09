@@ -2,14 +2,14 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
-import { INITIAL_SHOPS } from '@/lib/mockData';
 import { getShops, joinShopQueue } from '@/lib/api';
 import { getSession, requestSignIn } from '@/lib/auth';
 import { Shop } from '@/lib/types';
 import { SearchIcon, CompassIcon } from '@/components/ui/Icons';
 
 export default function HomePage() {
-  const [shops, setShops] = useState<Shop[]>(INITIAL_SHOPS);
+  const [shops, setShops] = useState<Shop[]>([]);
+  const [shopsLoading, setShopsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [filter, setFilter] = useState<'all' | 'quick' | 'nearest' | 'top'>('all');
   const [shopType, setShopType] = useState<'all' | 'barber' | 'salon'>('all');
@@ -18,11 +18,17 @@ export default function HomePage() {
 
   useEffect(() => {
     let active = true;
-    getShops().then((liveData) => {
-      if (active && liveData?.length) {
-        setShops(liveData);
-      }
-    });
+    getShops()
+      .then((liveData) => {
+        if (!active) return;
+        setShops(Array.isArray(liveData) ? liveData : []);
+      })
+      .catch(() => {
+        if (active) setShops([]);
+      })
+      .finally(() => {
+        if (active) setShopsLoading(false);
+      });
     return () => {
       active = false;
     };
@@ -170,7 +176,12 @@ export default function HomePage() {
       </div>
 
       <div className="list-stack">
-        {filteredShops.map((shop) => {
+        {shopsLoading && (
+          <div className="panel" style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: 14 }}>
+            Finding shops nearby…
+          </div>
+        )}
+        {!shopsLoading && filteredShops.map((shop) => {
           const isZeroWait = shop.estimatedWaitMinutes === 0;
           const waitLabel = shop.isEmergency
             ? 'Shift delayed'
@@ -246,9 +257,30 @@ export default function HomePage() {
           );
         })}
 
-        {filteredShops.length === 0 && (
-          <div className="panel" style={{ textAlign: 'center', color: 'var(--text-muted)' }}>
-            No shops match that search.
+        {!shopsLoading && filteredShops.length === 0 && (
+          <div className="panel" style={{ textAlign: 'center', padding: '28px 20px' }}>
+            <div style={{ fontSize: 15, fontWeight: 650 }}>
+              {shops.length === 0 ? 'No shops live yet' : 'No shops match that search'}
+            </div>
+            <p className="muted" style={{ fontSize: 13.5, marginTop: 8, lineHeight: 1.45, maxWidth: 360, marginLeft: 'auto', marginRight: 'auto' }}>
+              {shops.length === 0
+                ? 'Barbers and salons show up here once they open a Snapcut line. Check back soon, or clear filters if you had any on.'
+                : 'Try another name, clear filters, or switch Barber / Salon.'}
+            </p>
+            {(searchQuery || filter !== 'all' || shopType !== 'all') && (
+              <button
+                type="button"
+                className="btn-secondary"
+                style={{ marginTop: 14, fontSize: 12.5 }}
+                onClick={() => {
+                  setSearchQuery('');
+                  setFilter('all');
+                  setShopType('all');
+                }}
+              >
+                Clear filters
+              </button>
+            )}
           </div>
         )}
       </div>

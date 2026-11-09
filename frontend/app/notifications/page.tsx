@@ -1,24 +1,53 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
-import { INITIAL_NOTIFICATIONS } from '@/lib/mockData';
+import React, { useCallback, useEffect, useState } from 'react';
+import Link from 'next/link';
 import { AppNotification } from '@/lib/types';
 import { getSession } from '@/lib/auth';
+import { getMyNotifications, markNotificationsRead } from '@/lib/api';
 import { ClockIcon, AlertTriangleIcon } from '@/components/ui/Icons';
 
 export default function NotificationsPage() {
   const [signedIn, setSignedIn] = useState(false);
-  const [notifications, setNotifications] = useState<AppNotification[]>(INITIAL_NOTIFICATIONS);
+  const [loading, setLoading] = useState(true);
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
 
-  useEffect(() => {
-    const sync = () => setSignedIn(!!getSession());
-    sync();
-    window.addEventListener('snapcut-auth', sync);
-    return () => window.removeEventListener('snapcut-auth', sync);
+  const load = useCallback(async () => {
+    const session = getSession();
+    if (!session) {
+      setSignedIn(false);
+      setNotifications([]);
+      setLoading(false);
+      return;
+    }
+    setSignedIn(true);
+    try {
+      const items = await getMyNotifications();
+      setNotifications(items);
+    } catch {
+      setNotifications([]);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  const handleMarkAllRead = () => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+  useEffect(() => {
+    void load();
+    const onAuth = () => {
+      setLoading(true);
+      void load();
+    };
+    window.addEventListener('snapcut-auth', onAuth);
+    return () => window.removeEventListener('snapcut-auth', onAuth);
+  }, [load]);
+
+  const handleMarkAllRead = async () => {
+    try {
+      await markNotificationsRead();
+      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+    } catch {
+      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+    }
   };
 
   const handleClear = (id: string) => {
@@ -27,19 +56,20 @@ export default function NotificationsPage() {
 
   const unreadCount = notifications.filter((n) => !n.isRead).length;
 
-  if (!signedIn) return null;
-
   return (
     <div className="page-enter" style={{ maxWidth: 680, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 22 }}>
       <div className="page-header-row">
         <div>
           <h1 style={{ fontSize: 28, fontWeight: 600 }}>Alerts</h1>
+          <p className="secondary" style={{ fontSize: 14, marginTop: 6 }}>
+            Queue moves, delays, and shop notices.
+          </p>
         </div>
 
-        {unreadCount > 0 && (
+        {signedIn && unreadCount > 0 && (
           <button
             type="button"
-            onClick={handleMarkAllRead}
+            onClick={() => void handleMarkAllRead()}
             className="btn-secondary"
             style={{ fontSize: 12.5, minHeight: 34, padding: '6px 12px' }}
           >
@@ -48,9 +78,26 @@ export default function NotificationsPage() {
         )}
       </div>
 
-      {notifications.length === 0 ? (
+      {!signedIn ? (
+        <div className="panel" style={{ textAlign: 'center', padding: '28px 20px' }}>
+          <div style={{ fontSize: 15, fontWeight: 650 }}>Sign in to see alerts</div>
+          <p className="muted" style={{ fontSize: 13.5, marginTop: 8, lineHeight: 1.45 }}>
+            When you&apos;re in line, we&apos;ll tell you here if your turn moves up or a shop pauses the queue.
+          </p>
+        </div>
+      ) : loading ? (
         <div className="panel" style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: 14 }}>
-          Nothing yet.
+          Loading alerts…
+        </div>
+      ) : notifications.length === 0 ? (
+        <div className="panel" style={{ textAlign: 'center', padding: '28px 20px' }}>
+          <div style={{ fontSize: 15, fontWeight: 650 }}>Nothing yet</div>
+          <p className="muted" style={{ fontSize: 13.5, marginTop: 8, lineHeight: 1.45, maxWidth: 360, marginLeft: 'auto', marginRight: 'auto' }}>
+            Join a line from Explore. When the chair advances or a shop posts a delay, it shows up here.
+          </p>
+          <Link href="/" className="btn-primary" style={{ marginTop: 16, display: 'inline-flex' }}>
+            Find a shop
+          </Link>
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -79,45 +126,38 @@ export default function NotificationsPage() {
                       width: 34,
                       height: 34,
                       borderRadius: 'var(--radius-sm)',
-                      background: isEmergency ? 'var(--brand-danger-soft)' : 'var(--bg-elevated)',
-                      color: isEmergency ? 'var(--brand-danger)' : 'var(--brand-primary)',
+                      background: 'var(--bg-elevated)',
+                      border: '1px solid var(--bg-border)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
                       flexShrink: 0,
                     }}
                   >
-                    {isEmergency ? <AlertTriangleIcon size={16} /> : <ClockIcon size={16} />}
+                    {isEmergency ? (
+                      <AlertTriangleIcon size={15} color="var(--brand-danger)" />
+                    ) : (
+                      <ClockIcon size={15} />
+                    )}
                   </div>
-
                   <div style={{ minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span style={{ fontWeight: 650, fontSize: 14 }}>{n.title}</span>
-                      {!n.isRead && <span className="status-dot" style={{ background: 'var(--brand-primary)' }} />}
-                    </div>
-                    <p className="secondary" style={{ fontSize: 13, marginTop: 3, lineHeight: 1.5 }}>
+                    <div style={{ fontWeight: 650, fontSize: 13.5 }}>{n.title}</div>
+                    <div className="secondary" style={{ fontSize: 13, marginTop: 3, lineHeight: 1.4 }}>
                       {n.message}
-                    </p>
-                    <div className="muted" style={{ display: 'flex', gap: 8, marginTop: 6, fontSize: 12 }}>
-                      <span>{n.timestamp}</span>
-                      {n.shopName && <span>· {n.shopName}</span>}
+                    </div>
+                    <div className="muted" style={{ fontSize: 11.5, marginTop: 6 }}>
+                      {n.shopName ? `${n.shopName} · ` : ''}
+                      {n.timestamp}
                     </div>
                   </div>
                 </div>
-
                 <button
                   type="button"
                   onClick={() => handleClear(n.id)}
-                  style={{
-                    background: 'transparent',
-                    color: 'var(--text-muted)',
-                    fontSize: 14,
-                    padding: 2,
-                    flexShrink: 0,
-                  }}
-                  aria-label="Dismiss"
+                  className="btn-secondary"
+                  style={{ fontSize: 11, minHeight: 28, padding: '3px 8px', flexShrink: 0 }}
                 >
-                  ✕
+                  Clear
                 </button>
               </div>
             );

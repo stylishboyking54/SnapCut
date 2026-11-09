@@ -3,7 +3,6 @@
 import React, { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { INITIAL_SHOPS, INITIAL_QUEUE } from '@/lib/mockData';
 import { getShopById, getShopLiveQueue, joinShopQueue } from '@/lib/api';
 import { getSession, requestSignIn } from '@/lib/auth';
 import { Shop, Service, QueueItem } from '@/lib/types';
@@ -11,9 +10,10 @@ import { CoffeeIcon } from '@/components/ui/Icons';
 
 function ShopDetailContent() {
   const params = useParams();
-  const shopId = (params?.id as string) || 'shop-1';
+  const shopId = (params?.id as string) || '';
 
   const [shop, setShop] = useState<Shop | null>(null);
+  const [notFound, setNotFound] = useState(false);
   const [selectedService, setSelectedService] = useState<Service | null>(null);
   const [queueItems, setQueueItems] = useState<QueueItem[]>([]);
   const [customerName, setCustomerName] = useState('');
@@ -21,38 +21,63 @@ function ShopDetailContent() {
   const [bookingSuccess, setBookingSuccess] = useState(false);
   const [joinError, setJoinError] = useState<string | null>(null);
   const [isJoining, setIsJoining] = useState(false);
-  const [isSimulatingNextTurn, setIsSimulatingNextTurn] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let active = true;
     const session = getSession();
     if (session?.profile.full_name) setCustomerName(session.profile.full_name);
 
-    Promise.all([getShopById(shopId), getShopLiveQueue(shopId)]).then(
-      ([apiShop, apiQueue]) => {
+    if (!shopId) {
+      setNotFound(true);
+      setLoading(false);
+      return;
+    }
+
+    Promise.all([getShopById(shopId), getShopLiveQueue(shopId)])
+      .then(([apiShop, apiQueue]) => {
         if (!active) return;
-        const currentShop = apiShop || INITIAL_SHOPS.find((s) => s.id === shopId) || INITIAL_SHOPS[0];
-        setShop(currentShop);
-        if (currentShop.services.length > 0) {
-          setSelectedService(currentShop.services[0]);
+        if (!apiShop) {
+          setNotFound(true);
+          setShop(null);
+          return;
         }
-        if (apiQueue && apiQueue.queue.length > 0) {
-          setQueueItems(apiQueue.queue);
-        } else {
-          setQueueItems(INITIAL_QUEUE.filter((q) => q.shopId === currentShop.id));
+        setShop(apiShop);
+        if (apiShop.services.length > 0) {
+          setSelectedService(apiShop.services[0]);
         }
-      }
-    );
+        setQueueItems(apiQueue?.queue || []);
+      })
+      .catch(() => {
+        if (active) setNotFound(true);
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
 
     return () => {
       active = false;
     };
   }, [shopId]);
 
-  if (!shop) {
+  if (loading) {
     return (
       <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--text-muted)' }}>
         Loading shop…
+      </div>
+    );
+  }
+
+  if (notFound || !shop) {
+    return (
+      <div className="page-enter" style={{ maxWidth: 480, margin: '0 auto', textAlign: 'center', padding: '48px 20px' }}>
+        <h1 style={{ fontSize: 24, fontWeight: 600 }}>Shop not found</h1>
+        <p className="secondary" style={{ marginTop: 10, fontSize: 14, lineHeight: 1.45 }}>
+          This shop may have closed its Snapcut line, or the link is outdated.
+        </p>
+        <Link href="/" className="btn-primary" style={{ marginTop: 18, display: 'inline-flex' }}>
+          Browse shops
+        </Link>
       </div>
     );
   }
@@ -93,35 +118,6 @@ function ShopDetailContent() {
     } finally {
       setIsJoining(false);
     }
-  };
-
-  const handleSimulateNext = () => {
-    if (queueItems.length === 0) return;
-    setIsSimulatingNextTurn(true);
-
-    setTimeout(() => {
-      setQueueItems((prev) => {
-        if (prev.length === 0) return prev;
-        const [, ...rest] = prev;
-        return rest.map((item, idx) => ({
-          ...item,
-          queuePosition: idx + 1,
-          status: (idx === 0 ? 'in_progress' : 'waiting') as QueueItem['status'],
-          estimatedWaitMinutes: Math.max(0, item.estimatedWaitMinutes - shop.avgDurationPerClient),
-        }));
-      });
-
-      setShop((prev) =>
-        prev
-          ? {
-              ...prev,
-              currentQueueCount: Math.max(0, prev.currentQueueCount - 1),
-              estimatedWaitMinutes: Math.max(0, (prev.currentQueueCount - 1) * prev.avgDurationPerClient),
-            }
-          : null
-      );
-      setIsSimulatingNextTurn(false);
-    }, 500);
   };
 
   return (
@@ -179,25 +175,14 @@ function ShopDetailContent() {
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 20 }}>
         <div className="panel">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, gap: 10 }}>
-            <div>
-              <h2 className="panel-title" style={{ marginBottom: 0 }}>Who&apos;s ahead</h2>
-              <p className="panel-sub" style={{ marginBottom: 0 }}>Updates as seats open</p>
-            </div>
-            <button
-              type="button"
-              onClick={handleSimulateNext}
-              disabled={queueItems.length === 0 || isSimulatingNextTurn}
-              className="btn-secondary"
-              style={{ fontSize: 12, padding: '6px 10px', minHeight: 34 }}
-            >
-              {isSimulatingNextTurn ? 'Updating…' : 'Advance turn'}
-            </button>
+          <div style={{ marginBottom: 14 }}>
+            <h2 className="panel-title" style={{ marginBottom: 0 }}>Who&apos;s ahead</h2>
+            <p className="panel-sub" style={{ marginBottom: 0 }}>Updates as seats open</p>
           </div>
 
           {queueItems.length === 0 ? (
             <p className="muted" style={{ padding: '24px 0', textAlign: 'center', fontSize: 14 }}>
-              Chair is open — join now and you&apos;re next.
+              Line is clear — join now and you&apos;re next.
             </p>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>

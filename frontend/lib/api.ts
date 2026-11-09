@@ -1,5 +1,4 @@
 import { Shop, QueueItem } from './types';
-import { INITIAL_SHOPS, INITIAL_QUEUE } from './mockData';
 import { authHeaders, getApiBaseUrl, getSession } from './auth';
 
 const API_BASE_URL = () => getApiBaseUrl();
@@ -82,14 +81,10 @@ export async function getShops(filters?: {
 
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
-    return data.map(mapShop);
+    return (data || []).map(mapShop);
   } catch (error) {
-    console.warn('[Snapcut API] Using fallback shop data:', error);
-    let shops = INITIAL_SHOPS;
-    if (filters?.shopType && filters.shopType !== 'all') {
-      shops = shops.filter((s) => s.shopType === filters.shopType);
-    }
-    return shops;
+    console.warn('[Snapcut API] Shops fetch failed:', error);
+    return [];
   }
 }
 
@@ -103,11 +98,12 @@ export async function getShopById(id: string): Promise<Shop | null> {
       headers: { 'Content-Type': 'application/json' },
     });
 
+    if (res.status === 404) return null;
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return mapShop(await res.json());
   } catch (error) {
-    console.warn(`[Snapcut API] Fallback for shop ${id}:`, error);
-    return INITIAL_SHOPS.find((s) => s.id === id) || null;
+    console.warn(`[Snapcut API] Shop ${id} fetch failed:`, error);
+    return null;
   }
 }
 
@@ -154,12 +150,11 @@ export async function getShopLiveQueue(shopId: string): Promise<{
       isOpen: data.is_open ?? true,
     };
   } catch (error) {
-    console.warn(`[Snapcut API] Fallback for live queue ${shopId}:`, error);
-    const shopQueue = INITIAL_QUEUE.filter((q) => q.shopId === shopId);
+    console.warn(`[Snapcut API] Live queue ${shopId} failed:`, error);
     return {
-      queue: shopQueue,
-      totalInQueue: shopQueue.length,
-      estimatedTotalWait: shopQueue.reduce((acc, q) => acc + q.serviceDuration, 0),
+      queue: [],
+      totalInQueue: 0,
+      estimatedTotalWait: 0,
       isEmergency: false,
       isOpen: true,
     };
@@ -294,4 +289,63 @@ export async function updateShop(shopId: string, payload: Partial<OwnShopPayload
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.message || data.error || 'Could not update shop');
   return mapShop(data);
+}
+
+export async function toggleShopEmergency(
+  shopId: string,
+  isEmergency: boolean,
+  reason?: string,
+): Promise<void> {
+  const res = await fetch(`${API_BASE_URL()}/shops/${shopId}/emergency`, {
+    method: 'PATCH',
+    headers: authHeaders(),
+    body: JSON.stringify({ is_emergency: isEmergency, reason }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.message || data.error || 'Could not update emergency');
+}
+
+export async function getMyNotifications(): Promise<
+  import('./types').AppNotification[]
+> {
+  const res = await fetch(`${API_BASE_URL()}/notifications`, {
+    cache: 'no-store',
+    headers: authHeaders(),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || `Notifications failed (${res.status})`);
+  }
+  const data = await res.json();
+  return (data || []).map((n: any) => ({
+    id: n.id,
+    title:
+      n.type === 'emergency'
+        ? 'Emergency'
+        : n.type === 'reschedule'
+        ? 'Reschedule'
+        : 'Queue update',
+    message: n.message || '',
+    type: (n.type === 'emergency' ? 'emergency' : n.type === 'reschedule' ? 'shifted' : 'queue_update') as
+      | 'queue_update'
+      | 'emergency'
+      | 'shifted'
+      | 'reminder',
+    timestamp: n.created_at
+      ? new Date(n.created_at).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+      : '',
+    isRead: Boolean(n.is_read),
+    shopName: n.bookings?.shops?.name,
+  }));
+}
+
+export async function markNotificationsRead(): Promise<void> {
+  const res = await fetch(`${API_BASE_URL()}/notifications/read-all`, {
+    method: 'PATCH',
+    headers: authHeaders(),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || 'Could not mark read');
+  }
 }
