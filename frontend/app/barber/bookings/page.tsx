@@ -4,8 +4,11 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { INITIAL_QUEUE } from '@/lib/mockData';
 import { QueueItem } from '@/lib/types';
+import { proCopy, useProKind } from '@/lib/proRole';
 
 export default function BarberBookingsPage() {
+  const copy = proCopy(useProKind());
+
   const [bookings, setBookings] = useState<QueueItem[]>(INITIAL_QUEUE);
   const [filter, setFilter] = useState<'all' | 'waiting' | 'in_progress' | 'shifted'>('all');
   const [search, setSearch] = useState('');
@@ -46,7 +49,7 @@ export default function BarberBookingsPage() {
           <h1 style={{ fontSize: 28, fontWeight: 600, marginTop: 4 }}>Bookings</h1>
         </div>
         <Link href="/barber/dashboard" className="btn-secondary" style={{ fontSize: 12.5 }}>
-          ← Queue
+          {copy.backQueue}
         </Link>
       </div>
 
@@ -69,7 +72,7 @@ export default function BarberBookingsPage() {
         <div className="filter-pills-row" style={{ width: 'auto', flex: 1, minWidth: 200 }}>
           {[
             { id: 'all', label: 'All' },
-            { id: 'in_progress', label: 'In chair' },
+            { id: 'in_progress', label: copy.inServiceFilter },
             { id: 'waiting', label: 'Waiting' },
             { id: 'shifted', label: 'Shifted' },
           ].map((item) => (
@@ -132,7 +135,7 @@ export default function BarberBookingsPage() {
                   style={{ fontSize: 12 }}
                 >
                   <span className="status-dot" />
-                  {b.status === 'in_progress' ? 'In chair' : b.status === 'shifted' ? 'Shifted' : 'Waiting'}
+                  {b.status === 'in_progress' ? copy.inServiceFilter : b.status === 'shifted' ? 'Shifted' : 'Waiting'}
                 </div>
                 <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
                   <button type="button" onClick={() => handleShiftTime(b.id, 15)} className="btn-secondary" style={{ fontSize: 11.5, minHeight: 30, padding: '4px 8px' }}>

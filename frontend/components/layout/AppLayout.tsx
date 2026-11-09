@@ -200,11 +200,11 @@ export default function AppLayout({ children }: AppLayoutProps) {
   ];
 
   const proNavItems = [
-    { href: '/barber/dashboard', label: 'Queue', iconName: 'queue' },
+    { href: '/barber/dashboard', label: role === 'salon' ? 'Line' : 'Queue', iconName: 'queue' },
     { href: '/barber/schedule', label: 'Hours', iconName: 'schedule' },
     { href: '/barber/bookings', label: 'Bookings', iconName: 'bookings' },
     { href: '/barber/emergency', label: 'Emergency', iconName: 'emergency' },
-    { href: '/barber/shop', label: 'Shop', iconName: 'shop' },
+    { href: '/barber/shop', label: role === 'salon' ? 'Salon' : 'Shop', iconName: 'shop' },
   ];
 
   const adminNavItems = [

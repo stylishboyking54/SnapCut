@@ -5,8 +5,11 @@ import Link from 'next/link';
 import { INITIAL_QUEUE, INITIAL_SHOPS } from '@/lib/mockData';
 import { QueueItem } from '@/lib/types';
 import { ScissorsIcon, CoffeeIcon, AlertTriangleIcon } from '@/components/ui/Icons';
+import { proCopy, useProKind } from '@/lib/proRole';
 
 export default function BarberDashboardPage() {
+  const kind = useProKind();
+  const copy = proCopy(kind);
   const [shop] = useState(INITIAL_SHOPS[0]);
   const [queue, setQueue] = useState<QueueItem[]>(INITIAL_QUEUE.filter((q) => q.shopId === 'shop-1'));
   const [notice, setNotice] = useState<string | null>(null);
@@ -28,7 +31,7 @@ export default function BarberDashboardPage() {
         estimatedWaitMinutes: Math.max(0, item.estimatedWaitMinutes - 25),
       }));
 
-      showNotice(`Finished ${finished.customerName}. Called the next person up.`);
+      showNotice(copy.finishNotice(finished.customerName));
       return remaining;
     });
   };
@@ -50,7 +53,7 @@ export default function BarberDashboardPage() {
     <div className="page-enter" style={{ maxWidth: 960, width: '100%', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 22 }}>
       <div className="page-header-row">
         <div>
-          <div className="eyebrow">Chair 1 · today</div>
+          <div className="eyebrow">{copy.eyebrowToday}</div>
           <h1 style={{ fontSize: 28, fontWeight: 600, marginTop: 4 }}>{shop.name}</h1>
         </div>
 
@@ -93,7 +96,7 @@ export default function BarberDashboardPage() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, gap: 12, flexWrap: 'wrap' }}>
           <div className={`status-mark ${inChairClient ? 'open' : 'wait'}`}>
             <span className={`status-dot ${inChairClient ? 'live' : ''}`} />
-            {inChairClient ? 'In the chair' : 'Chair empty'}
+            {inChairClient ? copy.inSeat : copy.seatEmpty}
           </div>
 
           <div style={{ display: 'flex', gap: 6 }}>
@@ -141,24 +144,24 @@ export default function BarberDashboardPage() {
 
             <button type="button" onClick={handleNextClient} className="btn-primary">
               <ScissorsIcon size={15} />
-              Done · call next
+              {copy.doneNext}
             </button>
           </div>
         ) : (
           <div style={{ padding: '20px 0', textAlign: 'center' }}>
-            <div style={{ fontSize: 15, fontWeight: 650 }}>Nobody in the chair</div>
-            <div className="muted" style={{ fontSize: 13, marginTop: 4 }}>Next person waiting will move up here.</div>
+            <div style={{ fontSize: 15, fontWeight: 650 }}>{copy.nobodyInSeat}</div>
+            <div className="muted" style={{ fontSize: 13, marginTop: 4 }}>{copy.nobodyHint}</div>
           </div>
         )}
       </section>
 
       <section className="panel">
         <h2 className="panel-title">Waiting ({waitingClients.length})</h2>
-        <p className="panel-sub">Their tickets update when you finish a cut.</p>
+        <p className="panel-sub">{copy.waitingSub}</p>
 
         {waitingClients.length === 0 ? (
           <p className="muted" style={{ textAlign: 'center', padding: '16px 0', fontSize: 13.5 }}>
-            Line is clear — open for walk-ins.
+            {copy.lineClear}
           </p>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>

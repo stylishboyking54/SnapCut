@@ -56,11 +56,20 @@ export default function Sidebar({ navItems, role, onSignIn }: SidebarProps) {
   }, []);
 
   const sectionLabel =
-    role === 'barber' || role === 'salon'
+    role === 'salon'
+      ? 'Salon floor'
+      : role === 'barber'
       ? 'Shop floor'
       : role === 'admin'
       ? 'Admin'
       : 'Find a cut';
+
+  const brandSub =
+    role === 'salon'
+      ? 'Neighborhood salon queues'
+      : role === 'barber'
+      ? 'Neighborhood barber queues'
+      : 'Neighborhood barber queues';
 
   const displayName = session?.profile.full_name || null;
   const initials = displayName
@@ -76,7 +85,7 @@ export default function Sidebar({ navItems, role, onSignIn }: SidebarProps) {
     <aside className="sidebar">
       <div className="sidebar-logo">
         <span className="sidebar-logo-text">Snapcut</span>
-        <div className="sidebar-logo-sub">Neighborhood barber queues</div>
+        <div className="sidebar-logo-sub">{brandSub}</div>
       </div>
 
       <nav className="sidebar-nav">

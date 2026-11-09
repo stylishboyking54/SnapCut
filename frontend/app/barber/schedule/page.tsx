@@ -5,8 +5,11 @@ import Link from 'next/link';
 import { INITIAL_SHOPS } from '@/lib/mockData';
 import { BreakBlock, WorkingHour } from '@/lib/types';
 import { CoffeeIcon } from '@/components/ui/Icons';
+import { proCopy, useProKind } from '@/lib/proRole';
 
 export default function BarberSchedulePage() {
+  const copy = proCopy(useProKind());
+
   const [shop] = useState(INITIAL_SHOPS[0]);
   const [breaks, setBreaks] = useState<BreakBlock[]>(shop.breaks);
   const [workingHours, setWorkingHours] = useState<WorkingHour[]>(shop.workingHours);
@@ -59,7 +62,7 @@ export default function BarberSchedulePage() {
           <h1 style={{ fontSize: 28, fontWeight: 600, marginTop: 4 }}>Hours</h1>
         </div>
         <Link href="/barber/dashboard" className="btn-secondary" style={{ fontSize: 12.5 }}>
-          ← Queue
+          {copy.backQueue}
         </Link>
       </div>
 

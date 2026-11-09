@@ -4,8 +4,11 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { INITIAL_QUEUE, INITIAL_SHOPS } from '@/lib/mockData';
 import { QueueItem } from '@/lib/types';
+import { proCopy, useProKind } from '@/lib/proRole';
 
 export default function BarberEmergencyPage() {
+  const copy = proCopy(useProKind());
+
   const [shop] = useState(INITIAL_SHOPS[0]);
   const [isEmergency, setIsEmergency] = useState(false);
   const [emergencyReason, setEmergencyReason] = useState(
@@ -74,11 +77,11 @@ export default function BarberEmergencyPage() {
           <div className="eyebrow">{shop.name}</div>
           <h1 style={{ fontSize: 28, fontWeight: 600, marginTop: 4 }}>Emergency</h1>
           <p className="secondary" style={{ marginTop: 6, fontSize: 14 }}>
-            Pause walk-ins and push the line when something goes wrong.
+            {copy.emergencySub}
           </p>
         </div>
         <Link href="/barber/dashboard" className="btn-secondary" style={{ fontSize: 12.5 }}>
-          ← Queue
+          {copy.backQueue}
         </Link>
       </div>
 

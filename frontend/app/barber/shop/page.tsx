@@ -4,8 +4,11 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { INITIAL_SHOPS } from '@/lib/mockData';
 import { Shop } from '@/lib/types';
+import { proCopy, useProKind } from '@/lib/proRole';
 
 export default function BarberShopSettingsPage() {
+  const copy = proCopy(useProKind());
+
   const [shop, setShop] = useState<Shop>(INITIAL_SHOPS[0]);
   const [name, setName] = useState(shop.name);
   const [tagline, setTagline] = useState(shop.tagline);
@@ -32,11 +35,11 @@ export default function BarberShopSettingsPage() {
     <div className="page-enter" style={{ maxWidth: 560, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 22 }}>
       <div className="page-header-row">
         <div>
-          <div className="eyebrow">How customers find you</div>
-          <h1 style={{ fontSize: 28, fontWeight: 600, marginTop: 4 }}>Shop</h1>
+          <div className="eyebrow">{copy.shopEyebrow}</div>
+          <h1 style={{ fontSize: 28, fontWeight: 600, marginTop: 4 }}>{copy.shopTitle}</h1>
         </div>
         <Link href="/barber/dashboard" className="btn-secondary" style={{ fontSize: 12.5 }}>
-          ← Queue
+          {copy.backQueue}
         </Link>
       </div>
 
@@ -51,13 +54,13 @@ export default function BarberShopSettingsPage() {
             fontWeight: 600,
           }}
         >
-          Shop details saved.
+          {copy.shopSaved}
         </div>
       )}
 
       <form onSubmit={handleSave} className="panel" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         <div className="field">
-          <label>Shop name</label>
+          <label>{copy.shopNameLabel}</label>
           <input type="text" value={name} onChange={(e) => setName(e.target.value)} required />
         </div>
 
@@ -77,7 +80,7 @@ export default function BarberShopSettingsPage() {
         </div>
 
         <div className="field">
-          <label>Average cut length (minutes)</label>
+          <label>{copy.avgLabel}</label>
           <input
             type="number"
             min={10}
