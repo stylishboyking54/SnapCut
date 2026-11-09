@@ -125,8 +125,11 @@ export class BookingsService {
     if (actorRole === 'customer' && booking.customer_id !== actorId) {
       throw new ForbiddenException('Not your booking');
     }
-    // Barber can only update their shop's bookings
-    if (actorRole === 'barber' && booking.shops?.owner_id !== actorId) {
+    // Pro can only update their shop's bookings
+    if (
+      (actorRole === 'barber' || actorRole === 'salon') &&
+      booking.shops?.owner_id !== actorId
+    ) {
       throw new ForbiddenException('Not your shop booking');
     }
 
@@ -139,15 +142,124 @@ export class BookingsService {
 
     if (error) throw error;
 
-    // Notify customer on status change
+    // When someone finishes / cancels, tighten the remaining line
+    if (status === 'completed' || status === 'cancelled') {
+      await this.resequenceShopQueue(booking.shop_id);
+    }
+
+    const message =
+      status === 'in_progress'
+        ? "You're up — head to the chair."
+        : status === 'completed'
+        ? 'All done. Thanks for visiting Snapcut.'
+        : status === 'cancelled'
+        ? 'Your spot was released.'
+        : `Your booking status changed to: ${status}`;
+
     await this.supabase.from('notifications').insert({
       user_id: booking.customer_id,
       booking_id: bookingId,
       type: 'queue_update',
-      message: `Your booking status changed to: ${status}`,
+      message,
     });
 
     return data;
+  }
+
+  /** Recalc queue_position + wait for active bookings in a shop (today). */
+  async resequenceShopQueue(shopId: string) {
+    const today = new Date().toISOString().split('T')[0];
+    const { data: shop } = await this.supabase
+      .from('shops')
+      .select('avg_service_duration')
+      .eq('id', shopId)
+      .single();
+    const avg = shop?.avg_service_duration || 30;
+
+    const { data: active } = await this.supabase
+      .from('bookings')
+      .select('id, status')
+      .eq('shop_id', shopId)
+      .in('status', ['pending', 'confirmed', 'in_progress'])
+      .gte('scheduled_at', `${today}T00:00:00`)
+      .lte('scheduled_at', `${today}T23:59:59`)
+      .order('queue_position', { ascending: true });
+
+    if (!active?.length) return;
+
+    // Keep in_progress first, then waiting in current order
+    const inProgress = active.filter((b) => b.status === 'in_progress');
+    const waiting = active.filter((b) => b.status !== 'in_progress');
+    const ordered = [...inProgress, ...waiting];
+
+    for (let i = 0; i < ordered.length; i++) {
+      const pos = i + 1;
+      await this.supabase
+        .from('bookings')
+        .update({
+          queue_position: pos,
+          estimated_wait_minutes: Math.max(0, (pos - 1) * avg),
+        })
+        .eq('id', ordered[i].id);
+    }
+  }
+
+  /** Finish current client and call the next person up. */
+  async advanceQueue(shopId: string, ownerId: string) {
+    const { data: shop } = await this.supabase
+      .from('shops')
+      .select('owner_id, avg_service_duration, name')
+      .eq('id', shopId)
+      .single();
+    if (!shop || shop.owner_id !== ownerId) {
+      throw new ForbiddenException('Not your shop');
+    }
+
+    const today = new Date().toISOString().split('T')[0];
+    const { data: active } = await this.supabase
+      .from('bookings')
+      .select('id, status, customer_id, queue_position')
+      .eq('shop_id', shopId)
+      .in('status', ['pending', 'confirmed', 'in_progress'])
+      .gte('scheduled_at', `${today}T00:00:00`)
+      .lte('scheduled_at', `${today}T23:59:59`)
+      .order('queue_position', { ascending: true });
+
+    if (!active?.length) {
+      return { advanced: false, message: 'Line is empty' };
+    }
+
+    const current = active.find((b) => b.status === 'in_progress') || active[0];
+    await this.supabase
+      .from('bookings')
+      .update({ status: 'completed' })
+      .eq('id', current.id);
+
+    await this.supabase.from('notifications').insert({
+      user_id: current.customer_id,
+      booking_id: current.id,
+      type: 'queue_update',
+      message: 'All done. Thanks for visiting Snapcut.',
+    });
+
+    const remaining = active.filter((b) => b.id !== current.id);
+    if (remaining.length) {
+      const next = remaining[0];
+      await this.supabase
+        .from('bookings')
+        .update({ status: 'in_progress' })
+        .eq('id', next.id);
+
+      await this.supabase.from('notifications').insert({
+        user_id: next.customer_id,
+        booking_id: next.id,
+        type: 'queue_update',
+        message: "You're up — head over now.",
+      });
+    }
+
+    await this.resequenceShopQueue(shopId);
+    return { advanced: true, completed_id: current.id, remaining: remaining.length };
   }
 
   async shiftBooking(bookingId: string, ownerId: string, newScheduledAt: string) {

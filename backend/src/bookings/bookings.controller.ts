@@ -16,9 +16,16 @@ export class BookingsController {
 
   @Get('shop/:shopId')
   @UseGuards(RolesGuard)
-  @Roles('barber', 'admin')
+  @Roles('barber', 'salon', 'admin')
   getShopBookings(@Param('shopId') shopId: string, @Req() req: any) {
     return this.bookingsService.getShopBookings(shopId, req.user.id);
+  }
+
+  @Post('shop/:shopId/advance')
+  @UseGuards(RolesGuard)
+  @Roles('barber', 'salon')
+  advanceQueue(@Param('shopId') shopId: string, @Req() req: any) {
+    return this.bookingsService.advanceQueue(shopId, req.user.id);
   }
 
   @Post()
@@ -39,7 +46,7 @@ export class BookingsController {
 
   @Patch(':id/shift')
   @UseGuards(RolesGuard)
-  @Roles('barber')
+  @Roles('barber', 'salon')
   shiftBooking(
     @Param('id') id: string,
     @Req() req: any,

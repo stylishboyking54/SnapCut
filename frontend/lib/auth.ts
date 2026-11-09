@@ -52,6 +52,18 @@ export function getAccessToken(): string | null {
 
 export function saveSession(session: AuthSession) {
   localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+  // Keep Supabase browser client in sync so Realtime works after Nest login
+  if (session.access_token && session.refresh_token) {
+    try {
+      const supabase = createClient();
+      void supabase.auth.setSession({
+        access_token: session.access_token,
+        refresh_token: session.refresh_token,
+      });
+    } catch {
+      /* ignore */
+    }
+  }
   window.dispatchEvent(new Event('snapcut-auth'));
 }
 

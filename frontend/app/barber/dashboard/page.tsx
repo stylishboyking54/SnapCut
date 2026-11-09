@@ -1,62 +1,108 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { INITIAL_QUEUE, INITIAL_SHOPS } from '@/lib/mockData';
-import { getMyShop } from '@/lib/api';
+import {
+  advanceShopQueue,
+  cancelBooking,
+  getMyShop,
+  getShopLiveQueue,
+} from '@/lib/api';
 import { QueueItem, Shop } from '@/lib/types';
 import { ScissorsIcon, CoffeeIcon, AlertTriangleIcon } from '@/components/ui/Icons';
 import { proCopy, useProKind } from '@/lib/proRole';
+import { subscribeBookings } from '@/lib/realtime';
 
 export default function BarberDashboardPage() {
   const kind = useProKind();
   const copy = proCopy(kind);
   const [shop, setShop] = useState<Shop | null>(null);
   const [shopLoading, setShopLoading] = useState(true);
-  const [queue, setQueue] = useState<QueueItem[]>(INITIAL_QUEUE.filter((q) => q.shopId === 'shop-1'));
+  const [queue, setQueue] = useState<QueueItem[]>([]);
+  const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const mine = await getMyShop();
-        if (cancelled) return;
-        setShop(mine);
-        if (mine) {
-          setQueue(INITIAL_QUEUE.filter((q) => q.shopId === mine.id));
-        }
-      } catch {
-        if (!cancelled) setShop(INITIAL_SHOPS[0]);
-      } finally {
-        if (!cancelled) setShopLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   const showNotice = (msg: string) => {
     setNotice(msg);
     setTimeout(() => setNotice(null), 3500);
   };
 
-  const handleNextClient = () => {
-    if (queue.length === 0) return;
+  const refreshQueue = useCallback(async (shopId: string) => {
+    try {
+      const live = await getShopLiveQueue(shopId);
+      setQueue(live.queue);
+    } catch {
+      /* keep current */
+    }
+  }, []);
 
-    setQueue((prev) => {
-      const finished = prev[0];
-      const remaining = prev.slice(1).map((item, idx) => ({
-        ...item,
-        queuePosition: idx + 1,
-        status: (idx === 0 ? 'in_progress' : 'waiting') as QueueItem['status'],
-        estimatedWaitMinutes: Math.max(0, item.estimatedWaitMinutes - 25),
-      }));
+  useEffect(() => {
+    let cancelled = false;
+    let unsub: () => void = () => {};
+    let poll: number | undefined;
 
-      showNotice(copy.finishNotice(finished.customerName));
-      return remaining;
-    });
+    (async () => {
+      try {
+        const mine = await getMyShop();
+        if (cancelled) return;
+        setShop(mine);
+        if (mine) {
+          await refreshQueue(mine.id);
+          unsub = subscribeBookings({
+            shopId: mine.id,
+            onChange: () => {
+              void refreshQueue(mine.id);
+            },
+          });
+          poll = window.setInterval(() => {
+            void refreshQueue(mine.id);
+          }, 8000);
+        }
+      } catch {
+        if (!cancelled) setShop(null);
+      } finally {
+        if (!cancelled) setShopLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      unsub();
+      if (poll) window.clearInterval(poll);
+    };
+  }, [refreshQueue]);
+
+  const handleNextClient = async () => {
+    if (!shop || busy || queue.length === 0) return;
+    setBusy(true);
+    try {
+      const current = queue.find((q) => q.status === 'in_progress') || queue[0];
+      const result = await advanceShopQueue(shop.id);
+      await refreshQueue(shop.id);
+      if (result.advanced) {
+        showNotice(copy.finishNotice(current.customerName));
+      } else {
+        showNotice(result.message || copy.lineClear);
+      }
+    } catch (err) {
+      showNotice(err instanceof Error ? err.message : 'Could not advance line');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleNoShow = async (client: QueueItem) => {
+    if (!shop || busy) return;
+    setBusy(true);
+    try {
+      await cancelBooking(client.id);
+      await refreshQueue(shop.id);
+      showNotice(`Removed ${client.customerName}.`);
+    } catch (err) {
+      showNotice(err instanceof Error ? err.message : 'Could not remove');
+    } finally {
+      setBusy(false);
+    }
   };
 
   const handleShiftDelay = (minutes: number) => {
@@ -64,12 +110,12 @@ export default function BarberDashboardPage() {
       prev.map((item) => ({
         ...item,
         estimatedWaitMinutes: item.estimatedWaitMinutes + minutes,
-      }))
+      })),
     );
-    showNotice(`Added +${minutes}m to everyone waiting.`);
+    showNotice(`Added +${minutes}m to everyone waiting (local estimate).`);
   };
 
-  const inChairClient = queue.find((q) => q.status === 'in_progress');
+  const inChairClient = queue.find((q) => q.status === 'in_progress') || null;
   const waitingClients = queue.filter((q) => q.status !== 'in_progress');
 
   if (shopLoading) {
@@ -187,9 +233,22 @@ export default function BarberDashboardPage() {
               </div>
             </div>
 
-            <button type="button" onClick={handleNextClient} className="btn-primary">
+            <button type="button" onClick={handleNextClient} className="btn-primary" disabled={busy}>
               <ScissorsIcon size={15} />
-              {copy.doneNext}
+              {busy ? '…' : copy.doneNext}
+            </button>
+          </div>
+        ) : waitingClients.length > 0 ? (
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
+            <div>
+              <div style={{ fontSize: 15, fontWeight: 650 }}>{copy.seatEmpty}</div>
+              <div className="muted" style={{ fontSize: 13, marginTop: 4 }}>
+                {waitingClients[0].customerName} is next.
+              </div>
+            </div>
+            <button type="button" onClick={handleNextClient} className="btn-primary" disabled={busy}>
+              <ScissorsIcon size={15} />
+              {busy ? '…' : 'Call next'}
             </button>
           </div>
         ) : (
@@ -254,11 +313,9 @@ export default function BarberDashboardPage() {
                   </div>
                   <button
                     type="button"
-                    onClick={() => {
-                      setQueue((prev) => prev.filter((q) => q.id !== client.id));
-                      showNotice(`Removed ${client.customerName}.`);
-                    }}
+                    onClick={() => handleNoShow(client)}
                     className="btn-secondary"
+                    disabled={busy}
                     style={{ fontSize: 11.5, minHeight: 32, padding: '4px 10px' }}
                   >
                     No-show

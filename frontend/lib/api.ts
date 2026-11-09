@@ -233,6 +233,21 @@ export async function cancelBooking(bookingId: string): Promise<void> {
   }
 }
 
+/** Barber/Salon: finish current client and call the next */
+export async function advanceShopQueue(shopId: string): Promise<{
+  advanced: boolean;
+  remaining?: number;
+  message?: string;
+}> {
+  const res = await fetch(`${API_BASE_URL()}/bookings/shop/${shopId}/advance`, {
+    method: 'POST',
+    headers: authHeaders(),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.message || data.error || 'Could not advance queue');
+  return data;
+}
+
 export type OwnShopPayload = {
   name: string;
   tagline?: string;

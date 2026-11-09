@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { QueueItem } from '@/lib/types';
 import { cancelBooking, getMyBookings } from '@/lib/api';
 import { getSession } from '@/lib/auth';
+import { subscribeBookings } from '@/lib/realtime';
 import { ClockIcon, MapPinIcon, ScissorsIcon } from '@/components/ui/Icons';
 
 export default function BookingsPage() {
@@ -29,10 +30,23 @@ export default function BookingsPage() {
       return;
     }
     setNeedsAuth(false);
-    setLoading(true);
     try {
       const items = await getMyBookings();
-      setActiveBookings(items);
+      setActiveBookings((prev) => {
+        // Toast when position / status changes while watching
+        if (prev.length && items.length) {
+          const before = prev[0];
+          const after = items.find((i) => i.id === before.id);
+          if (after && after.queuePosition !== before.queuePosition) {
+            showNotification(`You're now #${after.queuePosition} in line.`);
+          } else if (after && after.status === 'in_progress' && before.status !== 'in_progress') {
+            showNotification("You're up — head over now.");
+          } else if (!after && before) {
+            showNotification('Your ticket was updated.');
+          }
+        }
+        return items;
+      });
     } catch (err) {
       showNotification(err instanceof Error ? err.message : 'Could not load tickets');
       setActiveBookings([]);
@@ -42,10 +56,34 @@ export default function BookingsPage() {
   }, []);
 
   useEffect(() => {
-    loadBookings();
-    const onAuth = () => loadBookings();
+    let unsub: () => void = () => {};
+
+    const connect = () => {
+      unsub();
+      unsub = () => {};
+      void loadBookings();
+      const session = getSession();
+      if (!session?.profile.id) return;
+      unsub = subscribeBookings({
+        customerId: session.profile.id,
+        onChange: () => {
+          void loadBookings();
+        },
+      });
+    };
+
+    connect();
+    const onAuth = () => connect();
     window.addEventListener('snapcut-auth', onAuth);
-    return () => window.removeEventListener('snapcut-auth', onAuth);
+    const poll = window.setInterval(() => {
+      void loadBookings();
+    }, 10000);
+
+    return () => {
+      window.removeEventListener('snapcut-auth', onAuth);
+      unsub();
+      window.clearInterval(poll);
+    };
   }, [loadBookings]);
 
   const handleCancelBooking = async (id: string) => {
@@ -65,7 +103,7 @@ export default function BookingsPage() {
 
   const handleRequestGrace = () => {
     setGraceMinutesAdded((prev) => prev + 10);
-    showNotification('Asked for +10 minutes. Barber was told.');
+    showNotification('Asked for +10 minutes. Shop was told.');
   };
 
   return (
