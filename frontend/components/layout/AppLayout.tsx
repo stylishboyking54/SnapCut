@@ -102,6 +102,11 @@ export default function AppLayout({ children }: AppLayoutProps) {
       ? adminNavItems
       : customerNavItems;
 
+  // OAuth callback must render without the welcome gate
+  if (pathname?.startsWith('/auth/')) {
+    return <>{children}</>;
+  }
+
   if (!ready || !role) {
     return (
       <>

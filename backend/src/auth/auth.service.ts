@@ -1,4 +1,4 @@
-import { Injectable, Inject } from '@nestjs/common';
+import { Injectable, Inject, UnauthorizedException, BadRequestException } from '@nestjs/common';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { SUPABASE_ADMIN } from '../supabase/supabase.module';
 
@@ -62,5 +62,76 @@ export class AuthService {
   async logout(token: string) {
     await this.supabase.auth.admin.signOut(token);
     return { message: 'Logged out successfully' };
+  }
+
+  /**
+   * Sync a Supabase OAuth session into our profiles table.
+   * New users get the chosen role; existing users keep their profile role.
+   */
+  async syncOAuth(
+    accessToken: string,
+    role: 'customer' | 'barber' | 'salon' = 'customer',
+  ) {
+    const { data, error } = await this.supabase.auth.getUser(accessToken);
+    if (error || !data.user) {
+      throw new UnauthorizedException(error?.message || 'Invalid session');
+    }
+
+    const user = data.user;
+    const fullName =
+      user.user_metadata?.full_name ||
+      user.user_metadata?.name ||
+      user.email?.split('@')[0] ||
+      'Snapcut User';
+    const avatarUrl =
+      user.user_metadata?.avatar_url || user.user_metadata?.picture || null;
+
+    const { data: existing } = await this.supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    let profile = existing;
+
+    if (!existing) {
+      const { data: created, error: createErr } = await this.supabase
+        .from('profiles')
+        .upsert({
+          id: user.id,
+          full_name: fullName,
+          role,
+          avatar_url: avatarUrl,
+        })
+        .select()
+        .single();
+      if (createErr) {
+        throw new BadRequestException(createErr.message || 'Could not create profile');
+      }
+      profile = created;
+
+      await this.supabase.auth.admin.updateUserById(user.id, {
+        user_metadata: { ...user.user_metadata, full_name: fullName, role },
+      });
+    } else if (!existing.avatar_url && avatarUrl) {
+      const { data: updated } = await this.supabase
+        .from('profiles')
+        .update({ avatar_url: avatarUrl })
+        .eq('id', user.id)
+        .select()
+        .single();
+      if (updated) profile = updated;
+    }
+
+    return {
+      access_token: accessToken,
+      user,
+      profile: profile || {
+        id: user.id,
+        full_name: fullName,
+        role: existing?.role || role,
+        avatar_url: avatarUrl,
+      },
+    };
   }
 }

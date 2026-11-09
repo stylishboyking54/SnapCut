@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { ScissorsIcon, UserIcon } from '@/components/ui/Icons';
-import { AuthRole, login, register } from '@/lib/auth';
+import { AuthRole, login, loginWithGoogle, register } from '@/lib/auth';
 
 export type AppRole = 'customer' | 'barber' | 'salon';
 
@@ -29,8 +29,17 @@ export default function RoleWelcome({ onComplete }: RoleWelcomeProps) {
   const roleLabel =
     role === 'salon' ? 'Salon' : role === 'barber' ? 'Barber' : 'Customer';
 
-  const handleGoogle = () => {
-    setError('Google sign-up needs to be enabled in Supabase Auth. Use email for now.');
+  const handleGoogle = async () => {
+    if (!role) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await loginWithGoogle(role as AuthRole);
+      // Browser redirects to Google; if we stay here, something failed silently
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Google sign-in failed');
+      setBusy(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -139,8 +148,14 @@ export default function RoleWelcome({ onComplete }: RoleWelcomeProps) {
             )}
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 18 }}>
-              <button type="button" className="btn-secondary" onClick={handleGoogle} style={{ width: '100%' }}>
-                Continue with Google
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={handleGoogle}
+                disabled={busy}
+                style={{ width: '100%' }}
+              >
+                {busy ? 'Opening Google…' : 'Continue with Google'}
               </button>
               <div className="muted" style={{ textAlign: 'center', fontSize: 12 }}>
                 or use email
