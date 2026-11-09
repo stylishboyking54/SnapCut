@@ -625,17 +625,22 @@ export class ShopsService {
       shop_type: shopType,
       owner_id: ownerId,
       avg_service_duration: Number(dto.avg_service_duration) || 30,
+      lat: Number(dto.lat) || 5.6037,
+      lng: Number(dto.lng) || -0.187,
+      cover_image: dto.cover_image || '',
+      distance_km: 0,
       rating: 5.0,
       review_count: 0,
       is_open: true,
       is_emergency: false,
+      emergency_reason: undefined as string | undefined,
       current_queue_count: 0,
       estimated_wait_minutes: 0,
-      services: [],
-      working_hours: [],
-      breaks: [],
+      services: [] as any[],
+      working_hours: [] as any[],
+      breaks: [] as any[],
     };
-    this.localShops.push(newShop);
+    this.localShops.push(newShop as any);
     this.localQueues.set(newShop.id, []);
     return newShop;
   }
