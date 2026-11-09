@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { ScissorsIcon, UserIcon } from '@/components/ui/Icons';
+import { GoogleIcon, ScissorsIcon, UserIcon } from '@/components/ui/Icons';
 import { AuthRole, login, loginWithGoogle, register } from '@/lib/auth';
 
 export type AppRole = 'customer' | 'barber' | 'salon';
@@ -155,6 +155,7 @@ export default function RoleWelcome({ onComplete }: RoleWelcomeProps) {
                 disabled={busy}
                 style={{ width: '100%' }}
               >
+                <GoogleIcon size={18} />
                 {busy ? 'Opening Google…' : 'Continue with Google'}
               </button>
               <div className="muted" style={{ textAlign: 'center', fontSize: 12 }}>
