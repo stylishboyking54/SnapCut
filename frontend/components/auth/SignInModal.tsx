@@ -57,9 +57,6 @@ export default function SignInModal({
 
   if (!mounted || !open) return null;
 
-  const roleLabel =
-    defaultRole === 'salon' ? 'Salon' : defaultRole === 'barber' ? 'Barber' : 'Customer';
-
   const finish = () => {
     onSuccess?.();
     onClose();
@@ -71,13 +68,18 @@ export default function SignInModal({
     setError(null);
     try {
       if (mode === 'register') {
-        await register(email.trim(), password, fullName.trim() || roleLabel, defaultRole);
+        await register(
+          email.trim(),
+          password,
+          fullName.trim() || email.trim().split('@')[0] || 'Snapcut',
+          defaultRole,
+        );
       } else {
         await login(email.trim(), password);
       }
       finish();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Sign-in failed');
+      setError(err instanceof Error ? err.message : 'Couldn’t sign in');
     } finally {
       setBusy(false);
     }
@@ -89,7 +91,7 @@ export default function SignInModal({
     try {
       await loginWithGoogle(defaultRole);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Google sign-in failed');
+      setError(err instanceof Error ? err.message : 'Google didn’t work');
       setBusy(false);
     }
   };
@@ -108,42 +110,51 @@ export default function SignInModal({
           ×
         </button>
 
-        <div className="eyebrow">Account</div>
-        <h2 id="auth-modal-title" style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 600, marginTop: 6 }}>
-          {mode === 'login' ? 'Sign in to continue' : 'Create your account'}
+        <h2 id="auth-modal-title" style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 600, marginTop: 2 }}>
+          {mode === 'login' ? 'Sign in' : 'Join Snapcut'}
         </h2>
-        <p className="secondary" style={{ marginTop: 8, fontSize: 14, lineHeight: 1.45 }}>
-          {reason || 'Sign in to save your spot and sync across devices.'}
-        </p>
+        {reason ? (
+          <p className="secondary" style={{ marginTop: 6, fontSize: 13.5, lineHeight: 1.4 }}>
+            {reason}
+          </p>
+        ) : null}
 
         {error && (
           <div
             className="alert-banner"
-            style={{ marginTop: 14, background: 'var(--brand-danger-soft)', color: 'var(--brand-danger)' }}
+            style={{ marginTop: 12, background: 'var(--brand-danger-soft)', color: 'var(--brand-danger)' }}
           >
             {error}
           </div>
         )}
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 18 }}>
-          <button type="button" className="btn-secondary" onClick={handleGoogle} disabled={busy} style={{ width: '100%' }}>
-            <GoogleIcon size={18} />
-            {busy ? 'Opening Google…' : 'Continue with Google'}
-          </button>
-          <div className="muted" style={{ textAlign: 'center', fontSize: 12 }}>
-            or use email
-          </div>
+        <button
+          type="button"
+          className="btn-secondary"
+          onClick={handleGoogle}
+          disabled={busy}
+          style={{ width: '100%', marginTop: 16 }}
+        >
+          <GoogleIcon size={18} />
+          Google
+        </button>
+
+        <div
+          className="muted"
+          style={{ textAlign: 'center', fontSize: 11.5, margin: '12px 0 4px', letterSpacing: '0.04em' }}
+        >
+          EMAIL
         </div>
 
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 8 }}>
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {mode === 'register' && (
             <div className="field">
-              <label>Full name</label>
+              <label>Name</label>
               <input
                 type="text"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
-                placeholder="Your name"
+                placeholder="Name"
                 required
               />
             </div>
@@ -154,7 +165,7 @@ export default function SignInModal({
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@email.com"
+              placeholder="Email"
               required
               autoComplete="email"
             />
@@ -167,23 +178,34 @@ export default function SignInModal({
               onChange={(e) => setPassword(e.target.value)}
               minLength={6}
               required
+              placeholder="Password"
               autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
             />
           </div>
-          <button type="submit" className="btn-primary" disabled={busy} style={{ marginTop: 4 }}>
-            {busy ? 'Please wait…' : mode === 'login' ? 'Sign in' : 'Create account'}
-          </button>
-          <button
-            type="button"
-            className="btn-secondary"
-            onClick={() => {
-              setMode(mode === 'login' ? 'register' : 'login');
-              setError(null);
-            }}
-          >
-            {mode === 'login' ? 'Need an account? Sign up' : 'Have an account? Sign in'}
+          <button type="submit" className="btn-primary" disabled={busy} style={{ marginTop: 2 }}>
+            {busy ? '…' : mode === 'login' ? 'Sign in' : 'Create account'}
           </button>
         </form>
+
+        <button
+          type="button"
+          onClick={() => {
+            setMode(mode === 'login' ? 'register' : 'login');
+            setError(null);
+          }}
+          style={{
+            marginTop: 14,
+            width: '100%',
+            background: 'transparent',
+            border: 'none',
+            color: 'var(--text-muted)',
+            fontSize: 13,
+            fontWeight: 550,
+            cursor: 'pointer',
+          }}
+        >
+          {mode === 'login' ? 'New here? Create an account' : 'Already have an account?'}
+        </button>
       </div>
     </div>,
     document.body,

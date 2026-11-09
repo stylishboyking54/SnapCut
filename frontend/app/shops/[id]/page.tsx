@@ -62,7 +62,7 @@ function ShopDetailContent() {
     if (!selectedService || !customerName.trim() || shop.isEmergency || isJoining) return;
 
     if (!getSession()) {
-      requestSignIn('Sign in to join the queue and get a ticket.');
+      requestSignIn('Join the line with an account.');
       return;
     }
 

@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { QueueItem } from '@/lib/types';
 import { cancelBooking, getMyBookings } from '@/lib/api';
-import { getSession, requestSignIn } from '@/lib/auth';
+import { getSession } from '@/lib/auth';
 import { ClockIcon, MapPinIcon, ScissorsIcon } from '@/components/ui/Icons';
 
 export default function BookingsPage() {
@@ -105,19 +105,7 @@ export default function BookingsPage() {
           Loading ticket…
         </div>
       ) : needsAuth ? (
-        <div className="panel" style={{ textAlign: 'center', padding: '40px 24px' }}>
-          <h2 style={{ fontSize: 20, fontWeight: 600 }}>Sign in to see your ticket</h2>
-          <p className="secondary" style={{ fontSize: 14, maxWidth: 340, margin: '8px auto 20px', lineHeight: 1.5 }}>
-            Your live bookings are tied to your account.
-          </p>
-          <button
-            type="button"
-            className="btn-primary"
-            onClick={() => requestSignIn('Sign in to see your live ticket.')}
-          >
-            Sign in
-          </button>
-        </div>
+        null
       ) : activeBookings.length > 0 ? (
         <div className="list-stack">
           {activeBookings.map((booking) => {

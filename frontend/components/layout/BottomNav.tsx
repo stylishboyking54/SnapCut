@@ -44,10 +44,9 @@ function renderBottomIcon(name: string, isActive: boolean) {
 }
 
 function reasonForHref(href: string) {
-  if (href.startsWith('/bookings')) return 'Sign in to see your live ticket.';
-  if (href.startsWith('/notifications')) return 'Sign in to get alerts for your place in line.';
-  if (href.startsWith('/profile')) return 'Sign in to manage your Snapcut account.';
-  return 'Sign in to continue.';
+  if (href.startsWith('/bookings')) return 'Needed for your ticket.';
+  if (href.startsWith('/notifications')) return 'Needed for queue alerts.';
+  return undefined;
 }
 
 export default function BottomNav({ navItems }: BottomNavProps) {

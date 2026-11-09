@@ -28,12 +28,12 @@ function homeForRole(role: UserRole) {
 }
 
 function reasonForPath(pathname: string | null) {
-  if (!pathname) return 'Sign in to continue.';
-  if (pathname.startsWith('/bookings')) return 'Sign in to see your live ticket.';
-  if (pathname.startsWith('/notifications')) return 'Sign in to get alerts for your place in line.';
-  if (pathname.startsWith('/profile')) return 'Sign in to manage your Snapcut account.';
-  if (pathname.startsWith('/barber')) return 'Sign in to run your shop queue.';
-  return 'Sign in to continue.';
+  if (!pathname) return undefined;
+  if (pathname.startsWith('/bookings')) return 'Needed for your ticket.';
+  if (pathname.startsWith('/notifications')) return 'Needed for queue alerts.';
+  if (pathname.startsWith('/profile')) return undefined;
+  if (pathname.startsWith('/barber')) return 'Needed for your shop.';
+  return undefined;
 }
 
 export default function AppLayout({ children }: AppLayoutProps) {
@@ -43,10 +43,10 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const [ready, setReady] = useState(false);
   const [signedIn, setSignedIn] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
-  const [authReason, setAuthReason] = useState('Sign in to continue.');
+  const [authReason, setAuthReason] = useState('');
 
   const openSignIn = useCallback((reason?: string) => {
-    setAuthReason(reason || reasonForPath(pathname));
+    setAuthReason(reason ?? reasonForPath(pathname) ?? '');
     setAuthOpen(true);
   }, [pathname]);
 
@@ -173,13 +173,13 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const customerNavItems = [
     { href: '/', label: 'Explore', iconName: 'explore' },
     { href: '/map', label: 'Map', iconName: 'map' },
-    { href: '/bookings', label: 'Ticket', iconName: 'queue', badge: signedIn ? 1 : undefined },
-    { href: '/notifications', label: 'Alerts', iconName: 'alerts', badge: signedIn ? 2 : undefined },
+    { href: '/bookings', label: 'Ticket', iconName: 'queue' },
+    { href: '/notifications', label: 'Alerts', iconName: 'alerts' },
     { href: '/profile', label: 'Profile', iconName: 'account' },
   ];
 
   const proNavItems = [
-    { href: '/barber/dashboard', label: 'Queue', iconName: 'queue', badge: 3 },
+    { href: '/barber/dashboard', label: 'Queue', iconName: 'queue' },
     { href: '/barber/schedule', label: 'Hours', iconName: 'schedule' },
     { href: '/barber/bookings', label: 'Bookings', iconName: 'bookings' },
     { href: '/barber/emergency', label: 'Emergency', iconName: 'emergency' },
@@ -229,11 +229,11 @@ export default function AppLayout({ children }: AppLayoutProps) {
   return (
     <div className="app-layout">
       <Suspense fallback={<aside className="sidebar" />}>
-        <Sidebar navItems={currentNavItems} role={role} onSignIn={() => openSignIn('Sign in to your Snapcut account.')} />
+        <Sidebar navItems={currentNavItems} role={role} onSignIn={() => openSignIn()} />
       </Suspense>
 
       <div className="main-content">
-        <Navbar currentRole={role} notificationCount={signedIn ? 2 : 0} />
+        <Navbar currentRole={role} notificationCount={0} />
         <main className="page-content">
           <Suspense
             fallback={

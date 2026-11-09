@@ -94,10 +94,10 @@ export default function Sidebar({ navItems, role, onSignIn }: SidebarProps) {
             sessionStorage.setItem('snapcut_after_signin', item.href);
             const reason =
               item.href.startsWith('/bookings')
-                ? 'Sign in to see your live ticket.'
+                ? 'Needed for your ticket.'
                 : item.href.startsWith('/notifications')
-                ? 'Sign in to get alerts for your place in line.'
-                : 'Sign in to manage your Snapcut account.';
+                ? 'Needed for queue alerts.'
+                : undefined;
             requestSignIn(reason);
           };
 
@@ -154,24 +154,20 @@ export default function Sidebar({ navItems, role, onSignIn }: SidebarProps) {
               </div>
             </>
           ) : (
-            <>
-              <div style={{ fontSize: 13, fontWeight: 600 }}>Guest</div>
-              <button
-                type="button"
-                onClick={onSignIn}
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  padding: 0,
-                  fontSize: 11.5,
-                  fontWeight: 600,
-                  color: 'var(--brand-primary)',
-                  cursor: 'pointer',
-                }}
-              >
-                Sign in
-              </button>
-            </>
+            <button
+              type="button"
+              onClick={onSignIn}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                padding: 0,
+                textAlign: 'left',
+                cursor: 'pointer',
+              }}
+            >
+              <div style={{ fontSize: 13, fontWeight: 600 }}>Not signed in</div>
+              <div style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>Tap to sign in</div>
+            </button>
           )}
         </div>
       </div>

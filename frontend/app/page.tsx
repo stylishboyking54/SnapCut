@@ -60,7 +60,7 @@ export default function HomePage() {
     if (joiningId) return;
     const session = getSession();
     if (!session) {
-      requestSignIn('Sign in to join the queue and get a ticket.');
+      requestSignIn('Join the line with an account.');
       return;
     }
     setJoiningId(shop.id);
