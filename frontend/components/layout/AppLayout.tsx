@@ -28,6 +28,19 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const [role, setRole] = useState<UserRole | null>(null);
   const [ready, setReady] = useState(false);
 
+  // If Supabase dumps ?code= on Site URL (/), forward to the real callback route
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (pathname?.startsWith('/auth/')) return;
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get('code');
+    if (!code) return;
+    const role = params.get('role');
+    const qs = new URLSearchParams({ code });
+    if (role) qs.set('role', role);
+    router.replace(`/auth/callback?${qs.toString()}`);
+  }, [pathname, router]);
+
   useEffect(() => {
     const saved = localStorage.getItem(ROLE_KEY);
     const session = getSession();
