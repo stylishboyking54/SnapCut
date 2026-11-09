@@ -25,7 +25,16 @@ async function bootstrap() {
         callback(null, true);
         return;
       }
-      callback(null, allowedOrigins.includes(origin));
+      // Always allow Snapcut Vercel deploys even if FRONTEND_URL wasn't updated
+      if (/^https:\/\/([a-z0-9-]+\.)*vercel\.app$/i.test(origin)) {
+        callback(null, true);
+        return;
+      }
+      if (origin === 'https://snap-cut-ud2a.vercel.app') {
+        callback(null, true);
+        return;
+      }
+      callback(null, false);
     },
     credentials: true,
   });

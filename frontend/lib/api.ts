@@ -1,8 +1,8 @@
 import { Shop, QueueItem } from './types';
 import { INITIAL_SHOPS, INITIAL_QUEUE } from './mockData';
-import { authHeaders, getSession } from './auth';
+import { authHeaders, getApiBaseUrl, getSession } from './auth';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+const API_BASE_URL = () => getApiBaseUrl();
 
 function mapQueueItem(q: any, shopId?: string): QueueItem {
   const scheduled = q.scheduled_at
@@ -75,7 +75,7 @@ export async function getShops(filters?: {
       params.append('shop_type', filters.shopType);
     }
 
-    const res = await fetch(`${API_BASE_URL}/shops?${params.toString()}`, {
+    const res = await fetch(`${API_BASE_URL()}/shops?${params.toString()}`, {
       next: { revalidate: 10 },
       headers: { 'Content-Type': 'application/json' },
     });
@@ -98,7 +98,7 @@ export async function getShops(filters?: {
  */
 export async function getShopById(id: string): Promise<Shop | null> {
   try {
-    const res = await fetch(`${API_BASE_URL}/shops/${id}`, {
+    const res = await fetch(`${API_BASE_URL()}/shops/${id}`, {
       next: { revalidate: 5 },
       headers: { 'Content-Type': 'application/json' },
     });
@@ -122,7 +122,7 @@ export async function getShopLiveQueue(shopId: string): Promise<{
   isOpen: boolean;
 }> {
   try {
-    const res = await fetch(`${API_BASE_URL}/shops/${shopId}/queue`, {
+    const res = await fetch(`${API_BASE_URL()}/shops/${shopId}/queue`, {
       cache: 'no-store',
       headers: { 'Content-Type': 'application/json' },
     });
@@ -182,7 +182,7 @@ export async function joinShopQueue(
   if (!session?.access_token) {
     throw new Error('Sign in to join the line');
   }
-  const res = await fetch(`${API_BASE_URL}/shops/${shopId}/join`, {
+  const res = await fetch(`${API_BASE_URL()}/shops/${shopId}/join`, {
     method: 'POST',
     headers: authHeaders(),
     body: JSON.stringify({
@@ -207,7 +207,7 @@ export async function joinShopQueue(
 }
 
 export async function getMyBookings(): Promise<QueueItem[]> {
-  const res = await fetch(`${API_BASE_URL}/bookings`, {
+  const res = await fetch(`${API_BASE_URL()}/bookings`, {
     cache: 'no-store',
     headers: authHeaders(),
   });
@@ -222,7 +222,7 @@ export async function getMyBookings(): Promise<QueueItem[]> {
 }
 
 export async function cancelBooking(bookingId: string): Promise<void> {
-  const res = await fetch(`${API_BASE_URL}/bookings/${bookingId}/status`, {
+  const res = await fetch(`${API_BASE_URL()}/bookings/${bookingId}/status`, {
     method: 'PATCH',
     headers: authHeaders(),
     body: JSON.stringify({ status: 'cancelled' }),

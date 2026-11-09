@@ -1,9 +1,22 @@
 import { createClient } from '@/lib/supabase/client';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+const PROD_API_URL = 'https://snapcut-599t.onrender.com/api';
 const SESSION_KEY = 'snapcut_session';
 const PENDING_ROLE_KEY = 'snapcut_pending_role';
 const ROLE_KEY = 'qb_role';
+
+/** Prefer env; never call localhost from a deployed host */
+export function getApiBaseUrl() {
+  const fromEnv = process.env.NEXT_PUBLIC_API_URL || '';
+  if (typeof window !== 'undefined') {
+    const host = window.location.hostname;
+    const onLocal = host === 'localhost' || host === '127.0.0.1';
+    if (!onLocal && (!fromEnv || fromEnv.includes('localhost'))) {
+      return PROD_API_URL;
+    }
+  }
+  return fromEnv || 'http://localhost:3001/api';
+}
 
 export type AuthRole = 'customer' | 'barber' | 'salon' | 'admin';
 
@@ -48,7 +61,7 @@ export function clearSession() {
 }
 
 export async function login(email: string, password: string): Promise<AuthSession> {
-  const res = await fetch(`${API_BASE_URL}/auth/login`, {
+  const res = await fetch(`${getApiBaseUrl()}/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, password }),
@@ -78,7 +91,7 @@ export async function register(
   fullName: string,
   role: AuthRole = 'customer',
 ): Promise<AuthSession> {
-  const res = await fetch(`${API_BASE_URL}/auth/register`, {
+  const res = await fetch(`${getApiBaseUrl()}/auth/register`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, password, full_name: fullName, role }),
@@ -110,7 +123,7 @@ export async function register(
 export async function logout() {
   const token = getAccessToken();
   if (token) {
-    await fetch(`${API_BASE_URL}/auth/logout`, {
+    await fetch(`${getApiBaseUrl()}/auth/logout`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}` },
     }).catch(() => null);
@@ -177,36 +190,85 @@ export async function completeOAuthSession(preferredRole?: AuthRole): Promise<Au
   }
 
   const pendingRole = takePendingRole(preferredRole);
-  const res = await fetch(`${API_BASE_URL}/auth/oauth`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${sbSession.access_token}`,
-    },
-    body: JSON.stringify({ role: pendingRole }),
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.message || data.error || 'Could not sync account');
+  const user = sbSession.user;
+  const fullName =
+    user.user_metadata?.full_name ||
+    user.user_metadata?.name ||
+    user.email?.split('@')[0] ||
+    'Snapcut User';
+  const avatarUrl =
+    user.user_metadata?.avatar_url || user.user_metadata?.picture || null;
+
+  let profile: AuthProfile | null = null;
+
+  // Prefer API sync; fall back to direct Supabase profile if API/CORS is down
+  try {
+    const res = await fetch(`${getApiBaseUrl()}/auth/oauth`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${sbSession.access_token}`,
+      },
+      body: JSON.stringify({ role: pendingRole }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok && data.profile) {
+      profile = {
+        id: data.profile.id || user.id,
+        full_name: data.profile.full_name || fullName,
+        role: data.profile.role || pendingRole,
+        phone: data.profile.phone,
+        avatar_url: data.profile.avatar_url || avatarUrl,
+      };
+    }
+  } catch {
+    /* API unreachable — use Supabase below */
+  }
+
+  if (!profile) {
+    const { data: existing } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    if (!existing) {
+      const { data: created } = await supabase
+        .from('profiles')
+        .upsert({
+          id: user.id,
+          full_name: fullName,
+          role: pendingRole,
+          avatar_url: avatarUrl,
+        })
+        .select()
+        .single();
+      profile = {
+        id: created?.id || user.id,
+        full_name: created?.full_name || fullName,
+        role: (created?.role as AuthRole) || pendingRole,
+        phone: created?.phone,
+        avatar_url: created?.avatar_url || avatarUrl,
+      };
+    } else {
+      profile = {
+        id: existing.id,
+        full_name: existing.full_name || fullName,
+        role: (existing.role as AuthRole) || pendingRole,
+        phone: existing.phone,
+        avatar_url: existing.avatar_url || avatarUrl,
+      };
+      if (!existing.avatar_url && avatarUrl) {
+        await supabase.from('profiles').update({ avatar_url: avatarUrl }).eq('id', user.id);
+      }
+    }
+  }
 
   const session: AuthSession = {
     access_token: sbSession.access_token,
     refresh_token: sbSession.refresh_token,
-    email: data.user?.email || sbSession.user.email || '',
-    profile: {
-      id: data.profile?.id || sbSession.user.id,
-      full_name:
-        data.profile?.full_name ||
-        sbSession.user.user_metadata?.full_name ||
-        sbSession.user.user_metadata?.name ||
-        sbSession.user.email ||
-        'Snapcut User',
-      role: data.profile?.role || pendingRole,
-      phone: data.profile?.phone,
-      avatar_url:
-        data.profile?.avatar_url ||
-        sbSession.user.user_metadata?.avatar_url ||
-        sbSession.user.user_metadata?.picture,
-    },
+    email: user.email || '',
+    profile,
   };
   saveSession(session);
   localStorage.setItem(ROLE_KEY, session.profile.role);
