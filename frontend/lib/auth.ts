@@ -233,10 +233,16 @@ export async function completeOAuthSession(preferredRole?: AuthRole): Promise<Au
     });
     const data = await res.json().catch(() => ({}));
     if (res.ok && data.profile) {
+      const apiRole = (data.profile.role || pendingRole) as AuthRole;
+      // If API still returned customer but user picked pro, keep the pick
+      const role: AuthRole =
+        apiRole === 'customer' && (pendingRole === 'barber' || pendingRole === 'salon')
+          ? pendingRole
+          : apiRole;
       profile = {
         id: data.profile.id || user.id,
         full_name: data.profile.full_name || fullName,
-        role: data.profile.role || pendingRole,
+        role,
         phone: data.profile.phone,
         avatar_url: data.profile.avatar_url || avatarUrl,
       };
@@ -252,36 +258,27 @@ export async function completeOAuthSession(preferredRole?: AuthRole): Promise<Au
       .eq('id', user.id)
       .maybeSingle();
 
-    if (!existing) {
-      const { data: created } = await supabase
-        .from('profiles')
-        .upsert({
-          id: user.id,
-          full_name: fullName,
-          role: pendingRole,
-          avatar_url: avatarUrl,
-        })
-        .select()
-        .single();
-      profile = {
-        id: created?.id || user.id,
-        full_name: created?.full_name || fullName,
-        role: (created?.role as AuthRole) || pendingRole,
-        phone: created?.phone,
-        avatar_url: created?.avatar_url || avatarUrl,
-      };
-    } else {
-      profile = {
-        id: existing.id,
-        full_name: existing.full_name || fullName,
-        role: (existing.role as AuthRole) || pendingRole,
-        phone: existing.phone,
-        avatar_url: existing.avatar_url || avatarUrl,
-      };
-      if (!existing.avatar_url && avatarUrl) {
-        await supabase.from('profiles').update({ avatar_url: avatarUrl }).eq('id', user.id);
-      }
-    }
+    const nextRole: AuthRole =
+      existing?.role === 'admin' ? 'admin' : pendingRole;
+
+    const { data: upserted } = await supabase
+      .from('profiles')
+      .upsert({
+        id: user.id,
+        full_name: existing?.full_name || fullName,
+        role: nextRole,
+        avatar_url: existing?.avatar_url || avatarUrl,
+      })
+      .select()
+      .single();
+
+    profile = {
+      id: upserted?.id || user.id,
+      full_name: upserted?.full_name || fullName,
+      role: (upserted?.role as AuthRole) || nextRole,
+      phone: upserted?.phone,
+      avatar_url: upserted?.avatar_url || avatarUrl,
+    };
   }
 
   const session: AuthSession = {

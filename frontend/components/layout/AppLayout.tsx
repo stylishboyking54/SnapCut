@@ -187,14 +187,19 @@ export default function AppLayout({ children }: AppLayoutProps) {
     setAuthOpen(false);
     setRolePickOpen(false);
     const session = getSession();
+    // Prefer the role just picked in the gate over a stale customer profile
     const r = (session?.profile.role || authRole || role) as UserRole;
-    if (r === 'customer' || r === 'barber' || r === 'salon' || r === 'admin') {
-      localStorage.setItem(ROLE_KEY, r);
-      setRole(r);
+    const effective =
+      (authRole === 'barber' || authRole === 'salon') && r === 'customer'
+        ? authRole
+        : r;
+    if (effective === 'customer' || effective === 'barber' || effective === 'salon' || effective === 'admin') {
+      localStorage.setItem(ROLE_KEY, effective);
+      setRole(effective);
     }
     const pending = sessionStorage.getItem('snapcut_after_signin');
     sessionStorage.removeItem('snapcut_after_signin');
-    if (r === 'barber' || r === 'salon') {
+    if (effective === 'barber' || effective === 'salon') {
       try {
         const mine = await getMyShop();
         router.push(mine ? '/barber/dashboard' : '/barber/shop?setup=1');
@@ -203,8 +208,8 @@ export default function AppLayout({ children }: AppLayoutProps) {
       }
       return;
     }
-    if (r === 'admin') {
-      router.push(homeForRole(r));
+    if (effective === 'admin') {
+      router.push(homeForRole(effective));
       return;
     }
     if (pending) router.push(pending);

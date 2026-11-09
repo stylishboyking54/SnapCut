@@ -66,7 +66,9 @@ export class AuthService {
 
   /**
    * Sync a Supabase OAuth session into our profiles table.
-   * New users get the chosen role; existing users keep their profile role.
+   * Always honor the role picked in this sign-in (Google often creates the
+   * profile as customer via trigger before we get here).
+   * Never demote admin.
    */
   async syncOAuth(
     accessToken: string,
@@ -92,36 +94,27 @@ export class AuthService {
       .eq('id', user.id)
       .maybeSingle();
 
-    let profile = existing;
+    const nextRole =
+      existing?.role === 'admin' ? 'admin' : role;
 
-    if (!existing) {
-      const { data: created, error: createErr } = await this.supabase
-        .from('profiles')
-        .upsert({
-          id: user.id,
-          full_name: fullName,
-          role,
-          avatar_url: avatarUrl,
-        })
-        .select()
-        .single();
-      if (createErr) {
-        throw new BadRequestException(createErr.message || 'Could not create profile');
-      }
-      profile = created;
+    const { data: profile, error: upsertErr } = await this.supabase
+      .from('profiles')
+      .upsert({
+        id: user.id,
+        full_name: existing?.full_name || fullName,
+        role: nextRole,
+        avatar_url: existing?.avatar_url || avatarUrl,
+      })
+      .select()
+      .single();
 
-      await this.supabase.auth.admin.updateUserById(user.id, {
-        user_metadata: { ...user.user_metadata, full_name: fullName, role },
-      });
-    } else if (!existing.avatar_url && avatarUrl) {
-      const { data: updated } = await this.supabase
-        .from('profiles')
-        .update({ avatar_url: avatarUrl })
-        .eq('id', user.id)
-        .select()
-        .single();
-      if (updated) profile = updated;
+    if (upsertErr) {
+      throw new BadRequestException(upsertErr.message || 'Could not sync profile');
     }
+
+    await this.supabase.auth.admin.updateUserById(user.id, {
+      user_metadata: { ...user.user_metadata, full_name: fullName, role: nextRole },
+    });
 
     return {
       access_token: accessToken,
@@ -129,7 +122,7 @@ export class AuthService {
       profile: profile || {
         id: user.id,
         full_name: fullName,
-        role: existing?.role || role,
+        role: nextRole,
         avatar_url: avatarUrl,
       },
     };
