@@ -6,9 +6,9 @@ import Sidebar from './Sidebar';
 import BottomNav from './BottomNav';
 import Navbar from './Navbar';
 import RoleWelcome, { AppRole } from './RoleWelcome';
+import RolePickModal from '@/components/auth/RolePickModal';
 import SignInModal from '@/components/auth/SignInModal';
 import {
-  AuthRole,
   getSession,
   isProtectedCustomerPath,
 } from '@/lib/auth';
@@ -42,12 +42,16 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const [role, setRole] = useState<UserRole | null>(null);
   const [ready, setReady] = useState(false);
   const [signedIn, setSignedIn] = useState(false);
+  const [rolePickOpen, setRolePickOpen] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
   const [authReason, setAuthReason] = useState('');
+  const [authRole, setAuthRole] = useState<AppRole>('customer');
 
-  const openSignIn = useCallback((reason?: string) => {
+  const openAuthGate = useCallback((reason?: string) => {
+    if (getSession()) return;
     setAuthReason(reason ?? reasonForPath(pathname) ?? '');
-    setAuthOpen(true);
+    setAuthOpen(false);
+    setRolePickOpen(true);
   }, [pathname]);
 
   // If Supabase dumps ?code= on Site URL (/), forward to the real callback route
@@ -86,17 +90,13 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
       if (!session) {
         const saved = localStorage.getItem(ROLE_KEY) as UserRole | null;
-        // Pros can't browse the floor logged out — back to welcome
         if (saved === 'barber' || saved === 'salon' || saved === 'admin') {
           localStorage.removeItem(ROLE_KEY);
           setRole(null);
           setAuthOpen(false);
+          setRolePickOpen(false);
           router.replace('/');
           return;
-        }
-        // Customers stay as guests and can keep browsing
-        if (isProtectedCustomerPath(pathname)) {
-          openSignIn(reasonForPath(pathname));
         }
         return;
       }
@@ -107,11 +107,12 @@ export default function AppLayout({ children }: AppLayoutProps) {
         setRole(r);
       }
       setAuthOpen(false);
+      setRolePickOpen(false);
     };
 
     const onSignInRequest = (e: Event) => {
       const detail = (e as CustomEvent<{ reason?: string }>).detail;
-      openSignIn(detail?.reason);
+      openAuthGate(detail?.reason);
     };
 
     window.addEventListener('snapcut-auth', onAuth);
@@ -120,25 +121,25 @@ export default function AppLayout({ children }: AppLayoutProps) {
       window.removeEventListener('snapcut-auth', onAuth);
       window.removeEventListener('snapcut-signin', onSignInRequest as EventListener);
     };
-  }, [pathname, router, openSignIn]);
+  }, [router, openAuthGate]);
 
-  // If a guest somehow lands on a gated URL, bounce to Explore and show popup instead
+  // Guest hits a gated URL → stay on Explore, open role → sign-in
   useEffect(() => {
     if (!ready || !role) return;
     const session = getSession();
     setSignedIn(!!session);
 
     if (role === 'barber' || role === 'salon' || role === 'admin') {
-      if (!session) openSignIn(reasonForPath(pathname));
+      if (!session) openAuthGate(reasonForPath(pathname));
       return;
     }
 
     if (isProtectedCustomerPath(pathname) && !session) {
       sessionStorage.setItem('snapcut_after_signin', pathname);
       router.replace('/');
-      openSignIn(reasonForPath(pathname));
+      openAuthGate(reasonForPath(pathname));
     }
-  }, [ready, role, pathname, openSignIn, router]);
+  }, [ready, role, pathname, openAuthGate, router]);
 
   useEffect(() => {
     if (!ready || !role) return;
@@ -157,7 +158,16 @@ export default function AppLayout({ children }: AppLayoutProps) {
     router.replace(homeForRole(next));
   };
 
-  const handleAuthClose = () => {
+  const handleRolePicked = (next: AppRole) => {
+    localStorage.setItem(ROLE_KEY, next);
+    setRole(next);
+    setAuthRole(next);
+    setRolePickOpen(false);
+    setAuthOpen(true);
+  };
+
+  const handleGateClose = () => {
+    setRolePickOpen(false);
     setAuthOpen(false);
     sessionStorage.removeItem('snapcut_after_signin');
   };
@@ -165,9 +175,20 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const handleAuthSuccess = () => {
     setSignedIn(true);
     setAuthOpen(false);
-    const next = sessionStorage.getItem('snapcut_after_signin');
+    setRolePickOpen(false);
+    const session = getSession();
+    const r = (session?.profile.role || authRole || role) as UserRole;
+    if (r === 'customer' || r === 'barber' || r === 'salon' || r === 'admin') {
+      localStorage.setItem(ROLE_KEY, r);
+      setRole(r);
+    }
+    const pending = sessionStorage.getItem('snapcut_after_signin');
     sessionStorage.removeItem('snapcut_after_signin');
-    if (next) router.push(next);
+    if (r === 'barber' || r === 'salon' || r === 'admin') {
+      router.push(homeForRole(r));
+      return;
+    }
+    if (pending) router.push(pending);
   };
 
   const customerNavItems = [
@@ -199,7 +220,6 @@ export default function AppLayout({ children }: AppLayoutProps) {
       ? adminNavItems
       : customerNavItems;
 
-  // OAuth callback must render without the welcome gate
   if (pathname?.startsWith('/auth/')) {
     return <>{children}</>;
   }
@@ -221,15 +241,10 @@ export default function AppLayout({ children }: AppLayoutProps) {
     );
   }
 
-  const modalRole: AuthRole =
-    role === 'barber' || role === 'salon' || role === 'admin' || role === 'customer'
-      ? role
-      : 'customer';
-
   return (
     <div className="app-layout">
       <Suspense fallback={<aside className="sidebar" />}>
-        <Sidebar navItems={currentNavItems} role={role} onSignIn={() => openSignIn()} />
+        <Sidebar navItems={currentNavItems} role={role} onSignIn={() => openAuthGate()} />
       </Suspense>
 
       <div className="main-content">
@@ -251,11 +266,17 @@ export default function AppLayout({ children }: AppLayoutProps) {
         <BottomNav navItems={currentNavItems} />
       </Suspense>
 
+      <RolePickModal
+        open={rolePickOpen}
+        onClose={handleGateClose}
+        onPick={handleRolePicked}
+      />
+
       <SignInModal
         open={authOpen}
         reason={authReason}
-        defaultRole={modalRole === 'admin' ? 'customer' : modalRole}
-        onClose={handleAuthClose}
+        defaultRole={authRole}
+        onClose={handleGateClose}
         onSuccess={handleAuthSuccess}
       />
     </div>
