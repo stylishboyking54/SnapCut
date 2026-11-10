@@ -500,6 +500,7 @@ img { max-width: 100%; height: auto; display: block; }
   }
 
   .top-shift { display: none !important; }
+  .top-signin { min-height: 34px !important; padding: 6px 10px !important; font-size: 12.5px !important; }
   .account-menu { width: min(240px, calc(100vw - 36px)); }
   .role-welcome {
     align-items: flex-start;

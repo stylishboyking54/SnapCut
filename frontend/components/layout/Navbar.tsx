@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { BellIcon, AlertTriangleIcon, SearchIcon } from '@/components/ui/Icons';
+import { BellIcon, AlertTriangleIcon, SearchIcon, UserIcon } from '@/components/ui/Icons';
 import { AuthSession, getSession, logout, requestSignIn } from '@/lib/auth';
 import SearchPalette from '@/components/layout/SearchPalette';
 
@@ -124,6 +124,7 @@ export default function Navbar({
           <BellIcon size={14} />
           {notificationCount > 0 && <span className="notif-dot">{notificationCount}</span>}
         </Link>
+        {session ? (
         <div className="account-wrap">
           <button
             type="button"
@@ -133,53 +134,50 @@ export default function Navbar({
             aria-expanded={accountOpen}
             onClick={() => setAccountOpen((v) => !v)}
           >
-            {session?.profile.avatar_url ? (
+            {session.profile.avatar_url ? (
               <img src={session.profile.avatar_url} alt="" />
             ) : (
-              initials || '·'
+              initials || 'SC'
             )}
-            {session && <span className="avatar-live" />}
+            <span className="avatar-live" />
           </button>
           {accountOpen && (
             <div className="account-menu" role="menu">
               <div className="account-menu-head">
                 <span className="avatar-chip lg">
-                  {session?.profile.avatar_url ? <img src={session.profile.avatar_url} alt="" /> : initials || '·'}
+                  {session.profile.avatar_url ? <img src={session.profile.avatar_url} alt="" /> : initials || 'SC'}
                 </span>
                 <div>
-                  <strong>{name || 'Guest'}</strong>
-                  <em>{session?.email || 'Not signed in'}</em>
+                  <strong>{name}</strong>
+                  <em>{session.email}</em>
                 </div>
               </div>
               <Link href="/profile" role="menuitem" onClick={() => setAccountOpen(false)}>My profile</Link>
               <Link href="/bookings" role="menuitem" onClick={() => setAccountOpen(false)}>My ticket</Link>
               <Link href="/notifications" role="menuitem" onClick={() => setAccountOpen(false)}>Updates</Link>
-              {session ? (
-                <button
-                  type="button"
-                  role="menuitem"
-                  onClick={() => {
-                    setAccountOpen(false);
-                    void logout();
-                  }}
-                >
-                  Sign out
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  role="menuitem"
-                  onClick={() => {
-                    setAccountOpen(false);
-                    requestSignIn('Sign in to your Snapcut account.');
-                  }}
-                >
-                  Sign in
-                </button>
-              )}
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setAccountOpen(false);
+                  void logout();
+                }}
+              >
+                Sign out
+              </button>
             </div>
           )}
         </div>
+        ) : (
+          <button
+            type="button"
+            className="btn-primary top-signin"
+            onClick={() => requestSignIn('Sign in to your Snapcut account.')}
+          >
+            <UserIcon size={14} />
+            Sign in
+          </button>
+        )}
       </div>
       {searchOpen && <SearchPalette onClose={() => setSearchOpen(false)} />}
     </header>

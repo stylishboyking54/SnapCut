@@ -14,6 +14,7 @@ import {
   CalendarIcon,
   StoreIcon,
 } from '@/components/ui/Icons';
+import { UserIcon } from '@/components/ui/Icons';
 import { AuthSession, getSession, isProtectedCustomerPath, requestSignIn } from '@/lib/auth';
 
 interface NavItem {
@@ -154,7 +155,7 @@ export default function Sidebar({ navItems, role, onSignIn }: SidebarProps) {
         }}
       >
         <span className="avatar-chip" aria-hidden>
-          {session?.profile.avatar_url ? <img src={session.profile.avatar_url} alt="" /> : initials}
+          {session?.profile.avatar_url ? <img src={session.profile.avatar_url} alt="" /> : session ? initials : <UserIcon size={16} />}
         </span>
         <div style={{ minWidth: 0, flex: 1 }}>
           {session ? (

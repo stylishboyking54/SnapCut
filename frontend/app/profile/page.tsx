@@ -3,7 +3,8 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { AuthSession, getSession, logout, updateMyProfile } from '@/lib/auth';
+import { AuthSession, getSession, logout, requestSignIn, updateMyProfile } from '@/lib/auth';
+import { UserIcon } from '@/components/ui/Icons';
 import { getBookingRows } from '@/lib/api';
 import { summarizeWeek } from '@/lib/weekStats';
 import CountUp from '@/components/ui/CountUp';
@@ -80,10 +81,12 @@ export default function ProfilePage() {
       <div className="page-enter" style={{ maxWidth: 560, margin: '0 auto' }}>
         <h1 style={{ fontSize: 34, fontWeight: 600, letterSpacing: '-0.03em' }}>Profile</h1>
         <div className="panel profile-hero" style={{ marginTop: 16 }}>
-          <span className="avatar-chip lg">·</span>
-          <h2>Not signed in</h2>
-          <p className="muted">Tap the round photo at the top, then Sign in.</p>
-          <Link href="/" className="btn-primary" style={{ marginTop: 8 }}>Find a shop</Link>
+          <span className="avatar-chip lg"><UserIcon size={32} /></span>
+          <h2>Sign in to see your profile</h2>
+          <p className="muted">Your name, phone, and visits show up here after you sign in.</p>
+          <button type="button" className="btn-primary" style={{ marginTop: 8 }} onClick={() => requestSignIn('Sign in to see your profile.')}>
+            Sign in
+          </button>
         </div>
       </div>
     );
