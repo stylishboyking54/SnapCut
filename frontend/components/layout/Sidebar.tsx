@@ -14,7 +14,6 @@ import {
   CalendarIcon,
   StoreIcon,
 } from '@/components/ui/Icons';
-import { UserIcon } from '@/components/ui/Icons';
 import { AuthSession, getSession, isProtectedCustomerPath, requestSignIn } from '@/lib/auth';
 
 interface NavItem {
