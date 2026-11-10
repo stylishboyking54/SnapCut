@@ -153,24 +153,9 @@ export default function Sidebar({ navItems, role, onSignIn }: SidebarProps) {
           gap: '10px',
         }}
       >
-        <div
-          style={{
-            width: 34,
-            height: 34,
-            borderRadius: 'var(--radius-sm)',
-            background: 'var(--bg-elevated)',
-            border: '1px solid var(--bg-border)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: 12,
-            fontWeight: 700,
-            fontFamily: 'var(--font-display)',
-            color: 'var(--brand-primary)',
-          }}
-        >
-          {initials}
-        </div>
+        <span className="avatar-chip" aria-hidden>
+          {session?.profile.avatar_url ? <img src={session.profile.avatar_url} alt="" /> : initials}
+        </span>
         <div style={{ minWidth: 0, flex: 1 }}>
           {session ? (
             <>

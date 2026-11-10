@@ -420,7 +420,8 @@ img { max-width: 100%; height: auto; display: block; }
 
   .topbar { height: 52px !important; }
   .top-mark { width: 32px; height: 32px; border-radius: 10px; font-size: 13px; }
-  .icon-btn, .avatar-chip { width: 34px; height: 34px; }
+  .icon-btn, .avatar-chip:not(.lg) { width: 34px; height: 34px; min-width: 34px; min-height: 34px; }
+  .avatar-chip:not(.lg) img { width: 34px; height: 34px; }
   .theme-orb { display: none; }
   .btn-primary, .btn-secondary, .btn-danger { min-height: 34px; font-size: 12.5px; padding: 6px 12px; }
 
@@ -1021,6 +1022,9 @@ img { max-width: 100%; height: auto; display: block; }
 .avatar-chip {
   width: 40px;
   height: 40px;
+  min-width: 40px;
+  min-height: 40px;
+  aspect-ratio: 1;
   border-radius: 50%;
   background: #efe6df;
   color: #141416;
@@ -1028,12 +1032,17 @@ img { max-width: 100%; height: auto; display: block; }
   place-items: center;
   font-size: 13px;
   font-weight: 700;
+  line-height: 1;
   box-shadow: inset 0 0 0 1px rgba(20, 20, 24, 0.08);
   padding: 0;
+  flex-shrink: 0;
+  overflow: visible;
 }
 .avatar-chip.lg {
-  width: 88px;
-  height: 88px;
+  width: 96px;
+  height: 96px;
+  min-width: 96px;
+  min-height: 96px;
   font-size: 28px;
 }
 .account-wrap { position: relative; }
@@ -1128,9 +1137,15 @@ img { max-width: 100%; height: auto; display: block; }
   position: relative;
 }
 .avatar-chip img {
-  width: 100%;
-  height: 100%;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
   object-fit: cover;
+  display: block;
+}
+.avatar-chip.lg img {
+  width: 96px;
+  height: 96px;
 }
 .avatar-live {
   position: absolute;

@@ -213,19 +213,8 @@ export default function BarberDashboardPage() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
               <div
-                style={{
-                  width: 48,
-                  height: 48,
-                  borderRadius: 'var(--radius-md)',
-                  background: 'var(--bg-elevated)',
-                  border: '1px solid var(--bg-border)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontFamily: 'var(--font-display)',
-                  fontWeight: 700,
-                  color: 'var(--brand-primary)',
-                }}
+                className="avatar-chip lg"
+                style={{ width: 52, height: 52, minWidth: 52, minHeight: 52, fontSize: 18 }}
               >
                 {inChairClient.customerName.slice(0, 1)}
               </div>
