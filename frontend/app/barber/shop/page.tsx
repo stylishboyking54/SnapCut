@@ -68,52 +68,224 @@ function ServiceEditor({
   }, [services]);
 
   return (
-    <section className="panel" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+    <section className="panel" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div>
-        <h2 className="panel-title">Services and prices</h2>
-        <p className="panel-sub">Add each cut or treatment. The amount is in Ghana cedis (GHS). People see it on your card.</p>
+        <h2 className="panel-title">Services, prices & duration</h2>
+        <p className="panel-sub">
+          List each service you offer. Customers see the price in Ghana Cedis (GHS) and estimated duration.
+        </p>
       </div>
-      {rows.map((service) => (
-        <div key={service.id} className="service-edit-row">
-          <input
-            type="text"
-            value={service.name}
-            aria-label="Service name"
-            onChange={(e) => setRows((prev) => prev.map((row) => row.id === service.id ? { ...row, name: e.target.value } : row))}
-          />
-          <input
-            type="number"
-            min={0}
-            step="1"
-            value={service.price}
-            aria-label="Price in GHS"
-            onChange={(e) => setRows((prev) => prev.map((row) => row.id === service.id ? { ...row, price: Number(e.target.value) } : row))}
-          />
-          <input
-            type="number"
-            min={5}
-            max={240}
-            value={service.duration}
-            aria-label="Minutes"
-            onChange={(e) => setRows((prev) => prev.map((row) => row.id === service.id ? { ...row, duration: Number(e.target.value) } : row))}
-          />
-          <button type="button" className="btn-secondary" disabled={busy} onClick={() => onSave(service.id, service.name, String(service.price), String(service.duration))}>
-            Save
-          </button>
-          <button type="button" className="btn-secondary" disabled={busy} onClick={() => onRemove(service.id)}>
-            Remove
+
+      {rows.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {/* Column Header */}
+          <div className="service-table-header">
+            <span>Service name</span>
+            <span>Price (Cedis)</span>
+            <span>Duration</span>
+            <span style={{ textAlign: 'center' }}>Save</span>
+            <span style={{ textAlign: 'center' }}>Remove</span>
+          </div>
+
+          {/* Service Rows */}
+          {rows.map((service) => (
+            <div key={service.id} className="service-table-row">
+              <input
+                type="text"
+                value={service.name}
+                placeholder="e.g. Fade"
+                aria-label="Service name"
+                onChange={(e) =>
+                  setRows((prev) =>
+                    prev.map((row) => (row.id === service.id ? { ...row, name: e.target.value } : row))
+                  )
+                }
+              />
+
+              <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                <span
+                  style={{
+                    position: 'absolute',
+                    left: 10,
+                    fontSize: 12,
+                    fontWeight: 700,
+                    color: 'var(--text-muted)',
+                    pointerEvents: 'none',
+                  }}
+                >
+                  GHS
+                </span>
+                <input
+                  type="number"
+                  min={0}
+                  step="1"
+                  value={service.price}
+                  style={{ paddingLeft: 46 }}
+                  aria-label="Price in Ghana Cedis"
+                  onChange={(e) =>
+                    setRows((prev) =>
+                      prev.map((row) => (row.id === service.id ? { ...row, price: Number(e.target.value) } : row))
+                    )
+                  }
+                />
+              </div>
+
+              <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                <input
+                  type="number"
+                  min={5}
+                  max={240}
+                  value={service.duration}
+                  style={{ paddingRight: 42 }}
+                  aria-label="Minutes duration"
+                  onChange={(e) =>
+                    setRows((prev) =>
+                      prev.map((row) => (row.id === service.id ? { ...row, duration: Number(e.target.value) } : row))
+                    )
+                  }
+                />
+                <span
+                  style={{
+                    position: 'absolute',
+                    right: 10,
+                    fontSize: 12,
+                    fontWeight: 600,
+                    color: 'var(--text-muted)',
+                    pointerEvents: 'none',
+                  }}
+                >
+                  min
+                </span>
+              </div>
+
+              <button
+                type="button"
+                className="btn-secondary"
+                disabled={busy}
+                onClick={() => onSave(service.id, service.name, String(service.price), String(service.duration))}
+                style={{ fontSize: 13, minHeight: 38, padding: '4px 10px' }}
+              >
+                Save
+              </button>
+
+              <button
+                type="button"
+                className="btn-secondary"
+                disabled={busy}
+                onClick={() => onRemove(service.id)}
+                style={{
+                  fontSize: 13,
+                  minHeight: 38,
+                  padding: '4px 10px',
+                  color: 'var(--brand-danger)',
+                  borderColor: 'rgba(220, 38, 38, 0.25)',
+                }}
+              >
+                Remove
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Add New Service Card with distinct labels */}
+      <div
+        style={{
+          padding: '16px',
+          borderRadius: 'var(--radius-md)',
+          background: 'var(--surface-2, rgba(0,0,0,0.02))',
+          border: '1.5px dashed var(--border)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 12,
+        }}
+      >
+        <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text-primary)' }}>
+          + Add a new service
+        </span>
+
+        <div className="service-add-grid">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <label style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--text-secondary)' }}>
+              Service Name
+            </label>
+            <input
+              type="text"
+              placeholder="e.g. Skin Fade"
+              value={newService}
+              onChange={(e) => onNewService(e.target.value)}
+            />
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <label style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--text-secondary)' }}>
+              Price (Cedis)
+            </label>
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+              <span
+                style={{
+                  position: 'absolute',
+                  left: 10,
+                  fontSize: 12,
+                  fontWeight: 700,
+                  color: 'var(--text-muted)',
+                  pointerEvents: 'none',
+                }}
+              >
+                GHS
+              </span>
+              <input
+                type="number"
+                min={0}
+                step="1"
+                placeholder="40"
+                value={newPrice}
+                style={{ paddingLeft: 46 }}
+                onChange={(e) => onNewPrice(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <label style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--text-secondary)' }}>
+              How many minutes?
+            </label>
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+              <input
+                type="number"
+                min={5}
+                max={240}
+                placeholder="30"
+                value={newMinutes}
+                style={{ paddingRight: 42 }}
+                onChange={(e) => onNewMinutes(e.target.value)}
+              />
+              <span
+                style={{
+                  position: 'absolute',
+                  right: 10,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  color: 'var(--text-muted)',
+                  pointerEvents: 'none',
+                }}
+              >
+                min
+              </span>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            className="btn-primary"
+            disabled={busy || !newService.trim() || newPrice === ''}
+            onClick={onAdd}
+            style={{ minHeight: 42, padding: '0 20px', whiteSpace: 'nowrap' }}
+          >
+            {busy ? 'Saving…' : '+ Add'}
           </button>
         </div>
-      ))}
-      <div className="service-edit-row">
-        <input type="text" placeholder="New service, e.g. Fade" value={newService} onChange={(e) => onNewService(e.target.value)} />
-        <input type="number" min={0} step="1" placeholder="GHS" value={newPrice} onChange={(e) => onNewPrice(e.target.value)} />
-        <input type="number" min={5} max={240} placeholder="Min" value={newMinutes} onChange={(e) => onNewMinutes(e.target.value)} />
-        <button type="button" className="btn-primary" disabled={busy || !newService.trim() || newPrice === ''} onClick={onAdd}>
-          {busy ? 'Saving…' : 'Add'}
-        </button>
       </div>
-      <p className="muted" style={{ fontSize: 12 }}>Name, price in GHS, then how many minutes it takes.</p>
     </section>
   );
 }
@@ -296,7 +468,7 @@ export default function BarberShopSettingsPage() {
   const creating = !shop;
 
   return (
-    <div className="page-enter" style={{ maxWidth: 560, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 22 }}>
+    <div className="page-enter" style={{ maxWidth: 960, width: '100%', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 22 }}>
       <div className="page-header-row">
         <div>
           <div className="date-pill"><span className="status-dot live" />{todayLabel()}</div>
@@ -467,6 +639,11 @@ export default function BarberShopSettingsPage() {
       )}
 
       <form onSubmit={handleSave} className="panel" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div>
+          <h2 className="panel-title">Shop details</h2>
+          <p className="panel-sub">Name, location, and contact information displayed on your shop card.</p>
+        </div>
+
         <div className="field">
           <label>{copy.shopNameLabel}</label>
           <input
@@ -488,34 +665,38 @@ export default function BarberShopSettingsPage() {
           />
         </div>
 
-        <div className="field">
-          <label>City</label>
-          <input type="text" value={city} onChange={(e) => setCity(e.target.value)} required />
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 14 }}>
+          <div className="field">
+            <label>City</label>
+            <input type="text" value={city} onChange={(e) => setCity(e.target.value)} required />
+          </div>
+
+          <div className="field">
+            <label>Street address</label>
+            <input type="text" value={address} onChange={(e) => setAddress(e.target.value)} required />
+          </div>
         </div>
 
-        <div className="field">
-          <label>Street address</label>
-          <input type="text" value={address} onChange={(e) => setAddress(e.target.value)} required />
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 14 }}>
+          <div className="field">
+            <label>Phone</label>
+            <input type="text" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Optional" />
+          </div>
+
+          <div className="field">
+            <label>{copy.avgLabel}</label>
+            <input
+              type="number"
+              min={10}
+              max={180}
+              value={avgDuration}
+              onChange={(e) => setAvgDuration(Number(e.target.value))}
+            />
+            <span className="muted" style={{ fontSize: 12 }}>People see a wait based on this. A haircut is often 30 minutes.</span>
+          </div>
         </div>
 
-        <div className="field">
-          <label>Phone</label>
-          <input type="text" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Optional" />
-        </div>
-
-        <div className="field">
-          <label>{copy.avgLabel}</label>
-          <input
-            type="number"
-            min={10}
-            max={180}
-            value={avgDuration}
-            onChange={(e) => setAvgDuration(Number(e.target.value))}
-          />
-          <span className="muted" style={{ fontSize: 12 }}>People see a wait based on this. A haircut is often 30 minutes.</span>
-        </div>
-
-        <button type="submit" className="btn-primary" disabled={busy} style={{ marginTop: 4 }}>
+        <button type="submit" className="btn-primary" disabled={busy} style={{ alignSelf: 'flex-start', marginTop: 4 }}>
           {busy ? 'Saving…' : creating ? 'Save and open my line' : 'Save changes'}
         </button>
       </form>
