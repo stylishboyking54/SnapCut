@@ -425,21 +425,12 @@ img { max-width: 100%; height: auto; display: block; }
     padding: 14px !important;
   }
 
-  /* Poster shop cards on mobile */
-  .shop-row {
-    grid-template-columns: 1fr !important;
-    grid-template-rows: auto auto auto !important;
-    grid-template-areas:
-      "media"
-      "body"
-      "actions" !important;
-    border-radius: var(--radius-xl) !important;
+  .shop-grid {
+    gap: 10px !important;
   }
   .shop-row-media {
-    grid-area: media;
-    width: 100% !important;
-    height: 188px !important;
-    min-height: 188px !important;
+    height: 128px !important;
+    min-height: 128px !important;
   }
   .shop-row-body {
     grid-area: body;
@@ -448,7 +439,7 @@ img { max-width: 100%; height: auto; display: block; }
     justify-content: flex-start !important;
   }
   .shop-row-body h3 {
-    font-size: 20px !important;
+    font-size: 16px !important;
     line-height: 1.2 !important;
   }
   .shop-row-body .muted {
@@ -458,13 +449,9 @@ img { max-width: 100%; height: auto; display: block; }
     font-size: 13px !important;
   }
   .shop-row-actions {
-    grid-area: actions;
-    flex-direction: row !important;
-    border-left: none !important;
-    border-top: 1px solid var(--bg-border-subtle);
-    padding: 12px 14px 14px !important;
-    min-width: 0 !important;
-    gap: 10px !important;
+    flex-direction: column !important;
+    padding: 4px 12px 12px !important;
+    gap: 8px !important;
   }
   .shop-row-actions .btn-primary,
   .shop-row-actions .btn-secondary {
@@ -504,10 +491,6 @@ img { max-width: 100%; height: auto; display: block; }
   .live-sync-pill { display: none !important; }
   .live-sync-pill { display: none !important; }
 
-  .shop-row-media {
-    height: 168px !important;
-    min-height: 168px !important;
-  }
   .brand-hero {
     font-size: 24px !important;
   }
@@ -679,10 +662,24 @@ img { max-width: 100%; height: auto; display: block; }
   margin-bottom: 16px;
 }
 
-/* Shop list cards */
+/* Shop cards — two across, photo on top */
+.shop-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  align-items: stretch;
+}
+.shop-grid > .panel {
+  grid-column: 1 / -1;
+}
 .shop-row {
   display: grid;
-  grid-template-columns: 220px 1fr auto;
+  grid-template-columns: 1fr;
+  grid-template-rows: 180px auto auto;
+  grid-template-areas:
+    "media"
+    "body"
+    "actions";
   gap: 0;
   background: var(--bg-surface);
   border: none;
@@ -701,8 +698,9 @@ img { max-width: 100%; height: auto; display: block; }
   transform: scale(1.04);
 }
 .shop-row-media {
-  height: 100%;
-  min-height: 168px;
+  grid-area: media;
+  height: 180px;
+  min-height: 180px;
   position: relative;
   overflow: hidden;
   background: var(--bg-elevated);
@@ -758,21 +756,23 @@ img { max-width: 100%; height: auto; display: block; }
   backdrop-filter: blur(6px);
 }
 .shop-row-body {
-  padding: 18px 20px;
+  grid-area: body;
+  padding: 14px 16px 8px;
   display: flex;
   flex-direction: column;
   gap: 8px;
-  justify-content: center;
+  justify-content: flex-start;
   min-width: 0;
 }
 .shop-row-actions {
-  padding: 18px 16px;
+  grid-area: actions;
+  padding: 8px 14px 14px;
   display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 10px;
-  border-left: 1px solid var(--bg-border-subtle);
-  min-width: 148px;
+  flex-direction: row;
+  justify-content: stretch;
+  gap: 8px;
+  border-left: none;
+  min-width: 0;
 }
 .shop-row-chips {
   display: flex;

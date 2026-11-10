@@ -250,7 +250,7 @@ export default function HomePage() {
         />
       )}
 
-      <div className="list-stack">
+      <div className="shop-grid">
         {shopsLoading && (
           <div className="panel" style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: 14 }}>
             Finding shops nearby…
