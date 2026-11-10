@@ -148,6 +148,14 @@ export default function BarberDashboardPage() {
         <div>
           <div className="date-pill"><span className="status-dot live" />{todayLabel()}</div>
           <h1 style={{ fontSize: 28, fontWeight: 600, marginTop: 10 }}>{hello}</h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
+            <span style={{ fontSize: 13.5, fontWeight: 700, color: '#f59e0b', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              ★ {shop.rating}
+            </span>
+            <span className="muted" style={{ fontSize: 12.5 }}>
+              · {shop.reviewCount} customer {shop.reviewCount === 1 ? 'review' : 'reviews'}
+            </span>
+          </div>
           <p className="secondary" style={{ marginTop: 6, fontSize: 14, maxWidth: 460, lineHeight: 1.45 }}>
             {shop.name}. When you finish someone, tap Finished — call next. Their ticket updates on its own.
           </p>

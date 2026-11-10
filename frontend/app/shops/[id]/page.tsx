@@ -10,6 +10,7 @@ import { Shop, Service, QueueItem } from '@/lib/types';
 import { CoffeeIcon } from '@/components/ui/Icons';
 import CountUp from '@/components/ui/CountUp';
 import ShopFilm from '@/components/ui/ShopFilm';
+import RatingModal from '@/components/reviews/RatingModal';
 
 const RouteMap = dynamic(() => import('@/components/map/RouteMap'), {
   ssr: false,
@@ -47,6 +48,7 @@ function ShopDetailContent() {
   const [isJoining, setIsJoining] = useState(false);
   const [joinedShopId, setJoinedShopId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [ratingModalOpen, setRatingModalOpen] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -198,9 +200,25 @@ function ShopDetailContent() {
               </a>
             ) : null}
           </div>
-          <p className="muted" style={{ fontSize: 13 }}>
-            ★ {shop.rating} ({shop.reviewCount}) · {shop.phone}
-          </p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+            <p className="muted" style={{ fontSize: 13, margin: 0 }}>
+              ★ {shop.rating} ({shop.reviewCount} {shop.reviewCount === 1 ? 'review' : 'reviews'}) · {shop.phone}
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                if (!getSession()) {
+                  requestSignIn('Sign in to rate this shop');
+                  return;
+                }
+                setRatingModalOpen(true);
+              }}
+              className="btn-secondary"
+              style={{ fontSize: 11.5, minHeight: 28, padding: '2px 10px', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+            >
+              ⭐ Rate shop
+            </button>
+          </div>
 
           <div style={{ display: 'flex', gap: 20, marginTop: 8 }}>
             <div>
@@ -465,7 +483,24 @@ function ShopDetailContent() {
           autoLocate={true}
         />
       </div>
-
+      {ratingModalOpen && (
+        <RatingModal
+          shopId={shop.id}
+          shopName={shop.name}
+          isOpen={ratingModalOpen}
+          onClose={() => setRatingModalOpen(false)}
+          onSubmitted={(newStars) => {
+            setShop((prev) => {
+              if (!prev) return null;
+              const currentRating = Number(prev.rating) || 5;
+              const currentCount = Number(prev.reviewCount) || 0;
+              const newCount = currentCount + 1;
+              const calculated = Math.round(((currentRating * currentCount + newStars) / newCount) * 10) / 10;
+              return { ...prev, rating: calculated, reviewCount: newCount };
+            });
+          }}
+        />
+      )}
     </div>
   );
 }
