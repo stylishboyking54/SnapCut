@@ -44,9 +44,11 @@ export default function LocationPicker({ lat, lng, onChange }: LocationPickerPro
       mapInstance.current = map;
 
       // Clean OpenStreetMap tiles
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; OpenStreetMap contributors',
-        maxZoom: 19,
+      // Authentic Google Maps Roadmap tiles
+      L.tileLayer('https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+        subdomains: ['0', '1', '2', '3'],
+        maxZoom: 20,
+        attribution: '&copy; Google Maps',
       }).addTo(map);
 
       // Custom draggable red pin
