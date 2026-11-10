@@ -106,7 +106,7 @@ export default function Navbar({
         {(currentRole === 'barber' || currentRole === 'salon') && (
           <Link
             href="/barber/emergency"
-            className="btn-secondary"
+            className="btn-secondary top-shift"
             style={{
               minHeight: 30,
               padding: '4px 10px',

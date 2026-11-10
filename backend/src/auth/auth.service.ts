@@ -70,6 +70,27 @@ export class AuthService {
    * profile as customer via trigger before we get here).
    * Never demote admin.
    */
+  async updateProfile(userId: string, dto: { full_name?: string; phone?: string }) {
+    const patch: { full_name?: string; phone?: string | null } = {};
+    if (typeof dto.full_name === 'string' && dto.full_name.trim()) {
+      patch.full_name = dto.full_name.trim();
+    }
+    if (typeof dto.phone === 'string') {
+      patch.phone = dto.phone.trim() || null;
+    }
+    if (!Object.keys(patch).length) {
+      throw new BadRequestException('Add a name or phone number');
+    }
+    const { data, error } = await this.supabase
+      .from('profiles')
+      .update(patch)
+      .eq('id', userId)
+      .select()
+      .single();
+    if (error) throw new BadRequestException(error.message || 'Could not save your profile');
+    return data;
+  }
+
   async setRole(userId: string, role: 'customer' | 'barber' | 'salon') {
     const { data: existing } = await this.supabase
       .from('profiles')

@@ -176,7 +176,7 @@ function ShopDetailContent() {
         </div>
       </section>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 20 }}>
+      <div className="fit-grid">
         <div className="panel">
           <div style={{ marginBottom: 14 }}>
             <h2 className="panel-title" style={{ marginBottom: 0 }}>Who&apos;s ahead</h2>

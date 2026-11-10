@@ -499,6 +499,21 @@ img { max-width: 100%; height: auto; display: block; }
     display: none !important;
   }
 
+  .top-shift { display: none !important; }
+  .account-menu { width: min(240px, calc(100vw - 36px)); }
+  .role-welcome {
+    align-items: flex-start;
+    overflow-y: auto;
+    padding: 16px 12px;
+  }
+  .role-welcome-card { padding: 22px 16px; }
+  .queue-ticket-header { flex-direction: column; align-items: flex-start; }
+  .week-card-stats { flex-wrap: wrap; gap: 12px; }
+  .profile-stat { padding: 10px 6px; }
+  .profile-stat b { font-size: 16px; }
+  .profile-stat span { font-size: 11px; line-height: 1.25; }
+  .fit-grid { gap: 12px !important; }
+
   .page-header-row .btn-secondary {
     min-height: 38px !important;
     font-size: 13px !important;
@@ -1086,6 +1101,11 @@ img { max-width: 100%; height: auto; display: block; }
 }
 .account-menu a:hover,
 .account-menu button:hover { background: var(--bg-elevated); }
+.fit-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+  gap: 16px;
+}
 .profile-grid {
   display: grid;
   grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);

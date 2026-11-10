@@ -26,6 +26,16 @@ class LoginDto {
   password: string;
 }
 
+class ProfileDto {
+  @IsOptional()
+  @IsString()
+  full_name?: string;
+
+  @IsOptional()
+  @IsString()
+  phone?: string;
+}
+
 class OAuthSyncDto {
   @IsOptional()
   @IsEnum(['customer', 'barber', 'salon'])
@@ -59,6 +69,12 @@ export class AuthController {
   setRole(@Req() req: any, @Body() dto: OAuthSyncDto) {
     if (!dto.role) throw new UnauthorizedException('Pick customer, barber, or salon');
     return this.authService.setRole(req.user.id, dto.role);
+  }
+
+  @Post('profile')
+  @UseGuards(SupabaseAuthGuard)
+  updateProfile(@Req() req: any, @Body() dto: ProfileDto) {
+    return this.authService.updateProfile(req.user.id, dto);
   }
 
   @Post('logout')

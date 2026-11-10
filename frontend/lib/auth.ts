@@ -210,6 +210,23 @@ export function takePendingRole(fallback?: AuthRole): AuthRole | null {
   return null;
 }
 
+export async function updateMyProfile(input: { full_name: string; phone: string }) {
+  const res = await fetch(`${getApiBaseUrl()}/auth/profile`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify(input),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.message || 'Could not save your profile');
+  const session = getSession();
+  if (session) {
+    session.profile.full_name = data.full_name || input.full_name;
+    session.profile.phone = data.phone ?? input.phone;
+    saveSession(session);
+  }
+  return data;
+}
+
 export async function setAccountRole(role: 'customer' | 'barber' | 'salon') {
   const res = await fetch(`${getApiBaseUrl()}/auth/role`, {
     method: 'POST',

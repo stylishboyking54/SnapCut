@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { AuthSession, getSession, logout } from '@/lib/auth';
+import { AuthSession, getSession, logout, updateMyProfile } from '@/lib/auth';
 import { getBookingRows } from '@/lib/api';
 import { summarizeWeek } from '@/lib/weekStats';
 import CountUp from '@/components/ui/CountUp';
@@ -14,10 +14,17 @@ export default function ProfilePage() {
   const [ready, setReady] = useState(false);
   const [visits, setVisits] = useState(0);
   const [minutes, setMinutes] = useState(0);
+  const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
 
   useEffect(() => {
     const sync = () => {
-      setSession(getSession());
+      const next = getSession();
+      setSession(next);
+      setName(next?.profile.full_name || '');
+      setPhone(next?.profile.phone || '');
       setReady(true);
     };
     sync();
@@ -35,6 +42,24 @@ export default function ProfilePage() {
       })
       .catch(() => undefined);
   }, [session]);
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim()) {
+      setNotice('Add your name so shops know who joined.');
+      return;
+    }
+    setBusy(true);
+    setNotice(null);
+    try {
+      await updateMyProfile({ full_name: name.trim(), phone: phone.trim() });
+      setNotice('Saved. Shops will see this name.');
+    } catch (err) {
+      setNotice(err instanceof Error ? err.message : 'Could not save');
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const handleLogout = async () => {
     await logout();
@@ -102,32 +127,35 @@ export default function ProfilePage() {
           </div>
         </section>
 
-        <section className="panel" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <form className="panel" style={{ display: 'flex', flexDirection: 'column', gap: 14 }} onSubmit={handleSave}>
           <div>
             <h2 className="panel-title">About you</h2>
-            <p className="panel-sub">Shops see this name when you join. You cannot change it on this screen yet.</p>
+            <p className="panel-sub">Change your name or phone, then tap Save. Shops see this when you join a line.</p>
           </div>
           <div className="field">
             <label>Full name</label>
-            <input readOnly value={session.profile.full_name} />
+            <input value={name} onChange={(e) => setName(e.target.value)} required />
           </div>
           <div className="field">
             <label>Email</label>
             <input readOnly value={session.email} />
+            <span className="muted" style={{ fontSize: 12 }}>This is the email you use to sign in.</span>
           </div>
           <div className="field">
             <label>Phone</label>
-            <input readOnly value={session.profile.phone || 'Not added'} />
+            <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Optional" inputMode="tel" />
           </div>
+          {notice && <p style={{ fontSize: 13.5, fontWeight: 650 }}>{notice}</p>}
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <button type="submit" className="btn-primary" disabled={busy}>{busy ? 'Saving…' : 'Save'}</button>
             {isPro ? (
-              <Link href="/barber/shop" className="btn-primary">Edit my shop</Link>
+              <Link href="/barber/shop" className="btn-secondary">Edit my shop</Link>
             ) : (
-              <Link href="/bookings" className="btn-primary">See my ticket</Link>
+              <Link href="/bookings" className="btn-secondary">See my ticket</Link>
             )}
             <button type="button" className="btn-secondary" onClick={handleLogout}>Sign out</button>
           </div>
-        </section>
+        </form>
       </div>
     </div>
   );

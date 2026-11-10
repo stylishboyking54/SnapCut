@@ -152,7 +152,7 @@ export default function BarberSchedulePage() {
         </div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 18 }}>
+      <div className="fit-grid">
         <section className="panel">
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
             <CoffeeIcon size={16} />
