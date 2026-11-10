@@ -60,40 +60,33 @@ export default function Navbar({
 
   return (
     <header className="topbar">
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px', minWidth: 0 }}>
-        <span className="topbar-wordmark" style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 600, letterSpacing: '-0.02em' }}>
-          Snapcut
+      <Link href="/" className="top-brand">
+        <span className="top-mark" aria-hidden>S</span>
+        <span>
+          <strong className="topbar-wordmark">Snapcut</strong>
+          <em className="live-sync-pill">Live line</em>
         </span>
-        <span
-          className="live-sync-pill"
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '5px',
-            fontSize: '11px',
-            fontWeight: 600,
-            color: 'var(--brand-success)',
-          }}
-        >
-          <span className="status-dot live" />
-          Live
-        </span>
-      </div>
+      </Link>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+      <div className="top-tools">
         <button type="button" className="icon-btn" title="Search" aria-label="Search" onClick={() => setSearchOpen(true)}>
           <SearchIcon size={16} />
         </button>
         <button
           type="button"
-          role="switch"
-          className={`theme-switch ${isInk ? 'on' : ''}`}
-          aria-checked={isInk}
-          aria-label={isInk ? 'Dark mode on' : 'Dark mode off'}
-          title={isInk ? 'Ink' : 'Paper'}
-          onClick={toggleTheme}
+          className={`icon-btn theme-orb ${isInk ? '' : 'on'}`}
+          aria-label="Light theme"
+          onClick={() => isInk && toggleTheme()}
         >
-          <span className="theme-switch-knob" />
+          ☀
+        </button>
+        <button
+          type="button"
+          className={`icon-btn theme-orb ${isInk ? 'on' : ''}`}
+          aria-label="Dark theme"
+          onClick={() => !isInk && toggleTheme()}
+        >
+          ☾
         </button>
 
         {(currentRole === 'barber' || currentRole === 'salon') && (
@@ -113,7 +106,7 @@ export default function Navbar({
           </Link>
         )}
 
-        <Link href="/notifications" className="icon-btn" title="Notifications">
+        <Link href="/notifications" className="icon-btn" title="Notifications" style={{ marginLeft: 4 }}>
           <BellIcon size={14} />
           {notificationCount > 0 && <span className="notif-dot">{notificationCount}</span>}
         </Link>
