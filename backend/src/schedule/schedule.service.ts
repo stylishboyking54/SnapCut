@@ -1,4 +1,4 @@
-import { Injectable, Inject } from '@nestjs/common';
+import { Injectable, Inject, ForbiddenException } from '@nestjs/common';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { SUPABASE_ADMIN } from '../supabase/supabase.module';
 
@@ -18,8 +18,15 @@ export class ScheduleService {
     return data;
   }
 
-  async setWorkingHours(shopId: string, hours: { day_of_week: number; start_time: string; end_time: string }[]) {
-    // Replace all working hours for the shop
+  async setWorkingHours(
+    shopId: string,
+    hours: { day_of_week: number; start_time: string; end_time: string }[],
+    ownerId?: string,
+  ) {
+    if (ownerId) {
+      const { data: shop } = await this.supabase.from('shops').select('owner_id').eq('id', shopId).single();
+      if (!shop || shop.owner_id !== ownerId) throw new ForbiddenException('Not your shop');
+    }
     await this.supabase.from('working_hours').delete().eq('shop_id', shopId);
     const { data, error } = await this.supabase
       .from('working_hours')

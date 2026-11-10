@@ -84,20 +84,38 @@ export default function BarberSchedulePage() {
     }
   };
 
-  const handleToggleDay = async (dayOfWeek: number) => {
+  const saveHours = async (next: WorkingHour[], message: string) => {
     if (!shop) return;
-    const next = workingHours.map((wh) =>
-      wh.dayOfWeek === dayOfWeek ? { ...wh, isOpen: !wh.isOpen } : wh
-    );
+    const previous = workingHours;
     setWorkingHours(next);
     try {
       await saveShopHours(shop.id, next);
-      const day = next.find((wh) => wh.dayOfWeek === dayOfWeek);
-      showNotification(day?.isOpen ? `${day.dayName} is open.` : `${day?.dayName || 'That day'} is closed.`);
+      showNotification(message);
     } catch (err) {
-      setWorkingHours(workingHours);
+      setWorkingHours(previous);
       showNotification(err instanceof Error ? err.message : 'Could not save hours');
     }
+  };
+
+  const handleToggleDay = (dayOfWeek: number) => {
+    const next = workingHours.map((wh) =>
+      wh.dayOfWeek === dayOfWeek ? { ...wh, isOpen: !wh.isOpen } : wh
+    );
+    const day = next.find((wh) => wh.dayOfWeek === dayOfWeek);
+    void saveHours(next, day?.isOpen ? `${day.dayName} is open, ${day.startTime} to ${day.endTime}.` : `${day?.dayName || 'That day'} is closed.`);
+  };
+
+  const handleTime = (dayOfWeek: number, field: 'startTime' | 'endTime', value: string) => {
+    const next = workingHours.map((wh) =>
+      wh.dayOfWeek === dayOfWeek ? { ...wh, [field]: value } : wh
+    );
+    const day = next.find((wh) => wh.dayOfWeek === dayOfWeek);
+    if (day && day.startTime >= day.endTime) {
+      setWorkingHours(next);
+      showNotification('Close time has to be later than open time.');
+      return;
+    }
+    void saveHours(next, `${day?.dayName} is ${day?.startTime} to ${day?.endTime}.`);
   };
 
   if (loading) {
@@ -129,7 +147,7 @@ export default function BarberSchedulePage() {
           <div className="date-pill"><span className="status-dot live" />{todayLabel()}</div>
           <h1 style={{ fontSize: 28, fontWeight: 600, marginTop: 10 }}>{timeGreeting(getSession()?.profile.full_name)}</h1>
           <p className="secondary" style={{ marginTop: 6, fontSize: 14, maxWidth: 460, lineHeight: 1.45 }}>
-            Open hours for {shop.name}. Tap a day to open or close it. Add a break when you step away.
+            Open hours for {shop.name}. Turn a day on, then set when you open and when you close.
           </p>
         </div>
         <Link href="/barber/dashboard" className="btn-secondary" style={{ fontSize: 12.5 }}>
@@ -238,41 +256,52 @@ export default function BarberSchedulePage() {
 
       <section className="panel">
         <h2 className="panel-title">Days you work</h2>
-        <p className="panel-sub">Green means people can join that day. Closed means they will not see you.</p>
+        <p className="panel-sub">Turn a day on, then change the open and close times. Closed days are hidden from customers.</p>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 8 }}>
+        <div className="fit-grid">
           {workingHours.map((wh) => (
             <div
               key={wh.dayOfWeek}
               style={{
                 display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: '10px 12px',
+                flexDirection: 'column',
+                gap: 10,
+                padding: '12px',
                 borderRadius: 'var(--radius-sm)',
                 border: '1px solid var(--bg-border)',
-                opacity: wh.isOpen ? 1 : 0.55,
+                opacity: wh.isOpen ? 1 : 0.7,
               }}
             >
-              <div>
-                <div style={{ fontWeight: 650, fontSize: 13.5 }}>{wh.dayName}</div>
-                <div className="muted" style={{ fontSize: 12 }}>
-                  {wh.isOpen ? `${wh.startTime}–${wh.endTime}` : 'Closed'}
-                </div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                <div style={{ fontWeight: 650, fontSize: 14 }}>{['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][wh.dayOfWeek]}</div>
+                <button
+                  type="button"
+                  onClick={() => handleToggleDay(wh.dayOfWeek)}
+                  className="btn-secondary"
+                  style={{
+                    fontSize: 12,
+                    minHeight: 32,
+                    padding: '4px 10px',
+                    color: wh.isOpen ? 'var(--brand-success)' : 'var(--text-muted)',
+                  }}
+                >
+                  {wh.isOpen ? 'Open' : 'Closed'}
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={() => handleToggleDay(wh.dayOfWeek)}
-                className="btn-secondary"
-                style={{
-                  fontSize: 11,
-                  minHeight: 28,
-                  padding: '3px 8px',
-                  color: wh.isOpen ? 'var(--brand-success)' : 'var(--text-muted)',
-                }}
-              >
-                {wh.isOpen ? 'Open' : 'Closed'}
-              </button>
+              {wh.isOpen ? (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                  <div className="field">
+                    <label>Opens</label>
+                    <input type="time" value={wh.startTime} onChange={(e) => handleTime(wh.dayOfWeek, 'startTime', e.target.value)} />
+                  </div>
+                  <div className="field">
+                    <label>Closes</label>
+                    <input type="time" value={wh.endTime} onChange={(e) => handleTime(wh.dayOfWeek, 'endTime', e.target.value)} />
+                  </div>
+                </div>
+              ) : (
+                <p className="muted" style={{ fontSize: 12.5 }}>People cannot join on this day.</p>
+              )}
             </div>
           ))}
         </div>
