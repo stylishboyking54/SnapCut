@@ -312,7 +312,9 @@ img { max-width: 100%; height: auto; display: block; }
   align-items: center;
   gap: 8px;
   flex-shrink: 0;
+  min-width: 0;
 }
+.topbar { overflow: visible; }
 .theme-orb.on {
   background: var(--brand-primary);
   color: var(--brand-primary-text);
@@ -454,6 +456,8 @@ img { max-width: 100%; height: auto; display: block; }
     font-size: 10px !important;
     padding: 3px 6px !important;
   }
+  .shop-row-badge { left: 6px; bottom: 6px; max-width: calc(100% - 12px); }
+  .shop-row-rating { top: 6px; right: 6px; }
   .shop-row-body {
     grid-area: body;
     padding: 8px 8px 2px !important;
@@ -1061,17 +1065,18 @@ img { max-width: 100%; height: auto; display: block; }
   min-height: 96px;
   font-size: 28px;
 }
-.account-wrap { position: relative; }
+.account-wrap { position: relative; z-index: 40; }
 .account-menu {
   position: absolute;
-  top: calc(100% + 10px);
+  top: calc(100% + 14px);
   right: 0;
-  width: 240px;
+  width: min(260px, calc(100vw - 24px));
   background: var(--bg-surface);
   border-radius: 18px;
   box-shadow: var(--card-shadow-hover);
   padding: 8px;
-  z-index: 30;
+  z-index: 80;
+  overflow: hidden;
   animation: finderIn 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 .account-menu-head {
@@ -1079,10 +1084,18 @@ img { max-width: 100%; height: auto; display: block; }
   align-items: center;
   gap: 10px;
   padding: 8px 8px 10px;
+  min-width: 0;
 }
-.account-menu-head strong { display: block; font-size: 14px; }
+.account-menu-head > div { min-width: 0; flex: 1; }
+.account-menu-head strong,
 .account-menu-head em {
   display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.account-menu-head strong { font-size: 14px; }
+.account-menu-head em {
   font-style: normal;
   font-size: 12px;
   color: var(--text-muted);

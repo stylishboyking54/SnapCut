@@ -92,7 +92,7 @@ export default function Navbar({
           aria-label="Light theme"
           onClick={() => isInk && toggleTheme()}
         >
-          ☀
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden><circle cx="12" cy="12" r="4" stroke="currentColor" strokeWidth="1.8"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>
         </button>
         <button
           type="button"
@@ -100,7 +100,7 @@ export default function Navbar({
           aria-label="Dark theme"
           onClick={() => !isInk && toggleTheme()}
         >
-          ☾
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden><path d="M16 13.2A6.2 6.2 0 0 1 10.8 8 6.2 6.2 0 1 0 16 13.2Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/></svg>
         </button>
 
         {(currentRole === 'barber' || currentRole === 'salon') && (
@@ -144,7 +144,7 @@ export default function Navbar({
           {accountOpen && (
             <div className="account-menu" role="menu">
               <div className="account-menu-head">
-                <span className="avatar-chip lg">
+                <span className="avatar-chip">
                   {session.profile.avatar_url ? <img src={session.profile.avatar_url} alt="" /> : initials || 'SC'}
                 </span>
                 <div>
