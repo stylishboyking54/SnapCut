@@ -129,7 +129,7 @@ function ShopDetailContent() {
 
       <section style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.1fr) minmax(0, 1fr)', gap: 24, alignItems: 'start' }} className="shop-detail-hero">
         <div>
-          <div style={{ height: 220, borderRadius: 'var(--radius-lg)', overflow: 'hidden', border: '1px solid var(--bg-border)' }}>
+          <div className="shop-cover">
             <img src={shop.coverImage} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           </div>
         </div>

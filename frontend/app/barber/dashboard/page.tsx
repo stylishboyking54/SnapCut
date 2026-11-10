@@ -155,8 +155,9 @@ export default function BarberDashboardPage() {
     <div className="page-enter" style={{ maxWidth: 960, width: '100%', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 22 }}>
       <div className="page-header-row">
         <div>
-          <div className="eyebrow">{todayLabel()} · {shop.name}</div>
-          <h1 style={{ fontSize: 28, fontWeight: 600, marginTop: 4 }}>{hello}</h1>
+          <div className="date-pill"><span className="status-dot live" />{todayLabel()}</div>
+          <h1 style={{ fontSize: 28, fontWeight: 600, marginTop: 10 }}>{hello}</h1>
+          <p className="secondary" style={{ marginTop: 6, fontSize: 14 }}>{shop.name}</p>
         </div>
 
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>

@@ -6,6 +6,7 @@ import { AppNotification } from '@/lib/types';
 import { getSession } from '@/lib/auth';
 import { getMyNotifications, markNotificationsRead } from '@/lib/api';
 import { ClockIcon, AlertTriangleIcon } from '@/components/ui/Icons';
+import { timeGreeting, todayLabel } from '@/lib/greeting';
 
 export default function NotificationsPage() {
   const [signedIn, setSignedIn] = useState(false);
@@ -60,9 +61,10 @@ export default function NotificationsPage() {
     <div className="page-enter" style={{ maxWidth: 680, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 22 }}>
       <div className="page-header-row">
         <div>
-          <h1 style={{ fontSize: 28, fontWeight: 600 }}>Alerts</h1>
+          <div className="date-pill"><span className="status-dot live" />{todayLabel()}</div>
+          <h1 style={{ fontSize: 28, fontWeight: 600, marginTop: 10 }}>{timeGreeting(getSession()?.profile.full_name)}</h1>
           <p className="secondary" style={{ fontSize: 14, marginTop: 6 }}>
-            Queue moves, delays, and shop notices.
+            Alerts for queue moves and delays.
           </p>
         </div>
 

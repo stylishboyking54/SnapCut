@@ -401,9 +401,9 @@ img { max-width: 100%; height: auto; display: block; }
   }
   .page-header-row .btn-secondary,
   .page-header-row .btn-primary {
-    width: 100% !important;
+    width: auto !important;
     justify-content: center !important;
-    min-height: 38px !important;
+    min-height: 34px !important;
   }
 
   h1 { font-size: 22px !important; }
@@ -1082,6 +1082,21 @@ img { max-width: 100%; height: auto; display: block; }
   gap: 16px;
   align-items: start;
 }
+.shop-cover {
+  height: 220px;
+  border-radius: 22px;
+  overflow: hidden;
+}
+.split-2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  align-items: stretch;
+}
+@media (max-width: 800px) {
+  .split-2 { grid-template-columns: 1fr; }
+}
+
 .profile-hero {
   text-align: center;
   display: flex;

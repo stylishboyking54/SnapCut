@@ -1,15 +1,23 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { INITIAL_SHOPS } from '@/lib/mockData';
+import { getShops } from '@/lib/api';
 import { Shop } from '@/lib/types';
 import { CompassIcon } from '@/components/ui/Icons';
+import { todayLabel } from '@/lib/greeting';
 
 export default function MapPage() {
-  const [shops] = useState<Shop[]>(INITIAL_SHOPS);
-  const [selectedShop, setSelectedShop] = useState<Shop>(INITIAL_SHOPS[0]);
+  const [shops, setShops] = useState<Shop[]>([]);
+  const [selectedShop, setSelectedShop] = useState<Shop | null>(null);
   const [recommendedId, setRecommendedId] = useState<string | null>(null);
+
+  useEffect(() => {
+    getShops().then((rows) => {
+      setShops(rows);
+      setSelectedShop((current) => current ?? rows[0] ?? null);
+    }).catch(() => setShops([]));
+  }, []);
 
   const handleFindOptimal = () => {
     const sorted = [...shops].sort((a, b) => {
@@ -18,6 +26,7 @@ export default function MapPage() {
       return scoreA - scoreB;
     });
     const best = sorted[0];
+    if (!best) return;
     setSelectedShop(best);
     setRecommendedId(best.id);
   };
@@ -26,8 +35,8 @@ export default function MapPage() {
     <div className="page-enter" style={{ maxWidth: 1040, width: '100%', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 22 }}>
       <div className="page-header-row">
         <div>
-          <div className="eyebrow">Around you</div>
-          <h1 style={{ fontSize: 28, fontWeight: 600, marginTop: 4 }}>Map</h1>
+          <div className="date-pill"><span className="status-dot live" />{todayLabel()}</div>
+          <h1 style={{ fontSize: 28, fontWeight: 600, marginTop: 10 }}>Map</h1>
           <p className="secondary" style={{ marginTop: 6, fontSize: 14 }}>
             Tap a shop to see wait times before you walk.
           </p>
@@ -39,7 +48,14 @@ export default function MapPage() {
         </button>
       </div>
 
-      {recommendedId && (
+      {!selectedShop && (
+        <div className="panel" style={{ textAlign: 'center', padding: 28 }}>
+          <div style={{ fontWeight: 650 }}>No shops on the map yet</div>
+          <p className="muted" style={{ marginTop: 8, fontSize: 13.5 }}>They show up here once a barber or salon opens a line.</p>
+        </div>
+      )}
+
+      {recommendedId && selectedShop && (
         <div
           style={{
             padding: '12px 16px',
@@ -54,10 +70,10 @@ export default function MapPage() {
         </div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 18 }}>
+      {selectedShop && <div className="split-2">
         <div
           style={{
-            minHeight: 420,
+            minHeight: 280,
             background: 'var(--bg-elevated)',
             border: '1px solid var(--bg-border)',
             borderRadius: 'var(--radius-lg)',
@@ -225,7 +241,7 @@ export default function MapPage() {
             See queue & join
           </Link>
         </div>
-      </div>
+      </div>}
     </div>
   );
 }

@@ -7,6 +7,7 @@ import { cancelBooking, getMyBookings } from '@/lib/api';
 import { getSession } from '@/lib/auth';
 import { subscribeBookings } from '@/lib/realtime';
 import { ClockIcon, MapPinIcon, ScissorsIcon } from '@/components/ui/Icons';
+import { timeGreeting, todayLabel } from '@/lib/greeting';
 import CountUp from '@/components/ui/CountUp';
 
 export default function BookingsPage() {
@@ -111,8 +112,9 @@ export default function BookingsPage() {
     <div className="page-enter" style={{ maxWidth: 720, width: '100%', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 24 }}>
       <div className="page-header-row">
         <div>
-          <div className="eyebrow">Your place in line</div>
-          <h1 style={{ fontSize: 28, fontWeight: 600, marginTop: 4 }}>Ticket</h1>
+          <div className="date-pill"><span className="status-dot live" />{todayLabel()}</div>
+          <h1 style={{ fontSize: 28, fontWeight: 600, marginTop: 10 }}>{timeGreeting(getSession()?.profile.full_name)}</h1>
+          <p className="secondary" style={{ marginTop: 6, fontSize: 14 }}>Your ticket</p>
         </div>
 
         <button
