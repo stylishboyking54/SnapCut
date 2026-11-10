@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { BellIcon, AlertTriangleIcon, SearchIcon } from '@/components/ui/Icons';
-import { AuthSession, getSession } from '@/lib/auth';
+import { AuthSession, getSession, logout, requestSignIn } from '@/lib/auth';
 import SearchPalette from '@/components/layout/SearchPalette';
 
 export type ThemeType = 'paper' | 'ink';
@@ -20,6 +20,7 @@ export default function Navbar({
   const [currentTheme, setCurrentTheme] = useState<ThemeType>('paper');
   const [session, setSession] = useState<AuthSession | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [accountOpen, setAccountOpen] = useState(false);
   const isInk = currentTheme === 'ink';
 
   useEffect(() => {
@@ -39,12 +40,25 @@ export default function Navbar({
     };
     window.addEventListener('snapcut-search', onSearch);
     window.addEventListener('keydown', onKey);
+    const close = () => setAccountOpen(false);
+    window.addEventListener('snapcut-auth', close);
     return () => {
       window.removeEventListener('snapcut-auth', sync);
+      window.removeEventListener('snapcut-auth', close);
       window.removeEventListener('snapcut-search', onSearch);
       window.removeEventListener('keydown', onKey);
     };
   }, []);
+
+  useEffect(() => {
+    if (!accountOpen) return;
+    const onDown = (e: MouseEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (!target?.closest('.account-wrap')) setAccountOpen(false);
+    };
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, [accountOpen]);
 
   const name = session?.profile.full_name || '';
   const initials = name
@@ -110,19 +124,62 @@ export default function Navbar({
           <BellIcon size={14} />
           {notificationCount > 0 && <span className="notif-dot">{notificationCount}</span>}
         </Link>
-        <Link
-          href="/profile"
-          className="avatar-chip"
-          title={name || 'Profile'}
-          aria-label={name ? `${name} — account` : 'Account'}
-        >
-          {session?.profile.avatar_url ? (
-            <img src={session.profile.avatar_url} alt="" />
-          ) : (
-            initials || '·'
+        <div className="account-wrap">
+          <button
+            type="button"
+            className="avatar-chip"
+            title={name || 'Account'}
+            aria-label={name ? `${name} — account` : 'Account'}
+            aria-expanded={accountOpen}
+            onClick={() => setAccountOpen((v) => !v)}
+          >
+            {session?.profile.avatar_url ? (
+              <img src={session.profile.avatar_url} alt="" />
+            ) : (
+              initials || '·'
+            )}
+            {session && <span className="avatar-live" />}
+          </button>
+          {accountOpen && (
+            <div className="account-menu" role="menu">
+              <div className="account-menu-head">
+                <span className="avatar-chip lg">
+                  {session?.profile.avatar_url ? <img src={session.profile.avatar_url} alt="" /> : initials || '·'}
+                </span>
+                <div>
+                  <strong>{name || 'Guest'}</strong>
+                  <em>{session?.email || 'Not signed in'}</em>
+                </div>
+              </div>
+              <Link href="/profile" role="menuitem" onClick={() => setAccountOpen(false)}>My profile</Link>
+              <Link href="/bookings" role="menuitem" onClick={() => setAccountOpen(false)}>Ticket</Link>
+              <Link href="/notifications" role="menuitem" onClick={() => setAccountOpen(false)}>Alerts</Link>
+              {session ? (
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setAccountOpen(false);
+                    void logout();
+                  }}
+                >
+                  Sign out
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setAccountOpen(false);
+                    requestSignIn('Sign in to your Snapcut account.');
+                  }}
+                >
+                  Sign in
+                </button>
+              )}
+            </div>
           )}
-          {session && <span className="avatar-live" />}
-        </Link>
+        </div>
       </div>
       {searchOpen && <SearchPalette onClose={() => setSearchOpen(false)} />}
     </header>

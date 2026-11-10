@@ -994,12 +994,91 @@ img { max-width: 100%; height: auto; display: block; }
   height: 40px;
   border-radius: 50%;
   background: #efe6df;
-  color: var(--text-primary);
+  color: #141416;
   display: grid;
   place-items: center;
   font-size: 13px;
   font-weight: 700;
   box-shadow: inset 0 0 0 1px rgba(20, 20, 24, 0.08);
+  padding: 0;
+}
+.avatar-chip.lg {
+  width: 88px;
+  height: 88px;
+  font-size: 28px;
+}
+.account-wrap { position: relative; }
+.account-menu {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  width: 240px;
+  background: var(--bg-surface);
+  border-radius: 18px;
+  box-shadow: var(--card-shadow-hover);
+  padding: 8px;
+  z-index: 30;
+  animation: finderIn 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.account-menu-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 8px 10px;
+}
+.account-menu-head strong { display: block; font-size: 14px; }
+.account-menu-head em {
+  display: block;
+  font-style: normal;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.account-menu a,
+.account-menu button {
+  width: 100%;
+  display: block;
+  text-align: left;
+  background: transparent;
+  border: none;
+  border-radius: 12px;
+  padding: 10px 12px;
+  font-size: 14px;
+  font-weight: 650;
+  color: var(--text-primary);
+}
+.account-menu a:hover,
+.account-menu button:hover { background: var(--bg-elevated); }
+.profile-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  gap: 16px;
+  align-items: start;
+}
+.profile-hero {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 28px 18px 20px;
+}
+.profile-hero h2 { font-size: 26px; margin-top: 6px; }
+.profile-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  width: 100%;
+  margin-top: 14px;
+}
+.profile-stat {
+  background: var(--bg-elevated);
+  border-radius: 16px;
+  padding: 12px 8px;
+}
+.profile-stat b { display: block; font-size: 18px; }
+.profile-stat span { font-size: 12px; color: var(--text-muted); font-weight: 650; }
+@media (max-width: 800px) {
+  .profile-grid { grid-template-columns: 1fr; }
 }
 .avatar-chip {
   position: relative;

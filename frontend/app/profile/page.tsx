@@ -3,16 +3,17 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import {
-  AuthSession,
-  getSession,
-  logout,
-} from '@/lib/auth';
+import { AuthSession, getSession, logout } from '@/lib/auth';
+import { getBookingRows } from '@/lib/api';
+import { summarizeWeek } from '@/lib/weekStats';
+import CountUp from '@/components/ui/CountUp';
 
 export default function ProfilePage() {
   const router = useRouter();
   const [session, setSession] = useState<AuthSession | null>(null);
   const [ready, setReady] = useState(false);
+  const [visits, setVisits] = useState(0);
+  const [minutes, setMinutes] = useState(0);
 
   useEffect(() => {
     const sync = () => {
@@ -23,6 +24,17 @@ export default function ProfilePage() {
     window.addEventListener('snapcut-auth', sync);
     return () => window.removeEventListener('snapcut-auth', sync);
   }, []);
+
+  useEffect(() => {
+    if (!session) return;
+    getBookingRows()
+      .then((rows) => {
+        const week = summarizeWeek(rows);
+        setVisits(week.visits);
+        setMinutes(week.minutes);
+      })
+      .catch(() => undefined);
+  }, [session]);
 
   const handleLogout = async () => {
     await logout();
@@ -40,21 +52,13 @@ export default function ProfilePage() {
 
   if (!session) {
     return (
-      <div className="page-enter" style={{ maxWidth: 560, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 22 }}>
-        <div>
-          <h1 style={{ fontSize: 28, fontWeight: 600 }}>Profile</h1>
-          <p className="secondary" style={{ fontSize: 14, marginTop: 6 }}>
-            Your account and role live here once you sign in.
-          </p>
-        </div>
-        <div className="panel" style={{ textAlign: 'center', padding: '28px 20px' }}>
-          <div style={{ fontSize: 15, fontWeight: 650 }}>Not signed in</div>
-          <p className="muted" style={{ fontSize: 13.5, marginTop: 8, lineHeight: 1.45 }}>
-            Use the sign-in popup to continue, or browse shops first.
-          </p>
-          <Link href="/" className="btn-primary" style={{ marginTop: 16, display: 'inline-flex' }}>
-            Explore shops
-          </Link>
+      <div className="page-enter" style={{ maxWidth: 560, margin: '0 auto' }}>
+        <h1 style={{ fontSize: 34, fontWeight: 600, letterSpacing: '-0.03em' }}>Profile</h1>
+        <div className="panel profile-hero" style={{ marginTop: 16 }}>
+          <span className="avatar-chip lg">·</span>
+          <h2>Not signed in</h2>
+          <p className="muted">Sign in from the photo in the header.</p>
+          <Link href="/" className="btn-primary" style={{ marginTop: 8 }}>Explore shops</Link>
         </div>
       </div>
     );
@@ -66,77 +70,64 @@ export default function ProfilePage() {
     .join('')
     .slice(0, 2)
     .toUpperCase();
-
   const role = session.profile.role;
   const isPro = role === 'barber' || role === 'salon';
 
   return (
-    <div className="page-enter" style={{ maxWidth: 560, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 22 }}>
-      <div>
-        <h1 style={{ fontSize: 28, fontWeight: 600 }}>Profile</h1>
-        <p className="secondary" style={{ fontSize: 14, marginTop: 6 }}>
-          {session.email}
-        </p>
-      </div>
+    <div className="page-enter" style={{ maxWidth: 920, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <h1 style={{ fontSize: 34, fontWeight: 600, letterSpacing: '-0.03em' }}>Profile</h1>
 
-      <div className="panel" style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-          <div
-            style={{
-              width: 52,
-              height: 52,
-              borderRadius: 'var(--radius-md)',
-              background: 'var(--bg-elevated)',
-              border: '1px solid var(--bg-border)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontFamily: 'var(--font-display)',
-              fontSize: 18,
-              fontWeight: 700,
-              color: 'var(--brand-primary)',
-            }}
-          >
-            {initials || 'SC'}
+      <div className="profile-grid">
+        <section className="panel profile-hero">
+          <span className="avatar-chip lg">
+            {session.profile.avatar_url ? <img src={session.profile.avatar_url} alt="" /> : initials || 'SC'}
+          </span>
+          <h2>{session.profile.full_name}</h2>
+          <p className="muted" style={{ fontSize: 13.5 }}>
+            {session.email} · <span style={{ textTransform: 'capitalize' }}>{role}</span>
+          </p>
+          <div className="profile-stats">
+            <div className="profile-stat">
+              <b><CountUp value={visits} /></b>
+              <span>This week</span>
+            </div>
+            <div className="profile-stat">
+              <b><CountUp value={minutes} /></b>
+              <span>Minutes</span>
+            </div>
+            <div className="profile-stat">
+              <b style={{ textTransform: 'capitalize', fontSize: 16 }}>{role}</b>
+              <span>Account</span>
+            </div>
           </div>
+        </section>
+
+        <section className="panel" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div>
-            <div style={{ fontSize: 17, fontWeight: 650 }}>{session.profile.full_name}</div>
-            <div className="muted" style={{ fontSize: 12.5, textTransform: 'capitalize' }}>{role}</div>
+            <h2 className="panel-title">About you</h2>
+            <p className="panel-sub">What shops see when you join a line.</p>
           </div>
-        </div>
-
-        <button type="button" className="btn-secondary" onClick={handleLogout}>
-          Sign out
-        </button>
-      </div>
-
-      <div className="panel">
-        <h2 className="panel-title" style={{ marginBottom: 6 }}>Next</h2>
-        {isPro ? (
-          <>
-            <p className="panel-sub">Run your floor from the queue dashboard, or update how customers find you.</p>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
-              <Link href="/barber/dashboard" className="btn-primary" style={{ fontSize: 13 }}>
-                Open queue
-              </Link>
-              <Link href="/barber/shop" className="btn-secondary" style={{ fontSize: 13 }}>
-                Edit {role === 'salon' ? 'salon' : 'shop'}
-              </Link>
-            </div>
-          </>
-        ) : (
-          <>
-            <p className="panel-sub">Join a line from Explore, then watch your turn on Ticket.</p>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
-              <Link href="/" className="btn-primary" style={{ fontSize: 13 }}>
-                Find a shop
-              </Link>
-              <Link href="/bookings" className="btn-secondary" style={{ fontSize: 13 }}>
-                My ticket
-              </Link>
-            </div>
-          </>
-        )}
+          <div className="field">
+            <label>Full name</label>
+            <input readOnly value={session.profile.full_name} />
+          </div>
+          <div className="field">
+            <label>Email</label>
+            <input readOnly value={session.email} />
+          </div>
+          <div className="field">
+            <label>Phone</label>
+            <input readOnly value={session.profile.phone || 'Not added'} />
+          </div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {isPro ? (
+              <Link href="/barber/shop" className="btn-primary">Edit shop</Link>
+            ) : (
+              <Link href="/bookings" className="btn-primary">My ticket</Link>
+            )}
+            <button type="button" className="btn-secondary" onClick={handleLogout}>Sign out</button>
+          </div>
+        </section>
       </div>
     </div>
   );
