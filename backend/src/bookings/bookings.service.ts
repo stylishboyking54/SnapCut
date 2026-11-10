@@ -63,6 +63,21 @@ export class BookingsService {
     if (!shop?.is_open) throw new BadRequestException('Shop is currently closed');
     if (shop?.is_emergency) throw new BadRequestException('Shop has an active emergency — bookings paused');
 
+    const { data: openLine } = await this.supabase
+      .from('bookings')
+      .select('id, shop_id')
+      .eq('customer_id', customerId)
+      .in('status', ['pending', 'confirmed', 'in_progress'])
+      .limit(1)
+      .maybeSingle();
+    if (openLine) {
+      throw new BadRequestException(
+        openLine.shop_id === dto.shop_id
+          ? 'You are already in this line.'
+          : 'Finish your current line before joining another shop.',
+      );
+    }
+
     // 2. Check slot is not during a break
     const { data: breaks } = await this.supabase
       .from('breaks')

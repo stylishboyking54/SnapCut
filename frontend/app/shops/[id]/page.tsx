@@ -3,7 +3,7 @@
 import React, { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { getShopById, getShopLiveQueue, joinShopQueue } from '@/lib/api';
+import { getMyBookings, getShopById, getShopLiveQueue, joinShopQueue } from '@/lib/api';
 import { getSession, requestSignIn } from '@/lib/auth';
 import { Shop, Service, QueueItem } from '@/lib/types';
 import { CoffeeIcon } from '@/components/ui/Icons';
@@ -23,12 +23,18 @@ function ShopDetailContent() {
   const [bookingSuccess, setBookingSuccess] = useState(false);
   const [joinError, setJoinError] = useState<string | null>(null);
   const [isJoining, setIsJoining] = useState(false);
+  const [joinedShopId, setJoinedShopId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let active = true;
     const session = getSession();
     if (session?.profile.full_name) setCustomerName(session.profile.full_name);
+    if (session) {
+      getMyBookings()
+        .then((rows) => setJoinedShopId(rows[0]?.shopId || null))
+        .catch(() => setJoinedShopId(null));
+    }
 
     if (!shopId) {
       setNotFound(true);
@@ -113,6 +119,7 @@ function ShopDetailContent() {
       );
       setCustomerName('');
       setCustomerNotes('');
+      setJoinedShopId(shop.id);
       setBookingSuccess(true);
       setTimeout(() => setBookingSuccess(false), 5000);
     } catch (err) {
@@ -338,15 +345,21 @@ function ShopDetailContent() {
 
             <button
               type="submit"
-              disabled={shop.isEmergency || !customerName.trim() || isJoining}
-              className="btn-primary"
+              disabled={shop.isEmergency || !customerName.trim() || isJoining || joinedShopId === shop.id}
+              className={joinedShopId === shop.id ? 'btn-secondary' : 'btn-primary'}
               style={{
                 marginTop: 4,
                 opacity: shop.isEmergency || !customerName.trim() ? 0.5 : 1,
-                cursor: shop.isEmergency || !customerName.trim() || isJoining ? 'not-allowed' : 'pointer',
+                cursor: shop.isEmergency || !customerName.trim() || isJoining || joinedShopId === shop.id ? 'default' : 'pointer',
               }}
             >
-              {shop.isEmergency ? 'Paused for now' : isJoining ? 'Holding…' : 'Hold my spot'}
+              {shop.isEmergency
+                ? 'Paused for now'
+                : joinedShopId === shop.id
+                ? 'Joined'
+                : isJoining
+                ? 'Joining…'
+                : 'Join line'}
             </button>
           </form>
 

@@ -427,6 +427,20 @@ export class ShopsService {
         throw new ForbiddenException('Sign in to join the line');
       }
       const customerId = dto.customer_id;
+      const { data: openLine } = await this.supabase
+        .from('bookings')
+        .select('id, shop_id')
+        .eq('customer_id', customerId)
+        .in('status', ['pending', 'confirmed', 'in_progress'])
+        .limit(1)
+        .maybeSingle();
+      if (openLine) {
+        throw new BadRequestException(
+          openLine.shop_id === shopId
+            ? 'You are already in this line.'
+            : 'Finish your current line before joining another shop.',
+        );
+      }
       if (name) {
         await this.supabase
           .from('profiles')
@@ -491,6 +505,20 @@ export class ShopsService {
     if (!service) throw new NotFoundException('No services available');
 
     const queue = this.localQueues.get(shopId) || [];
+    for (const [otherId, otherQueue] of this.localQueues) {
+      const open = otherQueue.find(
+        (entry) =>
+          entry.customer_name.replace(' (You)', '') === name &&
+          !['completed', 'cancelled'].includes(entry.status),
+      );
+      if (open) {
+        throw new BadRequestException(
+          otherId === shopId
+            ? 'You are already in this line.'
+            : 'Finish your current line before joining another shop.',
+        );
+      }
+    }
     const position = queue.length + 1;
     const avg = shop.avg_service_duration || service.duration;
     const wait = Math.max(0, (position - 1) * avg);
@@ -720,6 +748,106 @@ export class ShopsService {
     if (!shop) throw new ForbiddenException('Not your shop');
     const photos = this.readPhotos(shop.cover_image_url).filter((item) => item !== url);
     return this.savePhotos(shopId, ownerId, photos);
+  }
+
+  private async ownedShop(shopId: string, ownerId: string) {
+    const { data } = await this.supabase
+      .from('shops')
+      .select('id')
+      .eq('id', shopId)
+      .eq('owner_id', ownerId)
+      .maybeSingle();
+    if (!data) throw new ForbiddenException('Not your shop');
+  }
+
+  async addService(shopId: string, ownerId: string, dto: { name?: string; price?: number; duration?: number }) {
+    const name = (dto.name || '').trim();
+    const price = Number(dto.price);
+    const duration = Number(dto.duration) || 30;
+    if (!name) throw new BadRequestException('Give the service a name.');
+    if (!Number.isFinite(price) || price < 0) throw new BadRequestException('Enter the price in GHS.');
+    if (duration < 5 || duration > 240) throw new BadRequestException('How long should be between 5 and 240 minutes.');
+
+    if (this.isSupabaseLive()) {
+      await this.ownedShop(shopId, ownerId);
+      const { count } = await this.supabase
+        .from('services')
+        .select('*', { count: 'exact', head: true })
+        .eq('shop_id', shopId);
+      if ((count || 0) >= 12) throw new BadRequestException('You can list up to 12 services.');
+      const { error } = await this.supabase.from('services').insert({
+        shop_id: shopId,
+        name,
+        price,
+        duration,
+      });
+      if (error) throw new BadRequestException(error.message);
+      return this.findMine(ownerId);
+    }
+
+    const shop = this.localShops.find((item) => item.id === shopId);
+    if (!shop) throw new NotFoundException('Shop not found');
+    shop.services.push({ id: `svc-${Date.now()}`, name, price, duration });
+    return shop;
+  }
+
+  async updateService(
+    shopId: string,
+    ownerId: string,
+    serviceId: string,
+    dto: { name?: string; price?: number; duration?: number },
+  ) {
+    const name = dto.name !== undefined ? String(dto.name).trim() : undefined;
+    const price = dto.price !== undefined ? Number(dto.price) : undefined;
+    const duration = dto.duration !== undefined ? Number(dto.duration) : undefined;
+    if (name !== undefined && !name) throw new BadRequestException('Give the service a name.');
+    if (price !== undefined && (!Number.isFinite(price) || price < 0)) {
+      throw new BadRequestException('Enter the price in GHS.');
+    }
+    if (duration !== undefined && (duration < 5 || duration > 240)) {
+      throw new BadRequestException('How long should be between 5 and 240 minutes.');
+    }
+
+    if (this.isSupabaseLive()) {
+      await this.ownedShop(shopId, ownerId);
+      const patch: Record<string, unknown> = {};
+      if (name !== undefined) patch.name = name;
+      if (price !== undefined) patch.price = price;
+      if (duration !== undefined) patch.duration = duration;
+      const { error } = await this.supabase
+        .from('services')
+        .update(patch)
+        .eq('id', serviceId)
+        .eq('shop_id', shopId);
+      if (error) throw new BadRequestException(error.message);
+      return this.findMine(ownerId);
+    }
+
+    const shop = this.localShops.find((item) => item.id === shopId);
+    const service = shop?.services.find((item) => item.id === serviceId);
+    if (!service) throw new NotFoundException('Service not found');
+    if (name !== undefined) service.name = name;
+    if (price !== undefined) service.price = price;
+    if (duration !== undefined) service.duration = duration;
+    return shop;
+  }
+
+  async removeService(shopId: string, ownerId: string, serviceId: string) {
+    if (this.isSupabaseLive()) {
+      await this.ownedShop(shopId, ownerId);
+      const { error } = await this.supabase
+        .from('services')
+        .delete()
+        .eq('id', serviceId)
+        .eq('shop_id', shopId);
+      if (error) throw new BadRequestException(error.message);
+      return this.findMine(ownerId);
+    }
+
+    const shop = this.localShops.find((item) => item.id === shopId);
+    if (!shop) throw new NotFoundException('Shop not found');
+    shop.services = shop.services.filter((item) => item.id !== serviceId);
+    return shop;
   }
 
   async update(id: string, ownerId: string, dto: any) {

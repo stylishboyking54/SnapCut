@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
-import { getBookingRows, getShops, joinShopQueue } from '@/lib/api';
+import { getBookingRows, getMyBookings, getShops, joinShopQueue } from '@/lib/api';
 import { getSession, requestSignIn } from '@/lib/auth';
 import { timeGreeting, todayLabel } from '@/lib/greeting';
 import { summarizeWeek, WeekSummary } from '@/lib/weekStats';
@@ -20,6 +20,7 @@ export default function HomePage() {
   const [shopType, setShopType] = useState<'all' | 'barber' | 'salon'>('all');
   const [bookingToast, setBookingToast] = useState<string | null>(null);
   const [joiningId, setJoiningId] = useState<string | null>(null);
+  const [joinedShopId, setJoinedShopId] = useState<string | null>(null);
   const [hello, setHello] = useState('Good evening');
   const [when, setWhen] = useState('');
   const [week, setWeek] = useState<WeekSummary | null>(null);
@@ -31,9 +32,13 @@ export default function HomePage() {
       setWhen(todayLabel());
       if (!session) {
         setWeek(null);
+        setJoinedShopId(null);
         return;
       }
       getBookingRows().then((rows) => setWeek(summarizeWeek(rows))).catch(() => setWeek(null));
+      getMyBookings()
+        .then((rows) => setJoinedShopId(rows[0]?.shopId || null))
+        .catch(() => setJoinedShopId(null));
     };
     syncHello();
     if (window.location.hash === '#shop-search') {
@@ -113,6 +118,7 @@ export default function HomePage() {
             : s
         )
       );
+      setJoinedShopId(shop.id);
       setBookingToast(`You're in line at ${shop.name}. Open Ticket to watch your turn.`);
       setTimeout(() => setBookingToast(null), 4500);
     } catch (err) {
@@ -317,18 +323,20 @@ export default function HomePage() {
                 </Link>
                 <button
                   type="button"
-                  disabled={shop.isEmergency || joiningId === shop.id}
+                  disabled={shop.isEmergency || joiningId === shop.id || joinedShopId === shop.id}
                   onClick={() => handleQuickJoin(shop)}
-                  className="btn-primary"
+                  className={joinedShopId === shop.id ? 'btn-secondary' : 'btn-primary'}
                   style={{
                     fontSize: 13.5,
                     width: '100%',
                     opacity: shop.isEmergency ? 0.45 : 1,
-                    cursor: shop.isEmergency ? 'not-allowed' : 'pointer',
+                    cursor: shop.isEmergency || joinedShopId === shop.id ? 'default' : 'pointer',
                   }}
                 >
                   {shop.isEmergency
                     ? 'Paused'
+                    : joinedShopId === shop.id
+                    ? 'Joined'
                     : joiningId === shop.id
                     ? 'Joining…'
                     : 'Join line'}

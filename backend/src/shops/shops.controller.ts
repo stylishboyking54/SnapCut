@@ -90,6 +90,36 @@ export class ShopsController {
     return this.shopsService.removePhoto(id, req.user.id, body?.url || '');
   }
 
+  @Post(':id/services')
+  @UseGuards(SupabaseAuthGuard, RolesGuard)
+  @Roles('barber', 'salon')
+  addService(
+    @Param('id') id: string,
+    @Req() req: any,
+    @Body() body: { name?: string; price?: number; duration?: number },
+  ) {
+    return this.shopsService.addService(id, req.user.id, body || {});
+  }
+
+  @Patch(':id/services/:serviceId')
+  @UseGuards(SupabaseAuthGuard, RolesGuard)
+  @Roles('barber', 'salon')
+  updateService(
+    @Param('id') id: string,
+    @Param('serviceId') serviceId: string,
+    @Req() req: any,
+    @Body() body: { name?: string; price?: number; duration?: number },
+  ) {
+    return this.shopsService.updateService(id, req.user.id, serviceId, body || {});
+  }
+
+  @Delete(':id/services/:serviceId')
+  @UseGuards(SupabaseAuthGuard, RolesGuard)
+  @Roles('barber', 'salon')
+  removeService(@Param('id') id: string, @Param('serviceId') serviceId: string, @Req() req: any) {
+    return this.shopsService.removeService(id, req.user.id, serviceId);
+  }
+
   @Patch(':id')
   @UseGuards(SupabaseAuthGuard, RolesGuard)
   @Roles('barber', 'salon')

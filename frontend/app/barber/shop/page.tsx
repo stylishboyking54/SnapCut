@@ -3,8 +3,8 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { addShopPhoto, createShop, getMyShop, removeShopPhoto, updateShop } from '@/lib/api';
-import { Shop } from '@/lib/types';
+import { addShopPhoto, addShopService, createShop, getMyShop, removeShopPhoto, removeShopService, updateShop, updateShopService } from '@/lib/api';
+import { Service, Shop } from '@/lib/types';
 import { getSession } from '@/lib/auth';
 import { timeGreeting, todayLabel } from '@/lib/greeting';
 import { proCopy, useProKind } from '@/lib/proRole';
@@ -36,6 +36,87 @@ function shrinkPhoto(file: File): Promise<string> {
   });
 }
 
+function ServiceEditor({
+  services,
+  busy,
+  newService,
+  newPrice,
+  newMinutes,
+  onNewService,
+  onNewPrice,
+  onNewMinutes,
+  onAdd,
+  onSave,
+  onRemove,
+}: {
+  services: Service[];
+  busy: boolean;
+  newService: string;
+  newPrice: string;
+  newMinutes: string;
+  onNewService: (value: string) => void;
+  onNewPrice: (value: string) => void;
+  onNewMinutes: (value: string) => void;
+  onAdd: () => void;
+  onSave: (id: string, name: string, price: string, minutes: string) => void;
+  onRemove: (id: string) => void;
+}) {
+  const [rows, setRows] = React.useState(services);
+  useEffect(() => {
+    setRows(services);
+  }, [services]);
+
+  return (
+    <section className="panel" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div>
+        <h2 className="panel-title">Services and prices</h2>
+        <p className="panel-sub">Add each cut or treatment. The amount is in Ghana cedis (GHS). People see it on your card.</p>
+      </div>
+      {rows.map((service) => (
+        <div key={service.id} className="service-edit-row">
+          <input
+            type="text"
+            value={service.name}
+            aria-label="Service name"
+            onChange={(e) => setRows((prev) => prev.map((row) => row.id === service.id ? { ...row, name: e.target.value } : row))}
+          />
+          <input
+            type="number"
+            min={0}
+            step="1"
+            value={service.price}
+            aria-label="Price in GHS"
+            onChange={(e) => setRows((prev) => prev.map((row) => row.id === service.id ? { ...row, price: Number(e.target.value) } : row))}
+          />
+          <input
+            type="number"
+            min={5}
+            max={240}
+            value={service.duration}
+            aria-label="Minutes"
+            onChange={(e) => setRows((prev) => prev.map((row) => row.id === service.id ? { ...row, duration: Number(e.target.value) } : row))}
+          />
+          <button type="button" className="btn-secondary" disabled={busy} onClick={() => onSave(service.id, service.name, String(service.price), String(service.duration))}>
+            Save
+          </button>
+          <button type="button" className="btn-secondary" disabled={busy} onClick={() => onRemove(service.id)}>
+            Remove
+          </button>
+        </div>
+      ))}
+      <div className="service-edit-row">
+        <input type="text" placeholder="New service, e.g. Fade" value={newService} onChange={(e) => onNewService(e.target.value)} />
+        <input type="number" min={0} step="1" placeholder="GHS" value={newPrice} onChange={(e) => onNewPrice(e.target.value)} />
+        <input type="number" min={5} max={240} placeholder="Min" value={newMinutes} onChange={(e) => onNewMinutes(e.target.value)} />
+        <button type="button" className="btn-primary" disabled={busy || !newService.trim() || newPrice === ''} onClick={onAdd}>
+          {busy ? 'Saving…' : 'Add'}
+        </button>
+      </div>
+      <p className="muted" style={{ fontSize: 12 }}>Name, price in GHS, then how many minutes it takes.</p>
+    </section>
+  );
+}
+
 export default function BarberShopSettingsPage() {
   const kind = useProKind();
   const copy = proCopy(kind);
@@ -53,6 +134,10 @@ export default function BarberShopSettingsPage() {
   const [avgDuration, setAvgDuration] = useState(kind === 'salon' ? 45 : 30);
   const [busy, setBusy] = useState(false);
   const [photoBusy, setPhotoBusy] = useState(false);
+  const [serviceBusy, setServiceBusy] = useState(false);
+  const [newService, setNewService] = useState('');
+  const [newPrice, setNewPrice] = useState('');
+  const [newMinutes, setNewMinutes] = useState('30');
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
 
@@ -114,6 +199,58 @@ export default function BarberShopSettingsPage() {
       setError(err instanceof Error ? err.message : 'Could not remove that photo');
     } finally {
       setPhotoBusy(false);
+    }
+  };
+
+  const handleAddService = async () => {
+    if (!shop) return;
+    setServiceBusy(true);
+    setError(null);
+    try {
+      const next = await addShopService(shop.id, {
+        name: newService.trim(),
+        price: Number(newPrice),
+        duration: Number(newMinutes) || 30,
+      });
+      setShop(next);
+      setNewService('');
+      setNewPrice('');
+      setNewMinutes('30');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not add that service');
+    } finally {
+      setServiceBusy(false);
+    }
+  };
+
+  const handleSaveService = async (serviceId: string, serviceName: string, price: string, minutes: string) => {
+    if (!shop) return;
+    setServiceBusy(true);
+    setError(null);
+    try {
+      const next = await updateShopService(shop.id, serviceId, {
+        name: serviceName.trim(),
+        price: Number(price),
+        duration: Number(minutes) || 30,
+      });
+      setShop(next);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not save that price');
+    } finally {
+      setServiceBusy(false);
+    }
+  };
+
+  const handleRemoveService = async (serviceId: string) => {
+    if (!shop) return;
+    setServiceBusy(true);
+    setError(null);
+    try {
+      setShop(await removeShopService(shop.id, serviceId));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not remove that service');
+    } finally {
+      setServiceBusy(false);
     }
   };
 
@@ -205,6 +342,22 @@ export default function BarberShopSettingsPage() {
             />
           </label>
         </section>
+      )}
+
+      {shop && (
+        <ServiceEditor
+          services={shop.services}
+          busy={serviceBusy}
+          newService={newService}
+          newPrice={newPrice}
+          newMinutes={newMinutes}
+          onNewService={setNewService}
+          onNewPrice={setNewPrice}
+          onNewMinutes={setNewMinutes}
+          onAdd={() => void handleAddService()}
+          onSave={(id, serviceName, price, minutes) => void handleSaveService(id, serviceName, price, minutes)}
+          onRemove={(id) => void handleRemoveService(id)}
+        />
       )}
 
       {error && (

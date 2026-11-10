@@ -1168,6 +1168,17 @@ img { max-width: 100%; height: auto; display: block; }
   background: var(--bg-elevated);
 }
 .shop-photo-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.service-edit-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) 88px 72px auto auto;
+  gap: 8px;
+  align-items: center;
+}
+.service-edit-row input { min-width: 0; }
+@media (max-width: 640px) {
+  .service-edit-row { grid-template-columns: 1fr 1fr; }
+  .service-edit-row input:first-child { grid-column: 1 / -1; }
+}
 .shop-photo-thumb button {
   position: absolute;
   left: 4px;

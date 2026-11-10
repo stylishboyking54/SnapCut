@@ -419,6 +419,45 @@ export async function removeShopPhoto(shopId: string, url: string): Promise<Shop
   return mapShop(data);
 }
 
+export async function addShopService(
+  shopId: string,
+  payload: { name: string; price: number; duration: number },
+): Promise<Shop> {
+  const res = await fetch(`${API_BASE_URL()}/shops/${shopId}/services`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.message || 'Could not add that service');
+  return mapShop(data);
+}
+
+export async function updateShopService(
+  shopId: string,
+  serviceId: string,
+  payload: { name: string; price: number; duration: number },
+): Promise<Shop> {
+  const res = await fetch(`${API_BASE_URL()}/shops/${shopId}/services/${serviceId}`, {
+    method: 'PATCH',
+    headers: authHeaders(),
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.message || 'Could not save that service');
+  return mapShop(data);
+}
+
+export async function removeShopService(shopId: string, serviceId: string): Promise<Shop> {
+  const res = await fetch(`${API_BASE_URL()}/shops/${shopId}/services/${serviceId}`, {
+    method: 'DELETE',
+    headers: authHeaders(),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.message || 'Could not remove that service');
+  return mapShop(data);
+}
+
 export async function updateShop(shopId: string, payload: Partial<OwnShopPayload>): Promise<Shop> {
   const res = await fetch(`${API_BASE_URL()}/shops/${shopId}`, {
     method: 'PATCH',
