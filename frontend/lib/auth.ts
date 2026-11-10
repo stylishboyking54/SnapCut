@@ -170,15 +170,21 @@ export async function logout() {
 }
 
 /** Starts Google OAuth; server route /auth/callback exchanges the PKCE code */
-export async function loginWithGoogle(role: AuthRole = 'customer') {
+export const PICK_ROLE_KEY = 'snapcut_pick_role';
+
+/** Google sign-in. Pass a role only when the person just chose one. */
+export async function loginWithGoogle(role?: AuthRole) {
   if (typeof window === 'undefined') return;
-  sessionStorage.setItem(PENDING_ROLE_KEY, role);
+  if (role) sessionStorage.setItem(PENDING_ROLE_KEY, role);
+  else sessionStorage.removeItem(PENDING_ROLE_KEY);
   const supabase = createClient();
+  const redirectTo = role
+    ? `${window.location.origin}/auth/callback?role=${encodeURIComponent(role)}`
+    : `${window.location.origin}/auth/callback`;
   const { error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      // Role travels on the redirect URL so it survives the Google hop
-      redirectTo: `${window.location.origin}/auth/callback?role=${encodeURIComponent(role)}`,
+      redirectTo,
       queryParams: {
         access_type: 'offline',
         prompt: 'select_account',
@@ -191,8 +197,8 @@ export async function loginWithGoogle(role: AuthRole = 'customer') {
   }
 }
 
-export function takePendingRole(fallback?: AuthRole): AuthRole {
-  if (typeof window === 'undefined') return fallback || 'customer';
+export function takePendingRole(fallback?: AuthRole): AuthRole | null {
+  if (typeof window === 'undefined') return fallback || null;
   const raw = sessionStorage.getItem(PENDING_ROLE_KEY);
   sessionStorage.removeItem(PENDING_ROLE_KEY);
   if (raw === 'customer' || raw === 'barber' || raw === 'salon' || raw === 'admin') {
@@ -201,7 +207,26 @@ export function takePendingRole(fallback?: AuthRole): AuthRole {
   if (fallback === 'customer' || fallback === 'barber' || fallback === 'salon' || fallback === 'admin') {
     return fallback;
   }
-  return 'customer';
+  return null;
+}
+
+export async function setAccountRole(role: 'customer' | 'barber' | 'salon') {
+  const res = await fetch(`${getApiBaseUrl()}/auth/role`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify({ role }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.message || 'Could not save who you are');
+  const session = getSession();
+  if (session) {
+    session.profile.role = data.role || role;
+    saveSession(session);
+  }
+  if (typeof window !== 'undefined') {
+    sessionStorage.removeItem(PICK_ROLE_KEY);
+    localStorage.setItem(ROLE_KEY, data.role || role);
+  }
 }
 
 /**
@@ -241,7 +266,7 @@ export async function completeOAuthSession(preferredRole?: AuthRole): Promise<Au
         'Content-Type': 'application/json',
         Authorization: `Bearer ${sbSession.access_token}`,
       },
-      body: JSON.stringify({ role: pendingRole }),
+      body: JSON.stringify(pendingRole ? { role: pendingRole } : {}),
     });
     const data = await res.json().catch(() => ({}));
     if (res.ok && data.profile) {
@@ -271,7 +296,9 @@ export async function completeOAuthSession(preferredRole?: AuthRole): Promise<Au
       .maybeSingle();
 
     const nextRole: AuthRole =
-      existing?.role === 'admin' ? 'admin' : pendingRole;
+      existing?.role === 'admin'
+        ? 'admin'
+        : pendingRole || existing?.role || 'customer';
 
     const { data: upserted } = await supabase
       .from('profiles')

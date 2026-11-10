@@ -4,18 +4,20 @@ import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { GoogleIcon } from '@/components/ui/Icons';
 import {
-  AuthRole,
   login,
   loginWithGoogle,
+  PICK_ROLE_KEY,
   register,
+  setAccountRole,
 } from '@/lib/auth';
+import { ScissorsIcon, UserIcon } from '@/components/ui/Icons';
 
-type Mode = 'login' | 'register';
+type Mode = 'login' | 'register' | 'role';
+type AppRole = 'customer' | 'barber' | 'salon';
 
 interface SignInModalProps {
   open: boolean;
   reason?: string;
-  defaultRole?: AuthRole;
   onClose: () => void;
   onSuccess?: () => void;
 }
@@ -23,7 +25,6 @@ interface SignInModalProps {
 export default function SignInModal({
   open,
   reason,
-  defaultRole = 'customer',
   onClose,
   onSuccess,
 }: SignInModalProps) {
@@ -41,6 +42,7 @@ export default function SignInModal({
 
   useEffect(() => {
     if (!open) return;
+    setMode('login');
     setError(null);
     setBusy(false);
     const prev = document.body.style.overflow;
@@ -72,11 +74,13 @@ export default function SignInModal({
           email.trim(),
           password,
           fullName.trim() || email.trim().split('@')[0] || 'Snapcut',
-          defaultRole,
+          'customer',
         );
-      } else {
-        await login(email.trim(), password);
+        setMode('role');
+        setBusy(false);
+        return;
       }
+      await login(email.trim(), password);
       finish();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Couldn’t sign in');
@@ -89,7 +93,9 @@ export default function SignInModal({
     setBusy(true);
     setError(null);
     try {
-      await loginWithGoogle(defaultRole);
+      if (mode === 'register') sessionStorage.setItem(PICK_ROLE_KEY, '1');
+      else sessionStorage.removeItem(PICK_ROLE_KEY);
+      await loginWithGoogle();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Google didn’t work');
       setBusy(false);
@@ -97,7 +103,7 @@ export default function SignInModal({
   };
 
   return createPortal(
-    <div className="auth-modal-overlay" role="presentation" onClick={onClose}>
+    <div className="auth-modal-overlay" role="presentation" onClick={mode === 'role' ? undefined : onClose}>
       <div
         className="auth-modal"
         role="dialog"
@@ -106,12 +112,14 @@ export default function SignInModal({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="auth-modal-handle" aria-hidden="true" />
-        <button type="button" className="auth-modal-close" onClick={onClose} aria-label="Close">
-          ×
-        </button>
+        {mode !== 'role' && (
+          <button type="button" className="auth-modal-close" onClick={onClose} aria-label="Close">
+            ×
+          </button>
+        )}
 
         <h2 id="auth-modal-title" style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 600, marginTop: 2 }}>
-          {mode === 'login' ? 'Sign in' : 'Join Snapcut'}
+          {mode === 'role' ? 'Who are you?' : mode === 'login' ? 'Sign in' : 'Create an account'}
         </h2>
         {reason ? (
           <p className="secondary" style={{ marginTop: 6, fontSize: 13.5, lineHeight: 1.4 }}>
@@ -128,6 +136,41 @@ export default function SignInModal({
           </div>
         )}
 
+        {mode === 'role' ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 16 }}>
+            {([
+              ['customer', 'Customer', 'Find a shop and join the line'],
+              ['barber', 'Barber', 'Run the line at a men\u2019s shop'],
+              ['salon', 'Salon', 'Run the line at a women\u2019s salon'],
+            ] as const).map(([id, title, copy]) => (
+              <button
+                key={id}
+                type="button"
+                className="role-choice"
+                disabled={busy}
+                style={{ textAlign: 'left' }}
+                onClick={async () => {
+                  setBusy(true);
+                  setError(null);
+                  try {
+                    await setAccountRole(id as AppRole);
+                    finish();
+                  } catch (err) {
+                    setError(err instanceof Error ? err.message : 'Could not save that');
+                    setBusy(false);
+                  }
+                }}
+              >
+                <span className="role-choice-icon">{id === 'customer' ? <UserIcon size={20} /> : <ScissorsIcon size={20} />}</span>
+                <span className="role-choice-copy">
+                  <strong>{title}</strong>
+                  <span>{copy}</span>
+                </span>
+              </button>
+            ))}
+          </div>
+        ) : (
+        <>
         <button
           type="button"
           className="btn-secondary"
@@ -204,8 +247,10 @@ export default function SignInModal({
             cursor: 'pointer',
           }}
         >
-          {mode === 'login' ? 'New here? Create an account' : 'Already have an account?'}
+          {mode === 'login' ? "Don't have an account? Create one" : 'Already have an account? Sign in'}
         </button>
+        </>
+        )}
       </div>
     </div>,
     document.body,

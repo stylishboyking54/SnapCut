@@ -6,11 +6,11 @@ import Sidebar from './Sidebar';
 import BottomNav from './BottomNav';
 import Navbar from './Navbar';
 import RoleWelcome, { AppRole } from './RoleWelcome';
-import RolePickModal from '@/components/auth/RolePickModal';
 import SignInModal from '@/components/auth/SignInModal';
 import {
   getSession,
   isProtectedCustomerPath,
+  PICK_ROLE_KEY,
 } from '@/lib/auth';
 import { getMyShop } from '@/lib/api';
 
@@ -43,16 +43,14 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const [role, setRole] = useState<UserRole | null>(null);
   const [ready, setReady] = useState(false);
   const [signedIn, setSignedIn] = useState(false);
-  const [rolePickOpen, setRolePickOpen] = useState(false);
+  const [needsRole, setNeedsRole] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
   const [authReason, setAuthReason] = useState('');
-  const [authRole, setAuthRole] = useState<AppRole>('customer');
 
   const openAuthGate = useCallback((reason?: string) => {
     if (getSession()) return;
     setAuthReason(reason ?? reasonForPath(pathname) ?? '');
-    setAuthOpen(false);
-    setRolePickOpen(true);
+    setAuthOpen(true);
   }, [pathname]);
 
   // If Supabase dumps ?code= on Site URL (/), forward to the real callback route
@@ -81,6 +79,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
     } else {
       setRole(null);
     }
+    setNeedsRole(sessionStorage.getItem(PICK_ROLE_KEY) === '1');
     setReady(true);
   }, []);
 
@@ -95,7 +94,6 @@ export default function AppLayout({ children }: AppLayoutProps) {
           localStorage.removeItem(ROLE_KEY);
           setRole(null);
           setAuthOpen(false);
-          setRolePickOpen(false);
           router.replace('/');
           return;
         }
@@ -108,7 +106,6 @@ export default function AppLayout({ children }: AppLayoutProps) {
         setRole(r);
       }
       setAuthOpen(false);
-      setRolePickOpen(false);
     };
 
     const onSignInRequest = (e: Event) => {
@@ -168,16 +165,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
     router.replace(homeForRole(next));
   };
 
-  const handleRolePicked = (next: AppRole) => {
-    localStorage.setItem(ROLE_KEY, next);
-    setRole(next);
-    setAuthRole(next);
-    setRolePickOpen(false);
-    setAuthOpen(true);
-  };
-
   const handleGateClose = () => {
-    setRolePickOpen(false);
     setAuthOpen(false);
     sessionStorage.removeItem('snapcut_after_signin');
   };
@@ -185,14 +173,11 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const handleAuthSuccess = async () => {
     setSignedIn(true);
     setAuthOpen(false);
-    setRolePickOpen(false);
+    sessionStorage.removeItem(PICK_ROLE_KEY);
+    setNeedsRole(false);
     const session = getSession();
-    // Prefer the role just picked in the gate over a stale customer profile
-    const r = (session?.profile.role || authRole || role) as UserRole;
-    const effective =
-      (authRole === 'barber' || authRole === 'salon') && r === 'customer'
-        ? authRole
-        : r;
+    const r = (session?.profile.role || role) as UserRole;
+    const effective = r;
     if (effective === 'customer' || effective === 'barber' || effective === 'salon' || effective === 'admin') {
       localStorage.setItem(ROLE_KEY, effective);
       setRole(effective);
@@ -248,7 +233,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
     return <>{children}</>;
   }
 
-  if (!ready || !role) {
+  if (!ready || !role || needsRole) {
     return (
       <>
         {!ready ? (
@@ -256,7 +241,14 @@ export default function AppLayout({ children }: AppLayoutProps) {
             <div className="muted" style={{ fontSize: 14 }}>Loading…</div>
           </div>
         ) : (
-          <RoleWelcome onComplete={handleWelcomeComplete} />
+          <RoleWelcome
+            initialStep={needsRole ? 'role' : 'signin'}
+            onComplete={(next) => {
+              sessionStorage.removeItem(PICK_ROLE_KEY);
+              setNeedsRole(false);
+              void handleWelcomeComplete(next);
+            }}
+          />
         )}
         <div hidden aria-hidden="true">
           {children}
@@ -290,16 +282,9 @@ export default function AppLayout({ children }: AppLayoutProps) {
         <BottomNav navItems={currentNavItems} />
       </Suspense>
 
-      <RolePickModal
-        open={rolePickOpen}
-        onClose={handleGateClose}
-        onPick={handleRolePicked}
-      />
-
       <SignInModal
         open={authOpen}
         reason={authReason}
-        defaultRole={authRole}
         onClose={handleGateClose}
         onSuccess={handleAuthSuccess}
       />

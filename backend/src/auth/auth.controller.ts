@@ -54,6 +54,13 @@ export class AuthController {
     return this.authService.syncOAuth(token, dto.role || 'customer');
   }
 
+  @Post('role')
+  @UseGuards(SupabaseAuthGuard)
+  setRole(@Req() req: any, @Body() dto: OAuthSyncDto) {
+    if (!dto.role) throw new UnauthorizedException('Pick customer, barber, or salon');
+    return this.authService.setRole(req.user.id, dto.role);
+  }
+
   @Post('logout')
   @UseGuards(SupabaseAuthGuard)
   logout(@Req() req: any) {

@@ -2,66 +2,85 @@
 
 import React, { useState } from 'react';
 import { GoogleIcon, ScissorsIcon, UserIcon } from '@/components/ui/Icons';
-import { AuthRole, login, loginWithGoogle, register } from '@/lib/auth';
+import { login, loginWithGoogle, PICK_ROLE_KEY, register, setAccountRole } from '@/lib/auth';
 
 export type AppRole = 'customer' | 'barber' | 'salon';
 
 interface RoleWelcomeProps {
   onComplete: (role: AppRole) => void;
+  /** role = account already exists and we only need who they are */
+  initialStep?: 'signin' | 'role';
 }
 
-export default function RoleWelcome({ onComplete }: RoleWelcomeProps) {
-  const [step, setStep] = useState<'role' | 'auth'>('role');
-  const [role, setRole] = useState<AppRole | null>(null);
-  const [mode, setMode] = useState<'signup' | 'login'>('signup');
+export default function RoleWelcome({ onComplete, initialStep = 'signin' }: RoleWelcomeProps) {
+  const [step, setStep] = useState<'signin' | 'signup' | 'role'>(initialStep);
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const pickRole = (next: AppRole) => {
-    setRole(next);
-    setStep('auth');
-    setError(null);
-  };
-
-  const roleLabel =
-    role === 'salon' ? 'Salon' : role === 'barber' ? 'Barber' : 'Customer';
-
-  const handleGoogle = async () => {
-    if (!role) return;
+  const handleGoogleSignIn = async () => {
     setBusy(true);
     setError(null);
     try {
-      await loginWithGoogle(role as AuthRole);
-      // Browser redirects to Google; if we stay here, something failed silently
+      sessionStorage.removeItem(PICK_ROLE_KEY);
+      await loginWithGoogle();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Google sign-in failed');
       setBusy(false);
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!role) return;
+  const handleGoogleSignUp = async () => {
     setBusy(true);
     setError(null);
     try {
-      if (mode === 'signup') {
-        await register(email.trim(), password, fullName.trim() || roleLabel, role as AuthRole);
-      } else {
-        const session = await login(email.trim(), password);
-        // Prefer chosen role for routing; profile may already have one
-        if (session.profile.role === 'customer' || session.profile.role === 'barber' || session.profile.role === 'salon') {
-          onComplete(session.profile.role);
-          return;
-        }
-      }
+      sessionStorage.setItem(PICK_ROLE_KEY, '1');
+      await loginWithGoogle();
+    } catch (err) {
+      sessionStorage.removeItem(PICK_ROLE_KEY);
+      setError(err instanceof Error ? err.message : 'Google sign-in failed');
+      setBusy(false);
+    }
+  };
+
+  const handleSignIn = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      const session = await login(email.trim(), password);
+      const role = session.profile.role;
+      onComplete(role === 'barber' || role === 'salon' ? role : 'customer');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not sign in');
+      setBusy(false);
+    }
+  };
+
+  const handleCreate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      await register(email.trim(), password, fullName.trim() || 'Snapcut', 'customer');
+      setStep('role');
+      setBusy(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not create the account');
+      setBusy(false);
+    }
+  };
+
+  const handleRole = async (role: AppRole) => {
+    setBusy(true);
+    setError(null);
+    try {
+      await setAccountRole(role);
       onComplete(role);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong');
-    } finally {
+      setError(err instanceof Error ? err.message : 'Could not save that');
       setBusy(false);
     }
   };
@@ -71,122 +90,84 @@ export default function RoleWelcome({ onComplete }: RoleWelcomeProps) {
       <div className="role-welcome-card">
         {step === 'role' ? (
           <>
-            <div className="eyebrow">Welcome</div>
-            <h1 className="brand-hero" style={{ fontSize: 'clamp(34px, 8vw, 48px)', marginTop: 8 }}>
-              Snapcut
+            <div className="eyebrow">Account ready</div>
+            <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 600, marginTop: 6 }}>
+              Who are you?
             </h1>
-            <p className="secondary" style={{ marginTop: 12, fontSize: 15, lineHeight: 1.45, maxWidth: 360 }}>
-              Who are you here as?
+            <p className="secondary" style={{ marginTop: 8, fontSize: 14, lineHeight: 1.45 }}>
+              This is the only time we ask. It decides whether you join a line or run a shop.
             </p>
-
-            <div className="role-welcome-choices">
-              <button type="button" className="role-choice" onClick={() => pickRole('customer')}>
-                <span className="role-choice-icon">
-                  <UserIcon size={22} />
-                </span>
+            {error && (
+              <div className="alert-banner" style={{ marginTop: 14, background: 'var(--brand-danger-soft)', color: 'var(--brand-danger)' }}>
+                {error}
+              </div>
+            )}
+            <div className="role-welcome-choices" style={{ marginTop: 16 }}>
+              <button type="button" className="role-choice" disabled={busy} onClick={() => void handleRole('customer')}>
+                <span className="role-choice-icon"><UserIcon size={22} /></span>
                 <span className="role-choice-copy">
                   <strong>Customer</strong>
-                  <span>Find a barbershop or salon, check the wait, join the line</span>
+                  <span>Find a shop, see the wait, and join the line</span>
                 </span>
               </button>
-
-              <button type="button" className="role-choice" onClick={() => pickRole('barber')}>
-                <span className="role-choice-icon">
-                  <ScissorsIcon size={22} />
-                </span>
+              <button type="button" className="role-choice" disabled={busy} onClick={() => void handleRole('barber')}>
+                <span className="role-choice-icon"><ScissorsIcon size={22} /></span>
                 <span className="role-choice-copy">
                   <strong>Barber</strong>
-                  <span>Men&apos;s barbershop — run your queue and chair</span>
+                  <span>Run the line at a men&apos;s shop</span>
                 </span>
               </button>
-
-              <button type="button" className="role-choice" onClick={() => pickRole('salon')}>
-                <span className="role-choice-icon">
-                  <ScissorsIcon size={22} />
-                </span>
+              <button type="button" className="role-choice" disabled={busy} onClick={() => void handleRole('salon')}>
+                <span className="role-choice-icon"><ScissorsIcon size={22} /></span>
                 <span className="role-choice-copy">
                   <strong>Salon</strong>
-                  <span>Women&apos;s salon — run your queue and appointments</span>
+                  <span>Run the line at a women&apos;s salon</span>
                 </span>
               </button>
             </div>
           </>
         ) : (
           <>
-            <button
-              type="button"
-              onClick={() => {
-                setStep('role');
-                setError(null);
-              }}
-              style={{
-                background: 'transparent',
-                color: 'var(--text-muted)',
-                fontSize: 13,
-                fontWeight: 600,
-                marginBottom: 8,
-                alignSelf: 'flex-start',
-              }}
-            >
-              ← Change role
-            </button>
-            <div className="eyebrow">{roleLabel}</div>
+            <div className="eyebrow">Snapcut</div>
             <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 600, marginTop: 6 }}>
-              {mode === 'signup' ? 'Create your account' : 'Welcome back'}
+              {step === 'signup' ? 'Create an account' : 'Sign in'}
             </h1>
             <p className="secondary" style={{ marginTop: 8, fontSize: 14, lineHeight: 1.45 }}>
-              {role === 'customer'
-                ? 'Use the same email next time so your ticket stays with you.'
-                : 'Use the same email next time so your shop stays with you.'}
+              {step === 'signup'
+                ? 'Use your email. Next you will choose customer, barber, or salon.'
+                : 'Use the email and password from your account.'}
             </p>
 
             {error && (
-              <div
-                className="alert-banner"
-                style={{ marginTop: 14, background: 'var(--brand-danger-soft)', color: 'var(--brand-danger)' }}
-              >
+              <div className="alert-banner" style={{ marginTop: 14, background: 'var(--brand-danger-soft)', color: 'var(--brand-danger)' }}>
                 {error}
               </div>
             )}
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 18 }}>
-              <button
-                type="button"
-                className="btn-secondary"
-                onClick={handleGoogle}
-                disabled={busy}
-                style={{ width: '100%' }}
-              >
-                <GoogleIcon size={18} />
-                {busy ? 'Opening Google…' : 'Continue with Google'}
-              </button>
-              <div className="muted" style={{ textAlign: 'center', fontSize: 12 }}>
-                or use email
-              </div>
-            </div>
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={() => void (step === 'signup' ? handleGoogleSignUp() : handleGoogleSignIn())}
+              disabled={busy}
+              style={{ width: '100%', marginTop: 16 }}
+            >
+              <GoogleIcon size={18} />
+              {busy ? 'Please wait…' : 'Continue with Google'}
+            </button>
 
-            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 8 }}>
-              {mode === 'signup' && (
+            <form
+              onSubmit={step === 'signup' ? handleCreate : handleSignIn}
+              style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 14 }}
+            >
+              {step === 'signup' && (
                 <div className="field">
-                  <label>Full name</label>
-                  <input
-                    type="text"
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    placeholder="Your name"
-                    required
-                  />
+                  <label>Your name</label>
+                  <input type="text" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Your name" required />
                 </div>
               )}
               <div className="field">
                 <label>Email</label>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@email.com"
-                  required
-                />
+                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@email.com" required autoComplete="email" />
               </div>
               <div className="field">
                 <label>Password</label>
@@ -196,22 +177,32 @@ export default function RoleWelcome({ onComplete }: RoleWelcomeProps) {
                   onChange={(e) => setPassword(e.target.value)}
                   minLength={6}
                   required
+                  placeholder="At least 6 characters"
+                  autoComplete={step === 'signup' ? 'new-password' : 'current-password'}
                 />
               </div>
-              <button type="submit" className="btn-primary" disabled={busy} style={{ marginTop: 4 }}>
-                {busy ? 'Please wait…' : mode === 'signup' ? 'Create account' : 'Sign in'}
-              </button>
-              <button
-                type="button"
-                className="btn-secondary"
-                onClick={() => {
-                  setMode(mode === 'signup' ? 'login' : 'signup');
-                  setError(null);
-                }}
-              >
-                {mode === 'signup' ? 'Already have an account? Sign in' : 'Need an account? Sign up'}
+              <button type="submit" className="btn-primary" disabled={busy}>
+                {busy ? 'Please wait…' : step === 'signup' ? 'Create account' : 'Sign in'}
               </button>
             </form>
+
+            <button
+              type="button"
+              onClick={() => {
+                setStep(step === 'signup' ? 'signin' : 'signup');
+                setError(null);
+              }}
+              style={{
+                marginTop: 14,
+                width: '100%',
+                background: 'transparent',
+                color: 'var(--text-muted)',
+                fontSize: 13,
+                fontWeight: 650,
+              }}
+            >
+              {step === 'signup' ? 'Already have an account? Sign in' : "Don't have an account? Create one"}
+            </button>
           </>
         )}
       </div>

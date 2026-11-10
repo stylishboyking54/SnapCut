@@ -70,9 +70,28 @@ export class AuthService {
    * profile as customer via trigger before we get here).
    * Never demote admin.
    */
+  async setRole(userId: string, role: 'customer' | 'barber' | 'salon') {
+    const { data: existing } = await this.supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (existing?.role === 'admin') return existing;
+
+    const { data, error } = await this.supabase
+      .from('profiles')
+      .update({ role })
+      .eq('id', userId)
+      .select()
+      .single();
+    if (error) throw new BadRequestException(error.message || 'Could not save your role');
+    return data;
+  }
+
   async syncOAuth(
     accessToken: string,
-    role: 'customer' | 'barber' | 'salon' = 'customer',
+    role?: 'customer' | 'barber' | 'salon',
   ) {
     const { data, error } = await this.supabase.auth.getUser(accessToken);
     if (error || !data.user) {
@@ -94,8 +113,10 @@ export class AuthService {
       .eq('id', user.id)
       .maybeSingle();
 
-    const nextRole =
-      existing?.role === 'admin' ? 'admin' : role;
+    const kept = existing?.role === 'barber' || existing?.role === 'salon' || existing?.role === 'customer'
+      ? existing.role
+      : 'customer';
+    const nextRole = existing?.role === 'admin' ? 'admin' : role || kept;
 
     const { data: profile, error: upsertErr } = await this.supabase
       .from('profiles')
