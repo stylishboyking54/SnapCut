@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { addShopPhoto, addShopService, createShop, getMyShop, removeShopPhoto, removeShopService, updateShop, updateShopService } from '@/lib/api';
@@ -9,6 +10,15 @@ import { getSession } from '@/lib/auth';
 import { timeGreeting, todayLabel } from '@/lib/greeting';
 import { proCopy, useProKind } from '@/lib/proRole';
 import HoursEditor from '@/components/barber/HoursEditor';
+
+const LocationPicker = dynamic(() => import('@/components/map/LocationPicker'), {
+  ssr: false,
+  loading: () => (
+    <div style={{ height: 260, borderRadius: 'var(--radius-md)', background: 'var(--surface-1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
+      Loading map picker…
+    </div>
+  ),
+});
 
 function shrinkPhoto(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -304,6 +314,8 @@ export default function BarberShopSettingsPage() {
   const [address, setAddress] = useState('');
   const [city, setCity] = useState('Accra');
   const [phone, setPhone] = useState('');
+  const [lat, setLat] = useState<number | null>(null);
+  const [lng, setLng] = useState<number | null>(null);
   const [avgDuration, setAvgDuration] = useState(kind === 'salon' ? 45 : 30);
   const [busy, setBusy] = useState(false);
   const [photoBusy, setPhotoBusy] = useState(false);
@@ -328,6 +340,17 @@ export default function BarberShopSettingsPage() {
           setCity(mine.city || 'Accra');
           setPhone(mine.phone || '');
           setAvgDuration(mine.avgDurationPerClient || (kind === 'salon' ? 45 : 30));
+          setLat(mine.lat ?? null);
+          setLng(mine.lng ?? null);
+        } else if (typeof navigator !== 'undefined' && navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(
+            (pos) => {
+              setLat(Number(pos.coords.latitude.toFixed(5)));
+              setLng(Number(pos.coords.longitude.toFixed(5)));
+            },
+            () => {},
+            { timeout: 8000 }
+          );
         }
       } catch (err) {
         if (!cancelled) {
@@ -440,6 +463,8 @@ export default function BarberShopSettingsPage() {
         phone: phone.trim(),
         avg_service_duration: Number(avgDuration),
         shop_type: kind,
+        lat: lat,
+        lng: lng,
       };
       const next = shop
         ? await updateShop(shop.id, payload)
@@ -675,6 +700,20 @@ export default function BarberShopSettingsPage() {
             <label>Street address</label>
             <input type="text" value={address} onChange={(e) => setAddress(e.target.value)} required />
           </div>
+        </div>
+
+        {/* Store GPS & Map Location Picker */}
+        <div style={{ padding: '16px', borderRadius: 'var(--radius-md)', background: 'var(--surface-2, rgba(0,0,0,0.02))', border: '1px solid var(--border)' }}>
+          <LocationPicker
+            lat={lat}
+            lng={lng}
+            onChange={({ lat: newLat, lng: newLng, city: newCity, address: newAddr }) => {
+              setLat(newLat);
+              setLng(newLng);
+              if (newCity && !city) setCity(newCity);
+              if (newAddr && !address) setAddress(newAddr);
+            }}
+          />
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 14 }}>

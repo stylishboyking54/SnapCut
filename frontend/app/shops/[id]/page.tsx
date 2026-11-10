@@ -153,9 +153,29 @@ function ShopDetailContent() {
           <h1 style={{ fontSize: 'clamp(26px, 4vw, 34px)', fontWeight: 600 }}>{shop.name}</h1>
           <p className="secondary" style={{ fontSize: 14.5 }}>{shop.tagline}</p>
 
-          <p className="muted" style={{ fontSize: 13 }}>
-            {shop.address} · {shop.distanceKm} km · Barber {shop.ownerName}
-          </p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <p className="muted" style={{ fontSize: 13, margin: 0 }}>
+              {shop.address} · {shop.distanceKm} km · {shop.shopType === 'salon' ? 'Salon' : 'Barber'} {shop.ownerName}
+            </p>
+            {shop.lat && shop.lng ? (
+              <a
+                href={`https://www.google.com/maps/dir/?api=1&destination=${shop.lat},${shop.lng}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  fontSize: 12,
+                  fontWeight: 600,
+                  color: 'var(--brand-accent)',
+                  textDecoration: 'underline',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 3,
+                }}
+              >
+                Directions in Google Maps ↗
+              </a>
+            ) : null}
+          </div>
           <p className="muted" style={{ fontSize: 13 }}>
             ★ {shop.rating} ({shop.reviewCount}) · {shop.phone}
           </p>

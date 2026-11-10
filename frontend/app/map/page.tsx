@@ -1,22 +1,53 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { getShops } from '@/lib/api';
 import { Shop } from '@/lib/types';
 import { CompassIcon } from '@/components/ui/Icons';
 import { todayLabel } from '@/lib/greeting';
 
+// Dynamically import InteractiveShopsMap to ensure Leaflet runs only on the client
+const InteractiveShopsMap = dynamic(
+  () => import('@/components/map/InteractiveShopsMap'),
+  {
+    ssr: false,
+    loading: () => (
+      <div
+        style={{
+          width: '100%',
+          height: 480,
+          borderRadius: 'var(--radius-lg)',
+          background: 'var(--surface-1)',
+          border: '1px solid var(--border)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: 'var(--text-muted)',
+          fontSize: 14,
+        }}
+      >
+        Loading interactive map…
+      </div>
+    ),
+  }
+);
+
 export default function MapPage() {
   const [shops, setShops] = useState<Shop[]>([]);
   const [selectedShop, setSelectedShop] = useState<Shop | null>(null);
   const [recommendedId, setRecommendedId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    getShops().then((rows) => {
-      setShops(rows);
-      setSelectedShop((current) => current ?? rows[0] ?? null);
-    }).catch(() => setShops([]));
+    getShops()
+      .then((rows) => {
+        setShops(rows);
+        setSelectedShop((current) => current ?? rows[0] ?? null);
+      })
+      .catch(() => setShops([]))
+      .finally(() => setLoading(false));
   }, []);
 
   const handleFindOptimal = () => {
@@ -32,28 +63,41 @@ export default function MapPage() {
   };
 
   return (
-    <div className="page-enter" style={{ maxWidth: 1040, width: '100%', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 22 }}>
+    <div
+      className="page-enter"
+      style={{
+        maxWidth: 1040,
+        width: '100%',
+        margin: '0 auto',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 22,
+      }}
+    >
       <div className="page-header-row">
         <div>
-          <div className="date-pill"><span className="status-dot live" />{todayLabel()}</div>
-          <h1 style={{ fontSize: 28, fontWeight: 600, marginTop: 10 }}>Nearby</h1>
+          <div className="date-pill">
+            <span className="status-dot live" />
+            {todayLabel()}
+          </div>
+          <h1 style={{ fontSize: 28, fontWeight: 600, marginTop: 10 }}>
+            Nearby Shops
+          </h1>
           <p className="secondary" style={{ marginTop: 6, fontSize: 14 }}>
-            Tap a shop to see how long you would wait before you walk over.
+            Explore stores on the live map. Check live waiting times and navigate directly with Google Maps.
           </p>
         </div>
 
-        <button type="button" onClick={handleFindOptimal} className="btn-primary" style={{ fontSize: 13 }}>
+        <button
+          type="button"
+          onClick={handleFindOptimal}
+          className="btn-primary"
+          style={{ fontSize: 13 }}
+        >
           <CompassIcon size={15} />
           Shortest wait
         </button>
       </div>
-
-      {!selectedShop && (
-        <div className="panel" style={{ textAlign: 'center', padding: 28 }}>
-          <div style={{ fontWeight: 650 }}>No shops on the map yet</div>
-          <p className="muted" style={{ marginTop: 8, fontSize: 13.5 }}>They show up here once a barber or salon opens a line.</p>
-        </div>
-      )}
 
       {recommendedId && selectedShop && (
         <div
@@ -66,182 +110,31 @@ export default function MapPage() {
             fontWeight: 600,
           }}
         >
-          {selectedShop.name} — ~{selectedShop.estimatedWaitMinutes}m wait, {selectedShop.distanceKm} km away.
+          ⭐ Recommended: {selectedShop.name} — ~{selectedShop.estimatedWaitMinutes}m wait, {selectedShop.distanceKm} km away.
         </div>
       )}
 
-      {selectedShop && <div className="split-2">
-        <div
-          style={{
-            minHeight: 280,
-            background: 'var(--bg-elevated)',
-            border: '1px solid var(--bg-border)',
-            borderRadius: 'var(--radius-lg)',
-            position: 'relative',
-            overflow: 'hidden',
-            padding: 20,
+      {loading ? (
+        <div className="panel" style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)' }}>
+          Loading live map…
+        </div>
+      ) : shops.length === 0 ? (
+        <div className="panel" style={{ textAlign: 'center', padding: 36 }}>
+          <div style={{ fontWeight: 650, fontSize: 16 }}>No shops on the map yet</div>
+          <p className="muted" style={{ marginTop: 8, fontSize: 13.5 }}>
+            They show up here automatically when a barber or salon pins their location and opens their line.
+          </p>
+        </div>
+      ) : (
+        <InteractiveShopsMap
+          shops={shops}
+          selectedShop={selectedShop}
+          onSelectShop={(shop) => {
+            setSelectedShop(shop);
+            setRecommendedId(null);
           }}
-        >
-          <div
-            style={{
-              position: 'absolute',
-              inset: 0,
-              backgroundImage:
-                'linear-gradient(var(--bg-border) 1px, transparent 1px), linear-gradient(90deg, var(--bg-border) 1px, transparent 1px)',
-              backgroundSize: '40px 40px',
-              opacity: 0.45,
-            }}
-          />
-
-          <div style={{ position: 'relative', zIndex: 2, display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: 20 }}>
-            <div
-              style={{
-                width: 12,
-                height: 12,
-                borderRadius: '50%',
-                background: 'var(--brand-primary)',
-                border: '2px solid var(--bg-surface)',
-              }}
-            />
-            <span className="eyebrow" style={{ marginTop: 6 }}>You</span>
-          </div>
-
-          <div style={{ position: 'relative', zIndex: 2, width: '100%', maxWidth: 460, height: 260, margin: '0 auto' }}>
-            {shops.map((s, idx) => {
-              const isSelected = selectedShop.id === s.id;
-              const positions = [
-                { top: '12%', left: '8%' },
-                { top: '18%', right: '6%' },
-                { bottom: '18%', left: '18%' },
-                { bottom: '12%', right: '14%' },
-              ];
-              const pos = positions[idx % positions.length];
-              const statusClass = s.isEmergency ? 'emergency' : s.estimatedWaitMinutes === 0 ? 'open' : 'wait';
-
-              return (
-                <button
-                  key={s.id}
-                  type="button"
-                  onClick={() => setSelectedShop(s)}
-                  style={{
-                    position: 'absolute',
-                    ...pos,
-                    background: 'var(--bg-surface)',
-                    border: isSelected ? '1px solid var(--brand-primary)' : '1px solid var(--bg-border)',
-                    padding: '8px 11px',
-                    borderRadius: 'var(--radius-sm)',
-                    textAlign: 'left',
-                    transform: isSelected ? 'scale(1.03)' : 'scale(1)',
-                    transition: 'transform var(--transition-fast), border-color var(--transition-fast)',
-                    maxWidth: 180,
-                  }}
-                >
-                  <div style={{ fontSize: 12.5, fontWeight: 650, color: 'var(--text-primary)' }}>{s.name}</div>
-                  <div className={`status-mark ${statusClass}`} style={{ marginTop: 4, fontSize: 11 }}>
-                    <span className="status-dot" />
-                    {s.isEmergency
-                      ? 'Delayed'
-                      : s.estimatedWaitMinutes === 0
-                      ? 'Ready now'
-                      : `~${s.estimatedWaitMinutes}m`}
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-
-          <div
-            className="muted"
-            style={{
-              position: 'absolute',
-              bottom: 14,
-              left: 16,
-              right: 16,
-              display: 'flex',
-              gap: 14,
-              fontSize: 11,
-              zIndex: 3,
-              flexWrap: 'wrap',
-            }}
-          >
-            <span className="status-mark open"><span className="status-dot" /> Ready</span>
-            <span className="status-mark wait"><span className="status-dot" /> Waiting</span>
-            <span className="status-mark emergency"><span className="status-dot" /> Delayed</span>
-          </div>
-        </div>
-
-        <div className="panel" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <div>
-            <div
-              className={`status-mark ${
-                selectedShop.isEmergency
-                  ? 'emergency'
-                  : selectedShop.estimatedWaitMinutes === 0
-                  ? 'open'
-                  : 'wait'
-              }`}
-            >
-              <span className="status-dot" />
-              {selectedShop.isEmergency ? 'Shift delayed' : 'Open'}
-            </div>
-            <h2 style={{ fontSize: 22, fontWeight: 600, marginTop: 8 }}>{selectedShop.name}</h2>
-            <p className="muted" style={{ fontSize: 13, marginTop: 4 }}>
-              {selectedShop.address} · {selectedShop.distanceKm} km
-            </p>
-          </div>
-
-          <div style={{ display: 'flex', gap: 28 }}>
-            <div>
-              <div className="eyebrow">In line</div>
-              <div style={{ fontFamily: 'var(--font-display)', fontSize: 26, fontWeight: 600 }}>
-                {selectedShop.currentQueueCount}
-              </div>
-            </div>
-            <div>
-              <div className="eyebrow">Wait</div>
-              <div
-                style={{
-                  fontFamily: 'var(--font-display)',
-                  fontSize: 26,
-                  fontWeight: 600,
-                  color: selectedShop.estimatedWaitMinutes === 0 ? 'var(--brand-success)' : 'var(--text-primary)',
-                }}
-              >
-                ~{selectedShop.estimatedWaitMinutes}m
-              </div>
-            </div>
-          </div>
-
-          <div>
-            <div className="eyebrow" style={{ marginBottom: 8 }}>Cuts</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {selectedShop.services.map((srv) => (
-                <div
-                  key={srv.id}
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    padding: '8px 0',
-                    borderBottom: '1px solid var(--bg-border-subtle)',
-                    fontSize: 13,
-                  }}
-                >
-                  <span>{srv.name} · {srv.duration}m</span>
-                  <strong>GHS {srv.price}</strong>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <Link
-            href={`/shops/${selectedShop.id}`}
-            className="btn-primary"
-            style={{ width: '100%', marginTop: 'auto', boxSizing: 'border-box' }}
-          >
-            See queue & join
-          </Link>
-        </div>
-      </div>}
+        />
+      )}
     </div>
   );
 }

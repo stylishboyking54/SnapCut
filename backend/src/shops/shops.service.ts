@@ -875,6 +875,8 @@ export class ShopsService {
         patch.avg_service_duration = Number(dto.avg_service_duration);
       }
       if (dto.is_open !== undefined) patch.is_open = Boolean(dto.is_open);
+      if (dto.lat !== undefined) patch.lat = dto.lat === null ? null : Number(dto.lat);
+      if (dto.lng !== undefined) patch.lng = dto.lng === null ? null : Number(dto.lng);
 
       const { error } = await this.supabase.from('shops').update(patch).eq('id', id);
       if (error) throw new BadRequestException(error.message);

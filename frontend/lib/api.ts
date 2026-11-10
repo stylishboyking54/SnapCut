@@ -369,6 +369,8 @@ export type OwnShopPayload = {
   phone?: string;
   avg_service_duration?: number;
   shop_type?: 'barber' | 'salon';
+  lat?: number | null;
+  lng?: number | null;
 };
 
 /** Current pro's shop, or null if not set up yet */
