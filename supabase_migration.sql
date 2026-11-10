@@ -57,6 +57,7 @@ CREATE TABLE shops (
   is_open              BOOLEAN DEFAULT TRUE,
   is_emergency         BOOLEAN DEFAULT FALSE,
   emergency_reason     TEXT,
+  resume_at            TIMESTAMPTZ,
   is_verified          BOOLEAN DEFAULT FALSE,
   avg_service_duration INT DEFAULT 30,  -- minutes
   shop_type            TEXT NOT NULL DEFAULT 'barber'
