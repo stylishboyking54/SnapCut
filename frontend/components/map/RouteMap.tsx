@@ -95,6 +95,24 @@ export default function RouteMap({
       });
 
       const sMarker = L.marker([targetLat, targetLng], { icon: shopIcon }).addTo(map);
+      sMarker.bindPopup(`
+        <div style="font-family: inherit; padding: 4px; min-width: 150px; text-align: center;">
+          <b style="font-size: 13.5px; display: block; margin-bottom: 3px;">${shopName}</b>
+          <div style="font-size: 11.5px; color: #666; margin-bottom: 8px;">${shopAddress || ''}</div>
+          <a href="https://www.google.com/maps/dir/?api=1&destination=${targetLat},${targetLng}" target="_blank" rel="noopener noreferrer" style="
+            display: inline-block;
+            background: #2563eb;
+            color: #fff;
+            padding: 5px 12px;
+            border-radius: 6px;
+            font-size: 11.5px;
+            font-weight: 600;
+            text-decoration: none;
+          ">
+            Open in Google Maps ↗
+          </a>
+        </div>
+      `, { offset: [0, -45] });
       shopMarkerRef.current = sMarker;
     });
 

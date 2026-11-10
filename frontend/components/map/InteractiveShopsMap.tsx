@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Shop } from '@/lib/types';
 import 'leaflet/dist/leaflet.css';
 
@@ -16,6 +17,12 @@ export default function InteractiveShopsMap({
   selectedShop,
   onSelectShop,
 }: InteractiveShopsMapProps) {
+  const router = useRouter();
+  const selectedShopRef = useRef<Shop | null>(selectedShop);
+  useEffect(() => {
+    selectedShopRef.current = selectedShop;
+  }, [selectedShop]);
+
   const mapContainer = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<any>(null);
   const markersRef = useRef<Map<string, any>>(new Map());
@@ -103,8 +110,70 @@ export default function InteractiveShopsMap({
         });
 
         const marker = L.marker([shop.lat, shop.lng], { icon: customIcon }).addTo(map);
+
+        // Hover tooltip showing shop name, rating and wait time
+        marker.bindTooltip(
+          `
+            <div style="display: flex; flex-direction: column; gap: 2px;">
+              <div style="font-weight: 700; font-size: 13px; color: #fff;">${shop.name}</div>
+              <div style="font-size: 11px; color: #d4d4d8; display: flex; align-items: center; gap: 6px;">
+                <span>★ ${shop.rating}</span>
+                <span>·</span>
+                <span style="color: ${isEmergency ? '#f87171' : '#4ade80'}; font-weight: 600;">${waitText}</span>
+              </div>
+              <div style="font-size: 10px; color: #a1a1aa; margin-top: 2px;">
+                Click to select · Click again to open
+              </div>
+            </div>
+          `,
+          {
+            direction: 'top',
+            offset: [0, -48],
+            className: 'shop-hover-tooltip',
+            opacity: 1,
+          }
+        );
+
+        // Click popup with direct Open Store link
+        marker.bindPopup(
+          `
+            <div style="font-family: inherit; padding: 4px; min-width: 175px;">
+              <div style="font-size: 14px; font-weight: 700; color: #141416; margin-bottom: 2px;">
+                ${shop.name}
+              </div>
+              <div style="font-size: 11.5px; color: #666; margin-bottom: 8px;">
+                ${shop.address || shop.city} · ★ ${shop.rating}
+              </div>
+              <a href="/shops/${shop.id}" style="
+                display: block;
+                width: 100%;
+                text-align: center;
+                background: #f0412b;
+                color: #fff;
+                font-size: 12px;
+                font-weight: 600;
+                padding: 7px 12px;
+                border-radius: 6px;
+                text-decoration: none;
+                box-sizing: border-box;
+              ">
+                Open Store Page →
+              </a>
+            </div>
+          `,
+          {
+            offset: [0, -42],
+            closeButton: true,
+          }
+        );
+
         marker.on('click', () => {
+          const isAlreadySelected = selectedShopRef.current?.id === shop.id;
           onSelectShop(shop);
+          marker.openPopup();
+          if (isAlreadySelected) {
+            router.push(`/shops/${shop.id}`);
+          }
         });
 
         markersRef.current.set(shop.id, marker);
@@ -344,6 +413,20 @@ export default function InteractiveShopsMap({
           </div>
         </div>
       )}
+      <style jsx global>{`
+        .leaflet-tooltip.shop-hover-tooltip {
+          background: rgba(20, 20, 22, 0.95);
+          color: #ffffff;
+          border: 1px solid rgba(255, 255, 255, 0.18);
+          border-radius: 8px;
+          padding: 6px 10px;
+          box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+          font-family: inherit;
+        }
+        .leaflet-tooltip.shop-hover-tooltip::before {
+          border-top-color: rgba(20, 20, 22, 0.95);
+        }
+      `}</style>
     </div>
   );
 }
