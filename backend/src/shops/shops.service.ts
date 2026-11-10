@@ -882,6 +882,40 @@ export class ShopsService {
     return this.localShops[shopIndex];
   }
 
+  async saveHours(
+    shopId: string,
+    ownerId: string,
+    hours: { day_of_week: number; start_time: string; end_time: string }[],
+  ) {
+    if (this.isSupabaseLive()) {
+      await this.ownedShop(shopId, ownerId);
+      // Delete existing then re-insert so it's a clean replace
+      await this.supabase.from('working_hours').delete().eq('shop_id', shopId);
+      if (hours.length) {
+        const rows = hours.map((h) => ({
+          shop_id: shopId,
+          day_of_week: h.day_of_week,
+          start_time: h.start_time,
+          end_time: h.end_time,
+        }));
+        const { error } = await this.supabase.from('working_hours').insert(rows);
+        if (error) throw new BadRequestException(error.message);
+      }
+      return this.findMine(ownerId);
+    }
+
+    // Local fallback — patch the in-memory shop
+    const shopIndex = this.localShops.findIndex((s) => s.id === shopId && s.owner_id === ownerId);
+    if (shopIndex === -1) throw new NotFoundException('Shop not found');
+    (this.localShops[shopIndex] as any).working_hours = hours.map((h) => ({
+      day_of_week: h.day_of_week,
+      start_time: h.start_time,
+      end_time: h.end_time,
+      is_open: true,
+    }));
+    return this.localShops[shopIndex];
+  }
+
   async toggleEmergency(shopId: string, ownerId: string, isEmergency: boolean, reason?: string) {
     if (this.isSupabaseLive()) {
       const { data: owned } = await this.supabase

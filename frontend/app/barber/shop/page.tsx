@@ -8,6 +8,7 @@ import { Service, Shop } from '@/lib/types';
 import { getSession } from '@/lib/auth';
 import { timeGreeting, todayLabel } from '@/lib/greeting';
 import { proCopy, useProKind } from '@/lib/proRole';
+import HoursEditor from '@/components/barber/HoursEditor';
 
 function shrinkPhoto(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -357,6 +358,14 @@ export default function BarberShopSettingsPage() {
           onAdd={() => void handleAddService()}
           onSave={(id, serviceName, price, minutes) => void handleSaveService(id, serviceName, price, minutes)}
           onRemove={(id) => void handleRemoveService(id)}
+        />
+      )}
+
+      {shop && (
+        <HoursEditor
+          shopId={shop.id}
+          initialHours={shop.workingHours}
+          onSaved={() => void getMyShop().then((s) => s && setShop(s))}
         />
       )}
 

@@ -127,6 +127,17 @@ export class ShopsController {
     return this.shopsService.update(id, req.user.id, dto);
   }
 
+  @Post(':id/hours')
+  @UseGuards(SupabaseAuthGuard, RolesGuard)
+  @Roles('barber', 'salon')
+  saveHours(
+    @Param('id') id: string,
+    @Req() req: any,
+    @Body() body: { hours: { day_of_week: number; start_time: string; end_time: string }[] },
+  ) {
+    return this.shopsService.saveHours(id, req.user.id, body?.hours || []);
+  }
+
   @Patch(':id/emergency')
   @UseGuards(SupabaseAuthGuard, RolesGuard)
   @Roles('barber', 'salon')
