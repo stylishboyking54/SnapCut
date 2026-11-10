@@ -290,6 +290,32 @@ export async function getMyBookings(): Promise<QueueItem[]> {
     .map((b: any) => mapQueueItem(b));
 }
 
+export async function tellShopIAmHere(bookingId: string): Promise<void> {
+  const res = await fetch(`${API_BASE_URL()}/bookings/${bookingId}/here`, {
+    method: 'POST',
+    headers: authHeaders(),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || 'Could not tell the shop you are here');
+  }
+}
+
+export async function askShopForMoreTime(bookingId: string): Promise<void> {
+  const res = await fetch(`${API_BASE_URL()}/bookings/${bookingId}/grace`, {
+    method: 'POST',
+    headers: authHeaders(),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || 'Could not ask for more time');
+  }
+}
+
+export function ticketSaysHere(notes?: string | null) {
+  return Boolean(notes && notes.includes('[[here]]'));
+}
+
 export async function cancelBooking(bookingId: string): Promise<void> {
   const res = await fetch(`${API_BASE_URL()}/bookings/${bookingId}/status`, {
     method: 'PATCH',

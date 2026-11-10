@@ -127,6 +127,9 @@ export class BookingsService {
     if (actorRole === 'customer' && booking.customer_id !== actorId) {
       throw new ForbiddenException('Not your booking');
     }
+    if (actorRole === 'customer' && status !== 'cancelled') {
+      throw new ForbiddenException('You can only cancel your own spot');
+    }
     // Pro can only update their shop's bookings
     if (
       (actorRole === 'barber' || actorRole === 'salon') &&
@@ -289,5 +292,65 @@ export class BookingsService {
     });
 
     return data;
+  }
+
+  /** Customer tells the shop they have arrived. Saved on the ticket, so it stays after refresh. */
+  async markHere(bookingId: string, customerId: string) {
+    const booking = await this.ownActiveBooking(bookingId, customerId);
+    if (String(booking.notes || '').includes('[[here]]')) {
+      return { here: true, already: true };
+    }
+    const notes = booking.notes ? `[[here]] ${booking.notes}` : '[[here]]';
+    const { error } = await this.supabase.from('bookings').update({ notes }).eq('id', bookingId);
+    if (error) throw new BadRequestException(error.message);
+    const name = booking.profiles?.full_name || 'A customer';
+    await this.notifyShop(booking, `${name} is here and waiting.`);
+    return { here: true };
+  }
+
+  /** Customer asks the shop for 10 more minutes. The wait on the ticket goes up, and the shop is told. */
+  async askForMoreTime(bookingId: string, customerId: string) {
+    const booking = await this.ownActiveBooking(bookingId, customerId);
+    const current = Number(String(booking.notes || '').match(/\[\[grace:(\d+)\]\]/)?.[1] || 0);
+    if (current >= 30) {
+      throw new BadRequestException('You already asked for 30 extra minutes. Talk to the shop if you need longer.');
+    }
+    const next = current + 10;
+    const base = String(booking.notes || '').replace(/\[\[grace:\d+\]\]\s*/g, '').trim();
+    const notes = `[[grace:${next}]]${base ? ` ${base}` : ''}`;
+    const wait = Number(booking.estimated_wait_minutes || 0) + 10;
+    const { error } = await this.supabase
+      .from('bookings')
+      .update({ notes, estimated_wait_minutes: wait })
+      .eq('id', bookingId);
+    if (error) throw new BadRequestException(error.message);
+    const name = booking.profiles?.full_name || 'A customer';
+    await this.notifyShop(booking, `${name} needs about ${next} more minutes.`);
+    return { extraMinutes: next, estimatedWaitMinutes: wait };
+  }
+
+  private async ownActiveBooking(bookingId: string, customerId: string) {
+    const { data: booking } = await this.supabase
+      .from('bookings')
+      .select('*, shops(owner_id), profiles!customer_id(full_name)')
+      .eq('id', bookingId)
+      .single();
+    if (!booking) throw new NotFoundException('Ticket not found');
+    if (booking.customer_id !== customerId) throw new ForbiddenException('Not your ticket');
+    if (!['pending', 'confirmed', 'in_progress'].includes(booking.status)) {
+      throw new BadRequestException('This ticket is already finished.');
+    }
+    return booking;
+  }
+
+  private async notifyShop(booking: { shops?: { owner_id?: string }; id: string }, message: string) {
+    const ownerId = booking.shops?.owner_id;
+    if (!ownerId) return;
+    await this.supabase.from('notifications').insert({
+      user_id: ownerId,
+      booking_id: booking.id,
+      type: 'queue_update',
+      message,
+    });
   }
 }

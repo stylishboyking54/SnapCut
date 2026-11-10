@@ -8,6 +8,7 @@ import {
   getMyShop,
   getShopBookingRows,
   getShopLiveQueue,
+  ticketSaysHere,
 } from '@/lib/api';
 import { QueueItem, Shop } from '@/lib/types';
 import { ScissorsIcon, CoffeeIcon, AlertTriangleIcon } from '@/components/ui/Icons';
@@ -219,7 +220,10 @@ export default function BarberDashboardPage() {
                 {inChairClient.customerName.slice(0, 1)}
               </div>
               <div>
-                <div style={{ fontSize: 18, fontWeight: 650 }}>{inChairClient.customerName}</div>
+                <div style={{ fontSize: 18, fontWeight: 650 }}>
+                  {inChairClient.customerName}
+                  {ticketSaysHere(inChairClient.notes) ? ' · here now' : ''}
+                </div>
                 <div className="secondary" style={{ fontSize: 13.5, marginTop: 2 }}>
                   {inChairClient.serviceName} · GHS {inChairClient.price} · {inChairClient.serviceDuration}m
                 </div>
@@ -298,7 +302,9 @@ export default function BarberDashboardPage() {
                     {client.queuePosition}
                   </span>
                   <div>
-                    <div style={{ fontWeight: 650, fontSize: 13.5 }}>{client.customerName}</div>
+                    <div style={{ fontWeight: 650, fontSize: 13.5 }}>
+                      {client.customerName}{ticketSaysHere(client.notes) ? ' · here now' : ''}
+                    </div>
                     <div className="muted" style={{ fontSize: 12 }}>
                       {client.serviceName} · {client.scheduledTime}
                     </div>

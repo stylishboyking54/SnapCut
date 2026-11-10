@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { QueueItem } from '@/lib/types';
-import { cancelBooking, getMyBookings } from '@/lib/api';
+import { askShopForMoreTime, cancelBooking, getMyBookings, tellShopIAmHere, ticketSaysHere } from '@/lib/api';
 import { getSession } from '@/lib/auth';
 import { subscribeBookings } from '@/lib/realtime';
 import { ClockIcon, MapPinIcon, ScissorsIcon } from '@/components/ui/Icons';
@@ -14,8 +14,7 @@ export default function BookingsPage() {
   const [activeBookings, setActiveBookings] = useState<QueueItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<string | null>(null);
-  const [hasNotifiedArrival, setHasNotifiedArrival] = useState(false);
-  const [graceMinutesAdded, setGraceMinutesAdded] = useState(0);
+  const [busyId, setBusyId] = useState<string | null>(null);
   const [needsAuth, setNeedsAuth] = useState(false);
 
   const showNotification = (msg: string) => {
@@ -98,14 +97,32 @@ export default function BookingsPage() {
     }
   };
 
-  const handleArrivalCheckIn = () => {
-    setHasNotifiedArrival(true);
-    showNotification("Shop knows you're here.");
+  const handleArrivalCheckIn = async (id: string) => {
+    if (busyId) return;
+    setBusyId(id);
+    try {
+      await tellShopIAmHere(id);
+      await loadBookings();
+      showNotification('The shop can see that you are here.');
+    } catch (err) {
+      showNotification(err instanceof Error ? err.message : 'Could not tell the shop');
+    } finally {
+      setBusyId(null);
+    }
   };
 
-  const handleRequestGrace = () => {
-    setGraceMinutesAdded((prev) => prev + 10);
-    showNotification('Asked for +10 minutes. Shop was told.');
+  const handleRequestGrace = async (id: string) => {
+    if (busyId) return;
+    setBusyId(id);
+    try {
+      await askShopForMoreTime(id);
+      await loadBookings();
+      showNotification('The shop was told you need 10 more minutes.');
+    } catch (err) {
+      showNotification(err instanceof Error ? err.message : 'Could not ask for more time');
+    } finally {
+      setBusyId(null);
+    }
   };
 
   return (
@@ -158,7 +175,8 @@ export default function BookingsPage() {
       ) : activeBookings.length > 0 ? (
         <div className="list-stack">
           {activeBookings.map((booking) => {
-            const currentWait = booking.estimatedWaitMinutes + graceMinutesAdded;
+            const currentWait = booking.estimatedWaitMinutes;
+            const here = ticketSaysHere(booking.notes);
             const ahead = Math.max(0, booking.queuePosition - 1);
             return (
               <div key={booking.id} className="queue-ticket">
@@ -202,16 +220,17 @@ export default function BookingsPage() {
                   <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                     <button
                       type="button"
-                      onClick={handleArrivalCheckIn}
-                      disabled={hasNotifiedArrival}
-                      className={hasNotifiedArrival ? 'btn-secondary' : 'btn-primary'}
+                      onClick={() => void handleArrivalCheckIn(booking.id)}
+                      disabled={here || busyId === booking.id}
+                      className={here ? 'btn-secondary' : 'btn-primary'}
                       style={{ fontSize: 12.5, minHeight: 36, padding: '8px 12px' }}
                     >
-                      {hasNotifiedArrival ? 'Checked in' : "I'm here"}
+                      {here ? 'Shop knows you are here' : busyId === booking.id ? 'Sending…' : "I'm here"}
                     </button>
                     <button
                       type="button"
-                      onClick={handleRequestGrace}
+                      onClick={() => void handleRequestGrace(booking.id)}
+                      disabled={busyId === booking.id}
                       className="btn-secondary"
                       style={{ fontSize: 12.5, minHeight: 36, padding: '8px 12px' }}
                     >

@@ -379,7 +379,11 @@ function ShopDetailContent() {
                 textAlign: 'center',
               }}
             >
-              You&apos;re on the list. Check Ticket for live updates.
+              You&apos;re on the list.{' '}
+              <Link href="/bookings" style={{ color: 'inherit', textDecoration: 'underline' }}>
+                Open My ticket
+              </Link>
+              , then tap I&apos;m here when you arrive.
             </div>
           )}
         </div>

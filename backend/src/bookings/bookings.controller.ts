@@ -35,6 +35,16 @@ export class BookingsController {
     return this.bookingsService.create(req.user.id, dto);
   }
 
+  @Post(':id/here')
+  markHere(@Param('id') id: string, @Req() req: any) {
+    return this.bookingsService.markHere(id, req.user.id);
+  }
+
+  @Post(':id/grace')
+  askForMoreTime(@Param('id') id: string, @Req() req: any) {
+    return this.bookingsService.askForMoreTime(id, req.user.id);
+  }
+
   @Patch(':id/status')
   updateStatus(
     @Param('id') id: string,
