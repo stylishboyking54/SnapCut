@@ -1,5 +1,5 @@
 import {
-  Controller, Get, Post, Patch, Body, Param, Query,
+  Controller, Get, Post, Patch, Delete, Body, Param, Query,
   UseGuards, Req, ParseFloatPipe, DefaultValuePipe, Inject,
 } from '@nestjs/common';
 import { SupabaseClient } from '@supabase/supabase-js';
@@ -74,6 +74,20 @@ export class ShopsController {
   create(@Req() req: any, @Body() dto: any) {
     const role = req.user?.role === 'salon' ? 'salon' : 'barber';
     return this.shopsService.create(req.user.id, { ...dto, shop_type: dto?.shop_type || role });
+  }
+
+  @Post(':id/photos')
+  @UseGuards(SupabaseAuthGuard, RolesGuard)
+  @Roles('barber', 'salon')
+  addPhoto(@Param('id') id: string, @Req() req: any, @Body() body: { image?: string }) {
+    return this.shopsService.addPhoto(id, req.user.id, body?.image || '');
+  }
+
+  @Delete(':id/photos')
+  @UseGuards(SupabaseAuthGuard, RolesGuard)
+  @Roles('barber', 'salon')
+  removePhoto(@Param('id') id: string, @Req() req: any, @Body() body: { url?: string }) {
+    return this.shopsService.removePhoto(id, req.user.id, body?.url || '');
   }
 
   @Patch(':id')

@@ -7,6 +7,7 @@ import { getSession, requestSignIn } from '@/lib/auth';
 import { timeGreeting, todayLabel } from '@/lib/greeting';
 import { summarizeWeek, WeekSummary } from '@/lib/weekStats';
 import WeekCard from '@/components/ui/WeekCard';
+import ShopFilm from '@/components/ui/ShopFilm';
 import { Shop } from '@/lib/types';
 import { SearchIcon, CompassIcon } from '@/components/ui/Icons';
 import CountUp from '@/components/ui/CountUp';
@@ -269,7 +270,7 @@ export default function HomePage() {
           return (
             <article key={shop.id} className="shop-row">
               <div className="shop-row-media">
-                <img src={shop.coverImage} alt="" />
+                <ShopFilm photos={shop.photos?.length ? shop.photos : shop.coverImage ? [shop.coverImage] : []} />
                 <span className="shop-row-rating">★ {shop.rating}</span>
                 <span className={`shop-row-badge ${badgeClass}`}>
                   <span className={`status-dot ${isZeroWait && !shop.isEmergency ? 'live' : ''}`} />

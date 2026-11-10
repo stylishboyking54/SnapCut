@@ -3,11 +3,38 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { createShop, getMyShop, updateShop } from '@/lib/api';
+import { addShopPhoto, createShop, getMyShop, removeShopPhoto, updateShop } from '@/lib/api';
 import { Shop } from '@/lib/types';
 import { getSession } from '@/lib/auth';
 import { timeGreeting, todayLabel } from '@/lib/greeting';
 import { proCopy, useProKind } from '@/lib/proRole';
+
+function shrinkPhoto(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('Could not read that photo'));
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const size = 960;
+        const scale = Math.min(size / img.width, size / img.height, 1);
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.max(1, Math.round(img.width * scale));
+        canvas.height = Math.max(1, Math.round(img.height * scale));
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          reject(new Error('Could not prepare that photo'));
+          return;
+        }
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL('image/jpeg', 0.82));
+      };
+      img.onerror = () => reject(new Error('That file is not a photo'));
+      img.src = String(reader.result || '');
+    };
+    reader.readAsDataURL(file);
+  });
+}
 
 export default function BarberShopSettingsPage() {
   const kind = useProKind();
@@ -25,6 +52,7 @@ export default function BarberShopSettingsPage() {
   const [phone, setPhone] = useState('');
   const [avgDuration, setAvgDuration] = useState(kind === 'salon' ? 45 : 30);
   const [busy, setBusy] = useState(false);
+  const [photoBusy, setPhotoBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
 
@@ -55,6 +83,39 @@ export default function BarberShopSettingsPage() {
       cancelled = true;
     };
   }, [kind]);
+
+  const handleAddPhoto = async (file: File | null) => {
+    if (!shop || !file) return;
+    if (!file.type.startsWith('image/')) {
+      setError('Choose a photo, not a document.');
+      return;
+    }
+    setPhotoBusy(true);
+    setError(null);
+    try {
+      const image = await shrinkPhoto(file);
+      const next = await addShopPhoto(shop.id, image);
+      setShop(next);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not add that photo');
+    } finally {
+      setPhotoBusy(false);
+    }
+  };
+
+  const handleRemovePhoto = async (url: string) => {
+    if (!shop) return;
+    setPhotoBusy(true);
+    setError(null);
+    try {
+      const next = await removeShopPhoto(shop.id, url);
+      setShop(next);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not remove that photo');
+    } finally {
+      setPhotoBusy(false);
+    }
+  };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -114,6 +175,37 @@ export default function BarberShopSettingsPage() {
           </Link>
         )}
       </div>
+
+      {shop && (
+        <section className="panel" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div>
+            <h2 className="panel-title">Shop photos</h2>
+            <p className="panel-sub">Add a few. They scroll across your card so people can see the place.</p>
+          </div>
+          <div className="shop-photo-row">
+            {(shop.photos?.length ? shop.photos : shop.coverImage ? [shop.coverImage] : []).map((src) => (
+              <div key={src} className="shop-photo-thumb">
+                <img src={src} alt="" />
+                <button type="button" disabled={photoBusy} onClick={() => void handleRemovePhoto(src)}>Remove</button>
+              </div>
+            ))}
+          </div>
+          <label className="btn-secondary" style={{ width: 'fit-content', cursor: 'pointer' }}>
+            {photoBusy ? 'Saving photo…' : 'Add a photo'}
+            <input
+              type="file"
+              accept="image/*"
+              hidden
+              disabled={photoBusy}
+              onChange={(e) => {
+                const file = e.target.files?.[0] || null;
+                e.target.value = '';
+                void handleAddPhoto(file);
+              }}
+            />
+          </label>
+        </section>
+      )}
 
       {error && (
         <div className="alert-banner" style={{ background: 'var(--brand-danger-soft)', color: 'var(--brand-danger)' }}>

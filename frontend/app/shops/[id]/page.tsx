@@ -8,6 +8,7 @@ import { getSession, requestSignIn } from '@/lib/auth';
 import { Shop, Service, QueueItem } from '@/lib/types';
 import { CoffeeIcon } from '@/components/ui/Icons';
 import CountUp from '@/components/ui/CountUp';
+import ShopFilm from '@/components/ui/ShopFilm';
 
 function ShopDetailContent() {
   const params = useParams();
@@ -130,7 +131,7 @@ function ShopDetailContent() {
       <section style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.1fr) minmax(0, 1fr)', gap: 24, alignItems: 'start' }} className="shop-detail-hero">
         <div>
           <div className="shop-cover">
-            <img src={shop.coverImage} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            <ShopFilm photos={shop.photos?.length ? shop.photos : shop.coverImage ? [shop.coverImage] : []} />
           </div>
         </div>
 

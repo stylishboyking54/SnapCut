@@ -46,6 +46,7 @@ export interface Shop {
   currentQueueCount: number;
   estimatedWaitMinutes: number;
   coverImage: string;
+  photos?: string[];
   services: Service[];
   workingHours: WorkingHour[];
   breaks: BreakBlock[];

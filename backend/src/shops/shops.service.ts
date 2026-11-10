@@ -645,6 +645,83 @@ export class ShopsService {
     return newShop;
   }
 
+  private readPhotos(value: unknown): string[] {
+    if (Array.isArray(value)) return value.filter((item) => typeof item === 'string' && item);
+    if (typeof value !== 'string' || !value.trim()) return [];
+    const trimmed = value.trim();
+    if (trimmed.startsWith('[')) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (Array.isArray(parsed)) return parsed.filter((item) => typeof item === 'string' && item);
+      } catch {
+        /* plain url */
+      }
+    }
+    return [trimmed];
+  }
+
+  private async savePhotos(shopId: string, ownerId: string, photos: string[]) {
+    const { error } = await this.supabase
+      .from('shops')
+      .update({ cover_image_url: photos.length ? JSON.stringify(photos) : null })
+      .eq('id', shopId)
+      .eq('owner_id', ownerId);
+    if (error) throw new BadRequestException(error.message);
+    return this.findMine(ownerId);
+  }
+
+  async addPhoto(shopId: string, ownerId: string, image: string) {
+    const match = image.match(/^data:image\/(?:jpeg|jpg|png|webp);base64,([A-Za-z0-9+/=\s]+)$/);
+    if (!match) throw new BadRequestException('Choose a photo from your phone or computer');
+    const buffer = Buffer.from(match[1].replace(/\s/g, ''), 'base64');
+    if (!buffer.length || buffer.length > 1_500_000) {
+      throw new BadRequestException('That photo is too large. Try another one.');
+    }
+
+    const { data: shop } = await this.supabase
+      .from('shops')
+      .select('id, cover_image_url')
+      .eq('id', shopId)
+      .eq('owner_id', ownerId)
+      .maybeSingle();
+    if (!shop) throw new ForbiddenException('Not your shop');
+
+    const photos = this.readPhotos(shop.cover_image_url);
+    if (photos.length >= 8) throw new BadRequestException('You can add up to 8 photos.');
+
+    const bucket = 'shop-photos';
+    const { data: buckets, error: listError } = await this.supabase.storage.listBuckets();
+    if (listError) throw new BadRequestException(listError.message);
+    if (!buckets?.some((item) => item.name === bucket)) {
+      const created = await this.supabase.storage.createBucket(bucket, { public: true });
+      if (created.error && !/already exists/i.test(created.error.message)) {
+        throw new BadRequestException(created.error.message);
+      }
+    }
+
+    const path = `${shopId}/${Date.now()}.jpg`;
+    const uploaded = await this.supabase.storage.from(bucket).upload(path, buffer, {
+      contentType: 'image/jpeg',
+      upsert: false,
+    });
+    if (uploaded.error) throw new BadRequestException(uploaded.error.message);
+    const { data } = this.supabase.storage.from(bucket).getPublicUrl(path);
+    photos.push(`${data.publicUrl}?v=${Date.now()}`);
+    return this.savePhotos(shopId, ownerId, photos);
+  }
+
+  async removePhoto(shopId: string, ownerId: string, url: string) {
+    const { data: shop } = await this.supabase
+      .from('shops')
+      .select('cover_image_url')
+      .eq('id', shopId)
+      .eq('owner_id', ownerId)
+      .maybeSingle();
+    if (!shop) throw new ForbiddenException('Not your shop');
+    const photos = this.readPhotos(shop.cover_image_url).filter((item) => item !== url);
+    return this.savePhotos(shopId, ownerId, photos);
+  }
+
   async update(id: string, ownerId: string, dto: any) {
     if (this.isSupabaseLive()) {
       const { data: owned } = await this.supabase

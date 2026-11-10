@@ -78,7 +78,23 @@ function mapBreaks(rows: any[] | undefined) {
   });
 }
 
+function readPhotos(value: unknown): string[] {
+  if (Array.isArray(value)) return value.filter((item) => typeof item === 'string' && item);
+  if (typeof value !== 'string' || !value.trim()) return [];
+  const trimmed = value.trim();
+  if (trimmed.startsWith('[')) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed)) return parsed.filter((item) => typeof item === 'string' && item);
+    } catch {
+      /* a normal photo link */
+    }
+  }
+  return [trimmed];
+}
+
 function mapShop(s: any): Shop {
+  const photos = readPhotos(s.cover_image_url ?? s.cover_image ?? s.coverImage ?? s.photos);
   return {
     id: s.id,
     name: s.name,
@@ -99,7 +115,8 @@ function mapShop(s: any): Shop {
     avgDurationPerClient: s.avg_service_duration ?? s.avgDurationPerClient ?? 25,
     currentQueueCount: s.current_queue_count ?? s.currentQueueCount ?? 0,
     estimatedWaitMinutes: s.estimated_wait_minutes ?? s.estimatedWaitMinutes ?? 0,
-    coverImage: s.cover_image_url ?? s.cover_image ?? s.coverImage,
+    coverImage: photos[0] || '',
+    photos,
     services: (s.services || []).map((srv: any) => ({
       id: srv.id,
       name: srv.name,
@@ -377,6 +394,28 @@ export async function createShop(payload: OwnShopPayload): Promise<Shop> {
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.message || data.error || 'Could not create shop');
+  return mapShop(data);
+}
+
+export async function addShopPhoto(shopId: string, image: string): Promise<Shop> {
+  const res = await fetch(`${API_BASE_URL()}/shops/${shopId}/photos`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify({ image }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.message || 'Could not add that photo');
+  return mapShop(data);
+}
+
+export async function removeShopPhoto(shopId: string, url: string): Promise<Shop> {
+  const res = await fetch(`${API_BASE_URL()}/shops/${shopId}/photos`, {
+    method: 'DELETE',
+    headers: authHeaders(),
+    body: JSON.stringify({ url }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.message || 'Could not remove that photo');
   return mapShop(data);
 }
 
