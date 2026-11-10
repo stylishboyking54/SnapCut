@@ -152,8 +152,8 @@ export default function Navbar({
                 </div>
               </div>
               <Link href="/profile" role="menuitem" onClick={() => setAccountOpen(false)}>My profile</Link>
-              <Link href="/bookings" role="menuitem" onClick={() => setAccountOpen(false)}>Ticket</Link>
-              <Link href="/notifications" role="menuitem" onClick={() => setAccountOpen(false)}>Alerts</Link>
+              <Link href="/bookings" role="menuitem" onClick={() => setAccountOpen(false)}>My ticket</Link>
+              <Link href="/notifications" role="menuitem" onClick={() => setAccountOpen(false)}>Updates</Link>
               {session ? (
                 <button
                   type="button"

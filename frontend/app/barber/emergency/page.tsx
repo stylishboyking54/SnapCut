@@ -4,6 +4,8 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { getMyShop, getShopLiveQueue, toggleShopEmergency } from '@/lib/api';
 import { QueueItem, Shop } from '@/lib/types';
+import { getSession } from '@/lib/auth';
+import { timeGreeting, todayLabel } from '@/lib/greeting';
 import { proCopy, useProKind } from '@/lib/proRole';
 
 export default function BarberEmergencyPage() {
@@ -54,55 +56,15 @@ export default function BarberEmergencyPage() {
       await toggleShopEmergency(shop.id, nextState, emergencyReason.trim() || undefined);
       setIsEmergency(nextState);
       if (nextState) {
-        showAlert('Emergency on. New bookings paused; clients will see the notice.');
+        showAlert('The line is paused. New people cannot join, and they will see your message.');
       } else {
-        showAlert('Back to normal. Queue is open again.');
+        showAlert('You are open again. People can join the line.');
       }
     } catch (err) {
-      showAlert(err instanceof Error ? err.message : 'Could not update emergency');
+      showAlert(err instanceof Error ? err.message : 'Could not pause the line. Try again.');
     } finally {
       setBusy(false);
     }
-  };
-
-  const handleBulkShift = (minutes: number) => {
-    if (affectedBookings.length === 0) {
-      showAlert('Nobody in line to notify.');
-      return;
-    }
-    setAffectedBookings((prev) =>
-      prev.map((item) => {
-        const [hh, mm] = item.scheduledTime.split(':').map(Number);
-        const date = new Date();
-        date.setHours(hh || 0);
-        date.setMinutes((mm || 0) + minutes);
-        const newTime = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
-
-        return {
-          ...item,
-          scheduledTime: newTime,
-          estimatedWaitMinutes: item.estimatedWaitMinutes + minutes,
-          status: 'shifted',
-        };
-      })
-    );
-    showAlert(`Moved ${affectedBookings.length} clients by +${minutes}m (local estimate).`);
-  };
-
-  const handleShiftSingle = (id: string, mins: number) => {
-    setAffectedBookings((prev) =>
-      prev.map((item) => {
-        if (item.id === id) {
-          return {
-            ...item,
-            estimatedWaitMinutes: item.estimatedWaitMinutes + mins,
-            status: 'shifted',
-          };
-        }
-        return item;
-      })
-    );
-    showAlert(`Moved booking by +${mins}m.`);
   };
 
   if (loading) {
@@ -118,10 +80,10 @@ export default function BarberEmergencyPage() {
       <div className="page-enter" style={{ maxWidth: 520, margin: '0 auto', textAlign: 'center', padding: '48px 20px' }}>
         <h1 style={{ fontSize: 26, fontWeight: 600 }}>Set up your {copy.shopTitle.toLowerCase()} first</h1>
         <p className="secondary" style={{ marginTop: 10, fontSize: 14, lineHeight: 1.45 }}>
-          Emergency controls need a live shop.
+          Add your shop first. Then you can pause the line if something goes wrong.
         </p>
         <Link href="/barber/shop?setup=1" className="btn-primary" style={{ marginTop: 20, display: 'inline-flex' }}>
-          Continue
+          Set up my shop
         </Link>
       </div>
     );
@@ -131,10 +93,10 @@ export default function BarberEmergencyPage() {
     <div className="page-enter" style={{ maxWidth: 880, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 22 }}>
       <div className="page-header-row">
         <div>
-          <div className="eyebrow">{shop.name}</div>
-          <h1 style={{ fontSize: 28, fontWeight: 600, marginTop: 4 }}>Emergency</h1>
-          <p className="secondary" style={{ marginTop: 6, fontSize: 14 }}>
-            {copy.emergencySub}
+          <div className="date-pill"><span className="status-dot live" />{todayLabel()}</div>
+          <h1 style={{ fontSize: 28, fontWeight: 600, marginTop: 10 }}>{timeGreeting(getSession()?.profile.full_name)}</h1>
+          <p className="secondary" style={{ marginTop: 6, fontSize: 14, maxWidth: 460, lineHeight: 1.45 }}>
+            Pause {shop.name} if you have to stop. Write a short reason so people know why.
           </p>
         </div>
         <Link href="/barber/dashboard" className="btn-secondary" style={{ fontSize: 12.5 }}>
@@ -172,12 +134,12 @@ export default function BarberEmergencyPage() {
           <div>
             <div className={`status-mark ${isEmergency ? 'emergency' : 'open'}`}>
               <span className={`status-dot ${!isEmergency ? 'live' : ''}`} />
-              {isEmergency ? 'Emergency on' : 'Running normally'}
+              {isEmergency ? 'Line is paused' : 'You are open'}
             </div>
             <p className="secondary" style={{ fontSize: 13.5, marginTop: 8, maxWidth: 420 }}>
               {isEmergency
-                ? 'New bookings are paused. Your storefront shows the notice below.'
-                : 'Queue is open. Use this when you need to stop the line fast.'}
+                ? 'New people cannot join. Your shop page shows the message below.'
+                : 'People can join. Tap the red button only when you need to stop.'}
             </p>
           </div>
 
@@ -188,12 +150,12 @@ export default function BarberEmergencyPage() {
             className={isEmergency ? 'btn-secondary' : 'btn-danger'}
             style={isEmergency ? { color: 'var(--brand-danger)', borderColor: 'rgba(180, 35, 24, 0.35)' } : undefined}
           >
-            {busy ? '…' : isEmergency ? 'Turn emergency off' : 'Turn emergency on'}
+            {busy ? 'Saving…' : isEmergency ? 'Open the line again' : 'Pause the line'}
           </button>
         </div>
 
         <div className="field" style={{ marginTop: 18, paddingTop: 16, borderTop: '1px solid var(--bg-border)' }}>
-          <label>Message to clients</label>
+          <label>What should people see?</label>
           <input
             type="text"
             placeholder="e.g. Equipment repair — line paused ~30 min"
@@ -204,29 +166,11 @@ export default function BarberEmergencyPage() {
       </section>
 
       <section className="panel">
-        <h2 className="panel-title">Shift everyone</h2>
-        <p className="panel-sub">Running behind? Move the whole line at once.</p>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          {[15, 30, 45].map((mins) => (
-            <button
-              key={mins}
-              type="button"
-              onClick={() => handleBulkShift(mins)}
-              className="btn-secondary"
-              style={{ fontSize: 12.5 }}
-              disabled={affectedBookings.length === 0}
-            >
-              +{mins} min all
-            </button>
-          ))}
-        </div>
-      </section>
-
-      <section className="panel">
-        <h2 className="panel-title">Clients to notify ({affectedBookings.length})</h2>
+        <h2 className="panel-title">People already waiting ({affectedBookings.length})</h2>
+        <p className="panel-sub">Pausing stops new joins. These people are still on today&apos;s line.</p>
         {affectedBookings.length === 0 ? (
           <p className="muted" style={{ fontSize: 13.5, padding: '12px 0' }}>
-            Nobody in line to notify.
+            Nobody is waiting right now.
           </p>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 4 }}>
@@ -247,21 +191,10 @@ export default function BarberEmergencyPage() {
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span style={{ fontWeight: 650, fontSize: 13.5 }}>{item.customerName}</span>
-                    {item.status === 'shifted' && (
-                      <span className="status-mark emergency" style={{ fontSize: 11 }}>shifted</span>
-                    )}
                   </div>
                   <div className="muted" style={{ fontSize: 12 }}>
-                    {item.serviceName} · {item.scheduledTime}
+                    {item.serviceName} · around {item.scheduledTime}
                   </div>
-                </div>
-                <div style={{ display: 'flex', gap: 6 }}>
-                  <button type="button" onClick={() => handleShiftSingle(item.id, 15)} className="btn-secondary" style={{ fontSize: 11.5, minHeight: 30, padding: '4px 8px' }}>
-                    +15m
-                  </button>
-                  <button type="button" onClick={() => handleShiftSingle(item.id, 30)} className="btn-secondary" style={{ fontSize: 11.5, minHeight: 30, padding: '4px 8px' }}>
-                    +30m
-                  </button>
                 </div>
               </div>
             ))}

@@ -216,23 +216,23 @@ export default function AppLayout({ children }: AppLayoutProps) {
   };
 
   const customerNavItems = [
-    { href: '/', label: 'Explore', iconName: 'explore' },
-    { href: '/map', label: 'Map', iconName: 'map' },
-    { href: '/bookings', label: 'Ticket', iconName: 'queue' },
-    { href: '/notifications', label: 'Alerts', iconName: 'alerts' },
-    { href: '/profile', label: 'Profile', iconName: 'account' },
+    { href: '/', label: 'Find a shop', iconName: 'explore' },
+    { href: '/map', label: 'Nearby', iconName: 'map' },
+    { href: '/bookings', label: 'My ticket', iconName: 'queue' },
+    { href: '/notifications', label: 'Updates', iconName: 'alerts' },
+    { href: '/profile', label: 'Me', iconName: 'account' },
   ];
 
   const proNavItems = [
-    { href: '/barber/dashboard', label: role === 'salon' ? 'Line' : 'Queue', iconName: 'queue' },
-    { href: '/barber/schedule', label: 'Hours', iconName: 'schedule' },
-    { href: '/barber/bookings', label: 'Bookings', iconName: 'bookings' },
-    { href: '/barber/emergency', label: 'Emergency', iconName: 'emergency' },
-    { href: '/barber/shop', label: role === 'salon' ? 'Salon' : 'Shop', iconName: 'shop' },
+    { href: '/barber/dashboard', label: "Today's line", iconName: 'queue' },
+    { href: '/barber/schedule', label: 'Open hours', iconName: 'schedule' },
+    { href: '/barber/bookings', label: "Who's booked", iconName: 'bookings' },
+    { href: '/barber/emergency', label: 'Pause line', iconName: 'emergency' },
+    { href: '/barber/shop', label: role === 'salon' ? 'My salon' : 'My shop', iconName: 'shop' },
   ];
 
   const adminNavItems = [
-    { href: '/admin', label: 'Overview', iconName: 'explore' },
+    { href: '/admin', label: 'Home', iconName: 'explore' },
     { href: '/admin/shops', label: 'Shops', iconName: 'shop' },
     { href: '/admin/users', label: 'People', iconName: 'account' },
   ];

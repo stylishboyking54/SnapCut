@@ -24,6 +24,60 @@ function mapQueueItem(q: any, shopId?: string): QueueItem {
   };
 }
 
+const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+function clock(value: string | undefined, fallback: string) {
+  if (!value) return fallback;
+  const match = String(value).match(/(\d{2}:\d{2})/);
+  return match ? match[1] : fallback;
+}
+
+function mapHours(rows: any[] | undefined) {
+  const list = rows || [];
+  if (!list.length) {
+    return [1, 2, 3, 4, 5, 6, 0].map((day) => ({
+      dayOfWeek: day,
+      dayName: DAY_NAMES[day],
+      startTime: '09:00',
+      endTime: '18:00',
+      isOpen: day !== 0,
+    }));
+  }
+  const byDay = new Map<number, any>();
+  for (const row of list) {
+    const day = Number(row.dayOfWeek ?? row.day_of_week);
+    if (!Number.isNaN(day)) byDay.set(day, row);
+  }
+  return [1, 2, 3, 4, 5, 6, 0].map((day) => {
+    const row = byDay.get(day);
+    return {
+      dayOfWeek: day,
+      dayName: row?.dayName || DAY_NAMES[day],
+      startTime: clock(row?.startTime || row?.start_time, '09:00'),
+      endTime: clock(row?.endTime || row?.end_time, '18:00'),
+      isOpen: Boolean(row) && row.isOpen !== false && row.is_open !== false,
+    };
+  });
+}
+
+function mapBreaks(rows: any[] | undefined) {
+  return (rows || []).map((b) => {
+    const startRaw = b.start_datetime ? new Date(b.start_datetime) : null;
+    const endRaw = b.end_datetime ? new Date(b.end_datetime) : null;
+    const asClock = (date: Date | null) =>
+      date && !Number.isNaN(date.getTime())
+        ? date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })
+        : '';
+    return {
+      id: b.id,
+      startTime: b.startTime || asClock(startRaw),
+      endTime: b.endTime || asClock(endRaw),
+      reason: b.reason || 'Break',
+      isRecurring: Boolean(b.isRecurring ?? b.is_recurring),
+    };
+  });
+}
+
 function mapShop(s: any): Shop {
   return {
     id: s.id,
@@ -53,8 +107,8 @@ function mapShop(s: any): Shop {
       price: Number(srv.price),
       description: srv.description,
     })),
-    workingHours: s.working_hours || s.workingHours || [],
-    breaks: s.breaks || [],
+    workingHours: mapHours(s.working_hours || s.workingHours),
+    breaks: mapBreaks(s.breaks),
   };
 }
 
@@ -309,6 +363,91 @@ export async function updateShop(shopId: string, payload: Partial<OwnShopPayload
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.message || data.error || 'Could not update shop');
   return mapShop(data);
+}
+
+function localStamp(time: string) {
+  const [h, m] = time.split(':').map(Number);
+  const date = new Date();
+  date.setHours(h || 0, m || 0, 0, 0);
+  return date.toISOString();
+}
+
+/** Save which days the shop is open. Closed days are left out. */
+export async function saveShopHours(shopId: string, hours: import('./types').WorkingHour[]) {
+  const res = await fetch(`${API_BASE_URL()}/shops/${shopId}/hours`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify({
+      hours: hours
+        .filter((hour) => hour.isOpen)
+        .map((hour) => ({
+          day_of_week: hour.dayOfWeek,
+          start_time: hour.startTime,
+          end_time: hour.endTime,
+        })),
+    }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.message || data.error || 'Could not save hours');
+  return data;
+}
+
+export async function addShopBreak(
+  shopId: string,
+  block: { startTime: string; endTime: string; reason: string; isRecurring: boolean },
+) {
+  const res = await fetch(`${API_BASE_URL()}/shops/${shopId}/breaks`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify({
+      start_datetime: localStamp(block.startTime),
+      end_datetime: localStamp(block.endTime),
+      reason: block.reason,
+      is_recurring: block.isRecurring,
+    }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.message || data.error || 'Could not save break');
+  return mapBreaks([data])[0];
+}
+
+export async function removeShopBreak(shopId: string, breakId: string) {
+  const res = await fetch(`${API_BASE_URL()}/shops/${shopId}/breaks/${breakId}`, {
+    method: 'DELETE',
+    headers: authHeaders(),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.message || data.error || 'Could not remove break');
+}
+
+export async function getAdminShops(): Promise<any[]> {
+  const res = await fetch(`${API_BASE_URL()}/admin/shops`, {
+    cache: 'no-store',
+    headers: authHeaders(),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.message || 'Could not load shops');
+  return Array.isArray(data) ? data : [];
+}
+
+export async function getAdminUsers(): Promise<any[]> {
+  const res = await fetch(`${API_BASE_URL()}/admin/users`, {
+    cache: 'no-store',
+    headers: authHeaders(),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.message || 'Could not load people');
+  return Array.isArray(data) ? data : [];
+}
+
+export async function verifyAdminShop(shopId: string) {
+  const res = await fetch(`${API_BASE_URL()}/admin/shops/${shopId}/verify`, {
+    method: 'PATCH',
+    headers: authHeaders(),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.message || 'Could not verify shop');
+  return data;
 }
 
 export async function toggleShopEmergency(

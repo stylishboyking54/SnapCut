@@ -57,8 +57,8 @@ export default function ProfilePage() {
         <div className="panel profile-hero" style={{ marginTop: 16 }}>
           <span className="avatar-chip lg">·</span>
           <h2>Not signed in</h2>
-          <p className="muted">Sign in from the photo in the header.</p>
-          <Link href="/" className="btn-primary" style={{ marginTop: 8 }}>Explore shops</Link>
+          <p className="muted">Tap the round photo at the top, then Sign in.</p>
+          <Link href="/" className="btn-primary" style={{ marginTop: 8 }}>Find a shop</Link>
         </div>
       </div>
     );
@@ -89,15 +89,15 @@ export default function ProfilePage() {
           <div className="profile-stats">
             <div className="profile-stat">
               <b><CountUp value={visits} /></b>
-              <span>This week</span>
+              <span>Visits this week</span>
             </div>
             <div className="profile-stat">
               <b><CountUp value={minutes} /></b>
-              <span>Minutes</span>
+              <span>Minutes in a chair</span>
             </div>
             <div className="profile-stat">
-              <b style={{ textTransform: 'capitalize', fontSize: 16 }}>{role}</b>
-              <span>Account</span>
+              <b style={{ fontSize: 16 }}>{role === 'barber' ? 'Barber' : role === 'salon' ? 'Salon' : role === 'admin' ? 'Admin' : 'Customer'}</b>
+              <span>You are</span>
             </div>
           </div>
         </section>
@@ -105,7 +105,7 @@ export default function ProfilePage() {
         <section className="panel" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div>
             <h2 className="panel-title">About you</h2>
-            <p className="panel-sub">What shops see when you join a line.</p>
+            <p className="panel-sub">Shops see this name when you join. You cannot change it on this screen yet.</p>
           </div>
           <div className="field">
             <label>Full name</label>
@@ -121,9 +121,9 @@ export default function ProfilePage() {
           </div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             {isPro ? (
-              <Link href="/barber/shop" className="btn-primary">Edit shop</Link>
+              <Link href="/barber/shop" className="btn-primary">Edit my shop</Link>
             ) : (
-              <Link href="/bookings" className="btn-primary">My ticket</Link>
+              <Link href="/bookings" className="btn-primary">See my ticket</Link>
             )}
             <button type="button" className="btn-secondary" onClick={handleLogout}>Sign out</button>
           </div>

@@ -353,11 +353,13 @@ img { max-width: 100%; height: auto; display: block; }
   gap: 3px;
   padding: 6px;
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: 9.5px;
   font-weight: 600;
+  line-height: 1.15;
+  text-align: center;
   transition: color var(--transition-fast);
   flex: 1;
-  max-width: 68px;
+  min-width: 0;
   min-height: 48px;
 }
 
@@ -366,7 +368,6 @@ img { max-width: 100%; height: auto; display: block; }
   font-weight: 700;
   background: var(--brand-primary);
   border-radius: 16px;
-  max-width: 64px;
 }
 
 .bottom-nav-item.active svg {

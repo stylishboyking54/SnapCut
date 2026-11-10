@@ -64,7 +64,7 @@ export default function NotificationsPage() {
           <div className="date-pill"><span className="status-dot live" />{todayLabel()}</div>
           <h1 style={{ fontSize: 28, fontWeight: 600, marginTop: 10 }}>{timeGreeting(getSession()?.profile.full_name)}</h1>
           <p className="secondary" style={{ fontSize: 14, marginTop: 6 }}>
-            Alerts for queue moves and delays.
+            Messages when your place in line changes, or a shop has to pause.
           </p>
         </div>
 

@@ -114,7 +114,9 @@ export default function BookingsPage() {
         <div>
           <div className="date-pill"><span className="status-dot live" />{todayLabel()}</div>
           <h1 style={{ fontSize: 28, fontWeight: 600, marginTop: 10 }}>{timeGreeting(getSession()?.profile.full_name)}</h1>
-          <p className="secondary" style={{ marginTop: 6, fontSize: 14 }}>Your ticket</p>
+          <p className="secondary" style={{ marginTop: 6, fontSize: 14, maxWidth: 420, lineHeight: 1.45 }}>
+            This is your place in line. Stay nearby, then walk in when it is your turn.
+          </p>
         </div>
 
         <button

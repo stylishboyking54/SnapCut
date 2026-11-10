@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { createShop, getMyShop, updateShop } from '@/lib/api';
 import { Shop } from '@/lib/types';
+import { getSession } from '@/lib/auth';
+import { timeGreeting, todayLabel } from '@/lib/greeting';
 import { proCopy, useProKind } from '@/lib/proRole';
 
 export default function BarberShopSettingsPage() {
@@ -98,13 +100,12 @@ export default function BarberShopSettingsPage() {
     <div className="page-enter" style={{ maxWidth: 560, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 22 }}>
       <div className="page-header-row">
         <div>
-          <h1 style={{ fontSize: 28, fontWeight: 600, marginTop: 4 }}>
-            {creating ? `Set up your ${copy.shopTitle.toLowerCase()}` : copy.shopTitle}
-          </h1>
-          <p className="secondary" style={{ fontSize: 14, marginTop: 6 }}>
+          <div className="date-pill"><span className="status-dot live" />{todayLabel()}</div>
+          <h1 style={{ fontSize: 28, fontWeight: 600, marginTop: 10 }}>{timeGreeting(getSession()?.profile.full_name)}</h1>
+          <p className="secondary" style={{ fontSize: 14, marginTop: 6, lineHeight: 1.45, maxWidth: 460 }}>
             {creating
-              ? 'Customers will see this on Explore when they look for a place nearby.'
-              : copy.shopEyebrow}
+              ? `Fill in the name, the street, and how long one visit takes. Then people can find your ${copy.shopTitle.toLowerCase()}.`
+              : `This is what people see when they look for your ${copy.shopTitle.toLowerCase()}. Change it, then tap Save.`}
           </p>
         </div>
         {!creating && (
@@ -148,7 +149,7 @@ export default function BarberShopSettingsPage() {
         </div>
 
         <div className="field">
-          <label>Tagline</label>
+          <label>Short line under the name</label>
           <input
             type="text"
             value={tagline}
@@ -163,7 +164,7 @@ export default function BarberShopSettingsPage() {
         </div>
 
         <div className="field">
-          <label>Address</label>
+          <label>Street address</label>
           <input type="text" value={address} onChange={(e) => setAddress(e.target.value)} required />
         </div>
 
@@ -181,11 +182,11 @@ export default function BarberShopSettingsPage() {
             value={avgDuration}
             onChange={(e) => setAvgDuration(Number(e.target.value))}
           />
-          <span className="muted" style={{ fontSize: 12 }}>Used to estimate wait times.</span>
+          <span className="muted" style={{ fontSize: 12 }}>People see a wait based on this. A haircut is often 30 minutes.</span>
         </div>
 
         <button type="submit" className="btn-primary" disabled={busy} style={{ marginTop: 4 }}>
-          {busy ? 'Saving…' : creating ? `Create ${copy.shopTitle.toLowerCase()}` : 'Save'}
+          {busy ? 'Saving…' : creating ? 'Save and open my line' : 'Save changes'}
         </button>
       </form>
     </div>

@@ -32,7 +32,7 @@ export class ScheduleController {
   // Barber: set working hours
   @Post('hours')
   @UseGuards(AuthGuard('jwt'), RolesGuard)
-  @Roles('barber')
+  @Roles('barber', 'salon')
   setHours(@Param('shopId') shopId: string, @Body() body: { hours: any[] }) {
     return this.scheduleService.setWorkingHours(shopId, body.hours);
   }
@@ -40,7 +40,7 @@ export class ScheduleController {
   // Barber: add break
   @Post('breaks')
   @UseGuards(AuthGuard('jwt'), RolesGuard)
-  @Roles('barber')
+  @Roles('barber', 'salon')
   addBreak(@Param('shopId') shopId: string, @Body() dto: any) {
     return this.scheduleService.addBreak(shopId, dto);
   }
@@ -48,7 +48,7 @@ export class ScheduleController {
   // Barber: remove break
   @Delete('breaks/:breakId')
   @UseGuards(AuthGuard('jwt'), RolesGuard)
-  @Roles('barber')
+  @Roles('barber', 'salon')
   removeBreak(@Param('shopId') shopId: string, @Param('breakId') breakId: string) {
     return this.scheduleService.removeBreak(shopId, breakId);
   }

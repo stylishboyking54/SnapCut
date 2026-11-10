@@ -57,19 +57,19 @@ export default function Sidebar({ navItems, role, onSignIn }: SidebarProps) {
 
   const sectionLabel =
     role === 'salon'
-      ? 'Salon floor'
+      ? 'Your salon'
       : role === 'barber'
-      ? 'Shop floor'
+      ? 'Your shop'
       : role === 'admin'
-      ? 'Admin'
-      : 'Find a cut';
+      ? 'For the owner'
+      : 'For customers';
 
   const brandSub =
     role === 'salon'
-      ? 'Neighborhood salon queues'
+      ? 'Run your salon line'
       : role === 'barber'
-      ? 'Neighborhood barber queues'
-      : 'Neighborhood barber queues';
+      ? 'Run your shop line'
+      : 'Find a shop and join the line';
 
   const displayName = session?.profile.full_name || null;
   const initials = displayName

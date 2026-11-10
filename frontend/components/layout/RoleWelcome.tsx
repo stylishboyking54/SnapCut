@@ -135,7 +135,9 @@ export default function RoleWelcome({ onComplete }: RoleWelcomeProps) {
               {mode === 'signup' ? 'Create your account' : 'Welcome back'}
             </h1>
             <p className="secondary" style={{ marginTop: 8, fontSize: 14, lineHeight: 1.45 }}>
-              Sign up to save your spot and sync across devices.
+              {role === 'customer'
+                ? 'Use the same email next time so your ticket stays with you.'
+                : 'Use the same email next time so your shop stays with you.'}
             </p>
 
             {error && (

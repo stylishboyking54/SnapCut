@@ -116,16 +116,6 @@ export default function BarberDashboardPage() {
     }
   };
 
-  const handleShiftDelay = (minutes: number) => {
-    setQueue((prev) =>
-      prev.map((item) => ({
-        ...item,
-        estimatedWaitMinutes: item.estimatedWaitMinutes + minutes,
-      })),
-    );
-    showNotice(`Added +${minutes}m to everyone waiting (local estimate).`);
-  };
-
   const inChairClient = queue.find((q) => q.status === 'in_progress') || null;
   const waitingClients = queue.filter((q) => q.status !== 'in_progress');
 
@@ -145,7 +135,7 @@ export default function BarberDashboardPage() {
           Add your name and address so customers can find you and join your line.
         </p>
         <Link href="/barber/shop?setup=1" className="btn-primary" style={{ marginTop: 20, display: 'inline-flex' }}>
-          Continue
+          Set up my shop
         </Link>
       </div>
     );
@@ -157,13 +147,15 @@ export default function BarberDashboardPage() {
         <div>
           <div className="date-pill"><span className="status-dot live" />{todayLabel()}</div>
           <h1 style={{ fontSize: 28, fontWeight: 600, marginTop: 10 }}>{hello}</h1>
-          <p className="secondary" style={{ marginTop: 6, fontSize: 14 }}>{shop.name}</p>
+          <p className="secondary" style={{ marginTop: 6, fontSize: 14, maxWidth: 460, lineHeight: 1.45 }}>
+            {shop.name}. When you finish someone, tap Finished — call next. Their ticket updates on its own.
+          </p>
         </div>
 
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <Link href="/barber/schedule" className="btn-secondary" style={{ fontSize: 12.5 }}>
             <CoffeeIcon size={14} />
-            Breaks ({shop.breaks?.length || 0})
+            Open hours
           </Link>
           <Link
             href="/barber/emergency"
@@ -175,7 +167,7 @@ export default function BarberDashboardPage() {
             }}
           >
             <AlertTriangleIcon size={14} color="var(--brand-danger)" />
-            Emergency
+            Pause line
           </Link>
         </div>
       </div>
@@ -215,14 +207,6 @@ export default function BarberDashboardPage() {
             {inChairClient ? copy.inSeat : copy.seatEmpty}
           </div>
 
-          <div style={{ display: 'flex', gap: 6 }}>
-            <button type="button" onClick={() => handleShiftDelay(10)} className="btn-secondary" style={{ fontSize: 12, minHeight: 34, padding: '6px 10px' }}>
-              +10m
-            </button>
-            <button type="button" onClick={() => handleShiftDelay(20)} className="btn-secondary" style={{ fontSize: 12, minHeight: 34, padding: '6px 10px' }}>
-              +20m
-            </button>
-          </div>
         </div>
 
         {inChairClient ? (
@@ -343,7 +327,7 @@ export default function BarberDashboardPage() {
                     disabled={busy}
                     style={{ fontSize: 11.5, minHeight: 32, padding: '4px 10px' }}
                   >
-                    No-show
+                    They didn't come
                   </button>
                 </div>
               </div>

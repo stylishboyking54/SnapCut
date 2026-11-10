@@ -7,12 +7,12 @@ import { Shop } from '@/lib/types';
 import { SearchIcon } from '@/components/ui/Icons';
 
 const PAGES = [
-  { href: '/', title: 'Explore', sub: 'Shops near you' },
-  { href: '/bookings', title: 'Ticket', sub: 'Your place in line' },
-  { href: '/notifications', title: 'Alerts', sub: 'Queue updates' },
-  { href: '/map', title: 'Map', sub: 'Shops nearby' },
-  { href: '/profile', title: 'Profile', sub: 'Account' },
-  { href: '/barber/dashboard', title: 'Shop floor', sub: 'Today’s line' },
+  { href: '/', title: 'Find a shop', sub: 'See who is open and join' },
+  { href: '/bookings', title: 'My ticket', sub: 'Your place in line' },
+  { href: '/notifications', title: 'Updates', sub: 'When the line moves' },
+  { href: '/map', title: 'Nearby', sub: 'Shops around you' },
+  { href: '/profile', title: 'Me', sub: 'Your name and account' },
+  { href: '/barber/dashboard', title: "Today's line", sub: 'Call the next person' },
 ];
 
 export default function SearchPalette({ onClose }: { onClose: () => void }) {

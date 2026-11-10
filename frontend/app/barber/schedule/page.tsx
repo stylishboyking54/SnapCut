@@ -2,9 +2,11 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { getMyShop } from '@/lib/api';
+import { addShopBreak, getMyShop, removeShopBreak, saveShopHours } from '@/lib/api';
+import { getSession } from '@/lib/auth';
 import { BreakBlock, Shop, WorkingHour } from '@/lib/types';
 import { CoffeeIcon } from '@/components/ui/Icons';
+import { timeGreeting, todayLabel } from '@/lib/greeting';
 import { proCopy, useProKind } from '@/lib/proRole';
 
 const DEFAULT_HOURS: WorkingHour[] = [
@@ -58,33 +60,44 @@ export default function BarberSchedulePage() {
     setTimeout(() => setNotice(null), 3500);
   };
 
-  const handleAddBreak = (e: React.FormEvent) => {
+  const handleAddBreak = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!startTime || !endTime || !reason) return;
+    if (!shop || !startTime || !endTime || !reason) return;
 
-    const newBreak: BreakBlock = {
-      id: `b-${Date.now()}`,
-      startTime,
-      endTime,
-      reason,
-      isRecurring,
-    };
-
-    setBreaks((prev) => [...prev, newBreak]);
-    showNotification(`Break saved: ${reason} (${startTime}–${endTime}).`);
+    try {
+      const saved = await addShopBreak(shop.id, { startTime, endTime, reason, isRecurring });
+      setBreaks((prev) => [...prev, saved]);
+      showNotification(`Saved. People cannot book ${reason} from ${startTime} to ${endTime}.`);
+    } catch (err) {
+      showNotification(err instanceof Error ? err.message : 'Could not save that break');
+    }
   };
 
-  const handleRemoveBreak = (id: string, breakReason: string) => {
-    setBreaks((prev) => prev.filter((b) => b.id !== id));
-    showNotification(`Removed “${breakReason}”.`);
+  const handleRemoveBreak = async (id: string, breakReason: string) => {
+    if (!shop) return;
+    try {
+      await removeShopBreak(shop.id, id);
+      setBreaks((prev) => prev.filter((b) => b.id !== id));
+      showNotification(`Removed “${breakReason}”. People can book that time again.`);
+    } catch (err) {
+      showNotification(err instanceof Error ? err.message : 'Could not remove that break');
+    }
   };
 
-  const handleToggleDay = (dayOfWeek: number) => {
-    setWorkingHours((prev) =>
-      prev.map((wh) =>
-        wh.dayOfWeek === dayOfWeek ? { ...wh, isOpen: !wh.isOpen } : wh
-      )
+  const handleToggleDay = async (dayOfWeek: number) => {
+    if (!shop) return;
+    const next = workingHours.map((wh) =>
+      wh.dayOfWeek === dayOfWeek ? { ...wh, isOpen: !wh.isOpen } : wh
     );
+    setWorkingHours(next);
+    try {
+      await saveShopHours(shop.id, next);
+      const day = next.find((wh) => wh.dayOfWeek === dayOfWeek);
+      showNotification(day?.isOpen ? `${day.dayName} is open.` : `${day?.dayName || 'That day'} is closed.`);
+    } catch (err) {
+      setWorkingHours(workingHours);
+      showNotification(err instanceof Error ? err.message : 'Could not save hours');
+    }
   };
 
   if (loading) {
@@ -100,10 +113,10 @@ export default function BarberSchedulePage() {
       <div className="page-enter" style={{ maxWidth: 520, margin: '0 auto', textAlign: 'center', padding: '48px 20px' }}>
         <h1 style={{ fontSize: 26, fontWeight: 600 }}>Set up your {copy.shopTitle.toLowerCase()} first</h1>
         <p className="secondary" style={{ marginTop: 10, fontSize: 14, lineHeight: 1.45 }}>
-          Hours and breaks live on your shop profile.
+          Add your shop name and address first. Then you can set the days you are open.
         </p>
         <Link href="/barber/shop?setup=1" className="btn-primary" style={{ marginTop: 20, display: 'inline-flex' }}>
-          Continue
+          Set up my shop
         </Link>
       </div>
     );
@@ -113,8 +126,11 @@ export default function BarberSchedulePage() {
     <div className="page-enter" style={{ maxWidth: 880, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 22 }}>
       <div className="page-header-row">
         <div>
-          <div className="eyebrow">When you&apos;re available</div>
-          <h1 style={{ fontSize: 28, fontWeight: 600, marginTop: 4 }}>Hours</h1>
+          <div className="date-pill"><span className="status-dot live" />{todayLabel()}</div>
+          <h1 style={{ fontSize: 28, fontWeight: 600, marginTop: 10 }}>{timeGreeting(getSession()?.profile.full_name)}</h1>
+          <p className="secondary" style={{ marginTop: 6, fontSize: 14, maxWidth: 460, lineHeight: 1.45 }}>
+            Open hours for {shop.name}. Tap a day to open or close it. Add a break when you step away.
+          </p>
         </div>
         <Link href="/barber/dashboard" className="btn-secondary" style={{ fontSize: 12.5 }}>
           {copy.backQueue}
@@ -140,13 +156,13 @@ export default function BarberSchedulePage() {
         <section className="panel">
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
             <CoffeeIcon size={16} />
-            <h2 className="panel-title" style={{ marginBottom: 0 }}>Add a break</h2>
+            <h2 className="panel-title" style={{ marginBottom: 0 }}>Step away</h2>
           </div>
-          <p className="panel-sub">Walk-ins and bookings pause during these windows.</p>
+          <p className="panel-sub">People cannot join during this time. Example: lunch, from 1:00 to 2:00.</p>
 
           <form onSubmit={handleAddBreak} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <div className="field">
-              <label>Label</label>
+              <label>What is this break?</label>
               <input type="text" value={reason} onChange={(e) => setReason(e.target.value)} required />
             </div>
 
@@ -167,22 +183,22 @@ export default function BarberSchedulePage() {
                 checked={isRecurring}
                 onChange={(e) => setIsRecurring(e.target.checked)}
               />
-              Repeat on workdays
+              Use this break every week
             </label>
 
             <button type="submit" className="btn-primary">
-              Save break
+              Save this break
             </button>
           </form>
         </section>
 
         <section className="panel">
-          <h2 className="panel-title">Breaks ({breaks.length})</h2>
-          <p className="panel-sub">Blocked on the booking calendar.</p>
+          <h2 className="panel-title">Breaks you saved ({breaks.length})</h2>
+          <p className="panel-sub">Remove one if you are back early.</p>
 
           {breaks.length === 0 ? (
             <p className="muted" style={{ fontSize: 13.5, padding: '12px 0', lineHeight: 1.45 }}>
-              No breaks yet — walk-ins run through your open hours.
+              No breaks yet. People can book any time you are open.
             </p>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -221,8 +237,8 @@ export default function BarberSchedulePage() {
       </div>
 
       <section className="panel">
-        <h2 className="panel-title">Week</h2>
-        <p className="panel-sub">Tap a day to open or close.</p>
+        <h2 className="panel-title">Days you work</h2>
+        <p className="panel-sub">Green means people can join that day. Closed means they will not see you.</p>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 8 }}>
           {workingHours.map((wh) => (

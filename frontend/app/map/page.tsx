@@ -36,15 +36,15 @@ export default function MapPage() {
       <div className="page-header-row">
         <div>
           <div className="date-pill"><span className="status-dot live" />{todayLabel()}</div>
-          <h1 style={{ fontSize: 28, fontWeight: 600, marginTop: 10 }}>Map</h1>
+          <h1 style={{ fontSize: 28, fontWeight: 600, marginTop: 10 }}>Nearby</h1>
           <p className="secondary" style={{ marginTop: 6, fontSize: 14 }}>
-            Tap a shop to see wait times before you walk.
+            Tap a shop to see how long you would wait before you walk over.
           </p>
         </div>
 
         <button type="button" onClick={handleFindOptimal} className="btn-primary" style={{ fontSize: 13 }}>
           <CompassIcon size={15} />
-          Best nearby
+          Shortest wait
         </button>
       </div>
 
