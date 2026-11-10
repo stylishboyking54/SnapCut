@@ -74,8 +74,14 @@ export default function Navbar({
 
   return (
     <header className="topbar">
-      <Link href="/" className="top-brand">
-        <span className="top-mark" aria-hidden>S</span>
+      <Link href="/" className="top-brand" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <img
+          src="/logo.png"
+          alt="Snapcut"
+          width={32}
+          height={32}
+          style={{ borderRadius: 8, objectFit: 'cover', flexShrink: 0 }}
+        />
         <span>
           <strong className="topbar-wordmark">Snapcut</strong>
           <em className="live-sync-pill">Live line</em>

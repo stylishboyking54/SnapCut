@@ -7,6 +7,10 @@ export const metadata: Metadata = {
   title: 'Snapcut — Find a cut without the wait',
   description:
     'See live barber queues nearby, join when a chair opens, and skip the walk-in wait.',
+  icons: {
+    icon: '/logo.png',
+    apple: '/logo.png',
+  },
 };
 
 export default function RootLayout({

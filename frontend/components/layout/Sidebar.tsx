@@ -84,23 +84,13 @@ export default function Sidebar({ navItems, role, onSignIn }: SidebarProps) {
   return (
     <aside className="sidebar">
       <div className="sidebar-logo" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <span
-          aria-hidden
-          style={{
-            width: 40,
-            height: 40,
-            borderRadius: 12,
-            background: 'var(--brand-accent)',
-            color: '#fff',
-            display: 'grid',
-            placeItems: 'center',
-            fontWeight: 700,
-            fontSize: 16,
-            flexShrink: 0,
-          }}
-        >
-          S
-        </span>
+        <img
+          src="/logo.png"
+          alt="Snapcut"
+          width={40}
+          height={40}
+          style={{ borderRadius: 11, objectFit: 'cover', flexShrink: 0 }}
+        />
         <div>
           <span className="sidebar-logo-text">Snapcut</span>
           <div className="sidebar-logo-sub">{brandSub}</div>

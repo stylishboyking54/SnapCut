@@ -118,9 +118,12 @@ export default function SignInModal({
           </button>
         )}
 
-        <h2 id="auth-modal-title" style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 600, marginTop: 2 }}>
-          {mode === 'role' ? 'Who are you?' : mode === 'login' ? 'Sign in' : 'Create an account'}
-        </h2>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8, marginTop: 4 }}>
+          <img src="/logo.png" alt="Snapcut" width={38} height={38} style={{ borderRadius: 10, objectFit: 'cover', flexShrink: 0 }} />
+          <h2 id="auth-modal-title" style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 600, margin: 0 }}>
+            {mode === 'role' ? 'Who are you?' : mode === 'login' ? 'Sign in' : 'Create an account'}
+          </h2>
+        </div>
         {reason ? (
           <p className="secondary" style={{ marginTop: 6, fontSize: 13.5, lineHeight: 1.4 }}>
             {reason}
