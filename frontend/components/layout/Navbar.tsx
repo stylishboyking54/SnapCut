@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { BellIcon, AlertTriangleIcon, SearchIcon } from '@/components/ui/Icons';
 import { AuthSession, getSession } from '@/lib/auth';
+import SearchPalette from '@/components/layout/SearchPalette';
 
 export type ThemeType = 'paper' | 'ink';
 
@@ -18,6 +19,7 @@ export default function Navbar({
 }: NavbarProps) {
   const [currentTheme, setCurrentTheme] = useState<ThemeType>('paper');
   const [session, setSession] = useState<AuthSession | null>(null);
+  const [searchOpen, setSearchOpen] = useState(false);
   const isInk = currentTheme === 'ink';
 
   useEffect(() => {
@@ -28,7 +30,20 @@ export default function Navbar({
     const sync = () => setSession(getSession());
     sync();
     window.addEventListener('snapcut-auth', sync);
-    return () => window.removeEventListener('snapcut-auth', sync);
+    const onSearch = () => setSearchOpen(true);
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setSearchOpen(true);
+      }
+    };
+    window.addEventListener('snapcut-search', onSearch);
+    window.addEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('snapcut-auth', sync);
+      window.removeEventListener('snapcut-search', onSearch);
+      window.removeEventListener('keydown', onKey);
+    };
   }, []);
 
   const name = session?.profile.full_name || '';
@@ -66,9 +81,9 @@ export default function Navbar({
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
-        <Link href="/#shop-search" className="icon-btn" title="Search shops" aria-label="Search shops">
+        <button type="button" className="icon-btn" title="Search" aria-label="Search" onClick={() => setSearchOpen(true)}>
           <SearchIcon size={16} />
-        </Link>
+        </button>
         <button
           type="button"
           role="switch"
@@ -113,8 +128,10 @@ export default function Navbar({
           ) : (
             initials || '·'
           )}
+          {session && <span className="avatar-live" />}
         </Link>
       </div>
+      {searchOpen && <SearchPalette onClose={() => setSearchOpen(false)} />}
     </header>
   );
 }

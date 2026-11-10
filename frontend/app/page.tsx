@@ -122,12 +122,21 @@ export default function HomePage() {
     }
   };
 
+  const openShops = shops.filter((s) => s.isOpen && !s.isEmergency);
+  const shortest = openShops.length
+    ? Math.min(...openShops.map((s) => s.estimatedWaitMinutes))
+    : 0;
+  const peopleAhead = shops.reduce((sum, s) => sum + (s.currentQueueCount || 0), 0);
+
   return (
     <div className="page-enter" style={{ maxWidth: 980, width: '100%', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 28 }}>
       <div className="page-header-row">
         <div>
-          <div className="eyebrow">{when || 'Today'} · Snapcut</div>
-          <h1 className="brand-hero" style={{ marginTop: 6 }}>
+          <div className="date-pill">
+            <span className="status-dot live" />
+            {when || 'Today'}
+          </div>
+          <h1 className="brand-hero" style={{ marginTop: 10 }}>
             {hello}
           </h1>
           <p className="secondary home-lead" style={{ marginTop: 8, fontSize: 15, maxWidth: 420, lineHeight: 1.45 }}>
@@ -140,6 +149,32 @@ export default function HomePage() {
           Nearby map
         </Link>
       </div>
+
+      {!shopsLoading && shops.length > 0 && (
+        <div className="stat-row">
+          <div className="stat-chip hot">
+            <span className="stat-orb">✂</span>
+            <div>
+              <b><CountUp value={shortest} /> min</b>
+              <small>Shortest wait</small>
+            </div>
+          </div>
+          <div className="stat-chip">
+            <span className="stat-orb quiet"><CountUp value={openShops.length} /></span>
+            <div>
+              <b><CountUp value={openShops.length} /></b>
+              <small>Shops open</small>
+            </div>
+          </div>
+          <div className="stat-chip">
+            <span className="stat-orb quiet">#</span>
+            <div>
+              <b><CountUp value={peopleAhead} /></b>
+              <small>People in line</small>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         <div className="search-bar">
