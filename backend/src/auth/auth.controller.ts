@@ -26,6 +26,11 @@ class LoginDto {
   password: string;
 }
 
+class AvatarDto {
+  @IsString()
+  image: string;
+}
+
 class ProfileDto {
   @IsOptional()
   @IsString()
@@ -69,6 +74,12 @@ export class AuthController {
   setRole(@Req() req: any, @Body() dto: OAuthSyncDto) {
     if (!dto.role) throw new UnauthorizedException('Pick customer, barber, or salon');
     return this.authService.setRole(req.user.id, dto.role);
+  }
+
+  @Post('avatar')
+  @UseGuards(SupabaseAuthGuard)
+  setAvatar(@Req() req: any, @Body() dto: AvatarDto) {
+    return this.authService.setAvatar(req.user.id, dto.image);
   }
 
   @Post('profile')

@@ -210,6 +210,22 @@ export function takePendingRole(fallback?: AuthRole): AuthRole | null {
   return null;
 }
 
+export async function updateMyAvatar(image: string) {
+  const res = await fetch(`${getApiBaseUrl()}/auth/avatar`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify({ image }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.message || 'Could not save the photo');
+  const session = getSession();
+  if (session) {
+    session.profile.avatar_url = data.avatar_url || null;
+    saveSession(session);
+  }
+  return data.avatar_url as string | null;
+}
+
 export async function updateMyProfile(input: { full_name: string; phone: string }) {
   const res = await fetch(`${getApiBaseUrl()}/auth/profile`, {
     method: 'POST',

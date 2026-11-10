@@ -70,6 +70,44 @@ export class AuthService {
    * profile as customer via trigger before we get here).
    * Never demote admin.
    */
+  async setAvatar(userId: string, image: string) {
+    if (!image) {
+      const { error } = await this.supabase.from('profiles').update({ avatar_url: null }).eq('id', userId);
+      if (error) throw new BadRequestException(error.message || 'Could not remove the photo');
+      return { avatar_url: null };
+    }
+
+    const match = image.match(/^data:image\/(?:jpeg|jpg|png|webp);base64,([A-Za-z0-9+/=\s]+)$/);
+    if (!match) throw new BadRequestException('Choose a photo from your phone or computer');
+    const buffer = Buffer.from(match[1].replace(/\s/g, ''), 'base64');
+    if (!buffer.length || buffer.length > 1_500_000) {
+      throw new BadRequestException('That photo is too large. Try another one.');
+    }
+
+    const bucket = 'avatars';
+    const { data: buckets, error: listError } = await this.supabase.storage.listBuckets();
+    if (listError) throw new BadRequestException(listError.message);
+    if (!buckets?.some((item) => item.name === bucket)) {
+      const created = await this.supabase.storage.createBucket(bucket, { public: true });
+      if (created.error && !/already exists/i.test(created.error.message)) {
+        throw new BadRequestException(created.error.message);
+      }
+    }
+
+    const path = `${userId}.jpg`;
+    const uploaded = await this.supabase.storage.from(bucket).upload(path, buffer, {
+      contentType: 'image/jpeg',
+      upsert: true,
+    });
+    if (uploaded.error) throw new BadRequestException(uploaded.error.message);
+
+    const { data } = this.supabase.storage.from(bucket).getPublicUrl(path);
+    const avatar_url = `${data.publicUrl}?v=${Date.now()}`;
+    const { error } = await this.supabase.from('profiles').update({ avatar_url }).eq('id', userId);
+    if (error) throw new BadRequestException(error.message || 'Could not save the photo');
+    return { avatar_url };
+  }
+
   async updateProfile(userId: string, dto: { full_name?: string; phone?: string }) {
     const patch: { full_name?: string; phone?: string | null } = {};
     if (typeof dto.full_name === 'string' && dto.full_name.trim()) {

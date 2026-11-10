@@ -3,11 +3,38 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { AuthSession, getSession, logout, requestSignIn, updateMyProfile } from '@/lib/auth';
+import { AuthSession, getSession, logout, requestSignIn, updateMyAvatar, updateMyProfile } from '@/lib/auth';
 import { UserIcon } from '@/components/ui/Icons';
 import { getBookingRows } from '@/lib/api';
 import { summarizeWeek } from '@/lib/weekStats';
 import CountUp from '@/components/ui/CountUp';
+
+function shrinkPhoto(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('Could not read that photo'));
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const size = 512;
+        const scale = Math.min(size / img.width, size / img.height, 1);
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.max(1, Math.round(img.width * scale));
+        canvas.height = Math.max(1, Math.round(img.height * scale));
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          reject(new Error('Could not prepare that photo'));
+          return;
+        }
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL('image/jpeg', 0.82));
+      };
+      img.onerror = () => reject(new Error('That file is not a photo'));
+      img.src = String(reader.result || '');
+    };
+    reader.readAsDataURL(file);
+  });
+}
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -18,6 +45,7 @@ export default function ProfilePage() {
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [busy, setBusy] = useState(false);
+  const [photoBusy, setPhotoBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
 
   useEffect(() => {
@@ -43,6 +71,38 @@ export default function ProfilePage() {
       })
       .catch(() => undefined);
   }, [session]);
+
+  const handlePhoto = async (file: File | null) => {
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      setNotice('Choose a photo, not a document.');
+      return;
+    }
+    setPhotoBusy(true);
+    setNotice(null);
+    try {
+      const image = await shrinkPhoto(file);
+      await updateMyAvatar(image);
+      setNotice('Photo saved. It shows in the header now.');
+    } catch (err) {
+      setNotice(err instanceof Error ? err.message : 'Could not save the photo');
+    } finally {
+      setPhotoBusy(false);
+    }
+  };
+
+  const handleRemovePhoto = async () => {
+    setPhotoBusy(true);
+    setNotice(null);
+    try {
+      await updateMyAvatar('');
+      setNotice('Photo removed.');
+    } catch (err) {
+      setNotice(err instanceof Error ? err.message : 'Could not remove the photo');
+    } finally {
+      setPhotoBusy(false);
+    }
+  };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -110,6 +170,25 @@ export default function ProfilePage() {
           <span className="avatar-chip lg">
             {session.profile.avatar_url ? <img src={session.profile.avatar_url} alt="" /> : initials || 'SC'}
           </span>
+          <label className="btn-secondary" style={{ cursor: 'pointer' }}>
+            {photoBusy ? 'Saving photo…' : 'Change photo'}
+            <input
+              type="file"
+              accept="image/*"
+              hidden
+              disabled={photoBusy}
+              onChange={(e) => {
+                const file = e.target.files?.[0] || null;
+                e.target.value = '';
+                void handlePhoto(file);
+              }}
+            />
+          </label>
+          {session.profile.avatar_url && (
+            <button type="button" className="btn-secondary" disabled={photoBusy} onClick={() => void handleRemovePhoto()}>
+              Remove photo
+            </button>
+          )}
           <h2>{session.profile.full_name}</h2>
           <p className="muted" style={{ fontSize: 13.5 }}>
             {session.email} · <span style={{ textTransform: 'capitalize' }}>{role}</span>

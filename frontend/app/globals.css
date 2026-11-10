@@ -1137,6 +1137,8 @@ img { max-width: 100%; height: auto; display: block; }
   padding: 28px 18px 20px;
 }
 .profile-hero h2 { font-size: 26px; margin-top: 6px; }
+.profile-hero .btn-secondary { cursor: pointer; }
+.profile-hero input[type='file'] { display: none; }
 .profile-stats {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
