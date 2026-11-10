@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { AppNotification } from '@/lib/types';
 import { getSession } from '@/lib/auth';
 import { getMyNotifications, markNotificationsRead } from '@/lib/api';
+import { subscribeNotifications } from '@/lib/realtime';
 import { ClockIcon, AlertTriangleIcon } from '@/components/ui/Icons';
 import { timeGreeting, todayLabel } from '@/lib/greeting';
 
@@ -25,6 +26,10 @@ export default function NotificationsPage() {
     try {
       const items = await getMyNotifications();
       setNotifications(items);
+      const unread = items.filter((n) => !n.isRead).length;
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('snapcut-notifications-count', { detail: { unread } }));
+      }
     } catch {
       setNotifications([]);
     } finally {
@@ -33,13 +38,37 @@ export default function NotificationsPage() {
   }, []);
 
   useEffect(() => {
-    void load();
+    let unsub: () => void = () => {};
+
+    const connect = () => {
+      unsub();
+      unsub = () => {};
+      void load();
+      const session = getSession();
+      if (!session?.profile?.id) return;
+      unsub = subscribeNotifications({
+        userId: session.profile.id,
+        onChange: () => {
+          void load();
+        },
+      });
+    };
+
+    connect();
     const onAuth = () => {
       setLoading(true);
-      void load();
+      connect();
     };
     window.addEventListener('snapcut-auth', onAuth);
-    return () => window.removeEventListener('snapcut-auth', onAuth);
+    const poll = window.setInterval(() => {
+      void load();
+    }, 10000);
+
+    return () => {
+      window.removeEventListener('snapcut-auth', onAuth);
+      window.clearInterval(poll);
+      unsub();
+    };
   }, [load]);
 
   const handleMarkAllRead = async () => {
@@ -48,6 +77,10 @@ export default function NotificationsPage() {
       setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
     } catch {
       setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+    } finally {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('snapcut-notifications-count', { detail: { unread: 0 } }));
+      }
     }
   };
 

@@ -45,3 +45,39 @@ export function subscribeBookings(opts: {
     return () => undefined;
   }
 }
+
+/**
+ * Listen for user notifications changes in real-time.
+ */
+export function subscribeNotifications(opts: {
+  userId: string;
+  onChange: () => void;
+}): Unsub {
+  const session = getSession();
+  if (!session?.access_token) return () => undefined;
+
+  try {
+    const supabase = createClient();
+    const channelName = `notifications-${opts.userId}-${Date.now()}`;
+
+    const channel = supabase
+      .channel(channelName)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id=eq.${opts.userId}`,
+        },
+        () => opts.onChange(),
+      )
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  } catch {
+    return () => undefined;
+  }
+}

@@ -12,7 +12,8 @@ import {
   isProtectedCustomerPath,
   PICK_ROLE_KEY,
 } from '@/lib/auth';
-import { getMyShop } from '@/lib/api';
+import { getMyShop, getMyNotifications } from '@/lib/api';
+import { subscribeNotifications } from '@/lib/realtime';
 
 type UserRole = AppRole | 'admin';
 
@@ -46,12 +47,86 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const [needsRole, setNeedsRole] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
   const [authReason, setAuthReason] = useState('');
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [toastAlert, setToastAlert] = useState<{ id: string; message: string; type: string } | null>(null);
 
   const openAuthGate = useCallback((reason?: string) => {
     if (getSession()) return;
     setAuthReason(reason ?? reasonForPath(pathname) ?? '');
     setAuthOpen(true);
   }, [pathname]);
+
+  // Synchronize unread notifications and real-time alerts
+  useEffect(() => {
+    let isMounted = true;
+    let unsub: () => void = () => {};
+
+    const loadUnread = async () => {
+      const session = getSession();
+      if (!session) {
+        if (isMounted) setUnreadCount(0);
+        return;
+      }
+      try {
+        const list = await getMyNotifications();
+        if (!isMounted) return;
+        const unread = list.filter((n) => !n.isRead);
+        setUnreadCount((prevCount) => {
+          // If a new unread arrives while browsing, show in-app alert banner
+          if (unread.length > prevCount && unread[0]) {
+            setToastAlert({
+              id: unread[0].id,
+              message: unread[0].message,
+              type: unread[0].type,
+            });
+            setTimeout(() => {
+              if (isMounted) setToastAlert(null);
+            }, 6000);
+          }
+          return unread.length;
+        });
+      } catch {
+        // quiet error
+      }
+    };
+
+    const connect = () => {
+      unsub();
+      unsub = () => {};
+      void loadUnread();
+      const session = getSession();
+      if (!session?.profile?.id) return;
+      unsub = subscribeNotifications({
+        userId: session.profile.id,
+        onChange: () => {
+          void loadUnread();
+        },
+      });
+    };
+
+    connect();
+
+    const onAuth = () => connect();
+    const onCountUpdate = (e: any) => {
+      if (typeof e.detail?.unread === 'number') {
+        setUnreadCount(e.detail.unread);
+      }
+    };
+
+    window.addEventListener('snapcut-auth', onAuth);
+    window.addEventListener('snapcut-notifications-count', onCountUpdate);
+    const poll = window.setInterval(() => {
+      void loadUnread();
+    }, 12000);
+
+    return () => {
+      isMounted = false;
+      window.removeEventListener('snapcut-auth', onAuth);
+      window.removeEventListener('snapcut-notifications-count', onCountUpdate);
+      window.clearInterval(poll);
+      unsub();
+    };
+  }, []);
 
   // If Supabase dumps ?code= on Site URL (/), forward to the real callback route
   useEffect(() => {
@@ -204,7 +279,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
     { href: '/', label: 'Find a shop', iconName: 'explore' },
     { href: '/map', label: 'Nearby', iconName: 'map' },
     { href: '/bookings', label: 'My ticket', iconName: 'queue' },
-    { href: '/notifications', label: 'Updates', iconName: 'alerts' },
+    { href: '/notifications', label: 'Updates', iconName: 'alerts', badge: unreadCount > 0 ? unreadCount : undefined },
     { href: '/profile', label: 'Me', iconName: 'account' },
   ];
 
@@ -264,7 +339,50 @@ export default function AppLayout({ children }: AppLayoutProps) {
       </Suspense>
 
       <div className="main-content">
-        <Navbar currentRole={role} notificationCount={0} />
+                <Navbar currentRole={role} notificationCount={unreadCount} />
+        {toastAlert && (
+          <div
+            style={{
+              position: 'sticky',
+              top: 60,
+              zIndex: 1000,
+              padding: '10px 16px',
+              margin: '0 auto 12px auto',
+              maxWidth: 640,
+              width: '90%',
+              borderRadius: 'var(--radius-md)',
+              background: toastAlert.type === 'emergency' ? 'var(--brand-danger, #dc2626)' : 'var(--brand-primary, #f0412b)',
+              color: '#ffffff',
+              boxShadow: '0 8px 24px rgba(0,0,0,0.25)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 12,
+              animation: 'slideDown 0.3s ease-out',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13.5, fontWeight: 600 }}>
+              <span>{toastAlert.type === 'emergency' ? '⚠️' : '🔔'}</span>
+              <span>{toastAlert.message}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setToastAlert(null)}
+              style={{
+                background: 'rgba(255,255,255,0.25)',
+                border: 'none',
+                color: '#fff',
+                borderRadius: 4,
+                padding: '2px 8px',
+                fontSize: 11,
+                fontWeight: 700,
+                cursor: 'pointer',
+              }}
+            >
+              ✕
+            </button>
+          </div>
+        )}
         <main className="page-content">
           <Suspense
             fallback={

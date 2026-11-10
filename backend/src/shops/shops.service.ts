@@ -933,7 +933,7 @@ export class ShopsService {
     if (this.isSupabaseLive()) {
       const { data: owned } = await this.supabase
         .from('shops')
-        .select('id')
+        .select('id, name')
         .eq('id', shopId)
         .eq('owner_id', ownerId)
         .maybeSingle();
@@ -948,6 +948,36 @@ export class ShopsService {
         })
         .eq('id', shopId);
       if (error) throw new BadRequestException(error.message);
+
+      // Notify all active customers in line about the pause/resumption
+      try {
+        const { data: activeBookings } = await this.supabase
+          .from('bookings')
+          .select('id, customer_id')
+          .eq('shop_id', shopId)
+          .in('status', ['pending', 'confirmed', 'in_progress']);
+
+        if (activeBookings && activeBookings.length > 0) {
+          const shopName = owned.name || 'The shop';
+          const msg = isEmergency
+            ? reason
+              ? `⚠️ ${shopName} paused the line: ${reason}`
+              : `⚠️ ${shopName} has temporarily paused the line.`
+            : `✅ ${shopName} has resumed service.`;
+
+          const rows = activeBookings.map((b) => ({
+            user_id: b.customer_id,
+            booking_id: b.id,
+            type: isEmergency ? 'emergency' : 'queue_update',
+            message: msg,
+          }));
+
+          await this.supabase.from('notifications').insert(rows);
+        }
+      } catch (notifErr) {
+        console.warn('Could not dispatch emergency notifications:', notifErr);
+      }
+
       return { is_emergency: isEmergency, shop_id: shopId, emergency_reason: reason, resume_at: resumeAt || null };
     }
 
