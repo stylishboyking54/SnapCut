@@ -172,6 +172,8 @@ export class AuthService {
       .eq('id', user.id)
       .maybeSingle();
 
+    const isNew = !existing;
+
     // Keep whatever role is already in the DB; only override if a new role was explicitly passed.
     // Never demote admin. Never reset an existing barber/salon to customer.
     const existingRole = existing?.role as string | undefined;
@@ -207,6 +209,7 @@ export class AuthService {
 
     return {
       access_token: accessToken,
+      is_new: isNew,
       user,
       profile: profile || {
         id: user.id,

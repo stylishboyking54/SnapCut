@@ -31,8 +31,7 @@ function AuthCompleteInner() {
 
       try {
         const roleParam = searchParams.get('role');
-
-        // Only treat as a "chosen" role if explicitly a pro role passed via URL
+        // Only treat explicitly chosen pro roles as "preferred"
         const preferred: AuthRole | undefined =
           roleParam === 'barber' || roleParam === 'salon' || roleParam === 'admin'
             ? roleParam
@@ -41,11 +40,8 @@ function AuthCompleteInner() {
         const session = await completeOAuthSession(preferred);
         if (cancelled) return;
 
-        // If no role was explicitly chosen AND the profile is still the default "customer",
-        // this is a brand-new Google user — ask them to pick a role.
-        const isNewUser = !preferred && !roleParam;
-
-        if (isNewUser) {
+        // Backend tells us if this is a brand-new account with no role chosen yet
+        if (session.is_new && !preferred) {
           setState('pick-role');
         } else {
           router.replace(homeForRole(session.profile.role));

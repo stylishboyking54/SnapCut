@@ -33,6 +33,7 @@ export type AuthSession = {
   refresh_token?: string;
   email: string;
   profile: AuthProfile;
+  is_new?: boolean;
 };
 
 export function getSession(): AuthSession | null {
