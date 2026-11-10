@@ -144,8 +144,8 @@ export class ShopsController {
   toggleEmergency(
     @Param('id') id: string,
     @Req() req: any,
-    @Body() body: { is_emergency: boolean; reason?: string },
+    @Body() body: { is_emergency: boolean; reason?: string; resume_at?: string },
   ) {
-    return this.shopsService.toggleEmergency(id, req.user.id, body.is_emergency, body.reason);
+    return this.shopsService.toggleEmergency(id, req.user.id, body.is_emergency, body.reason, body.resume_at);
   }
 }

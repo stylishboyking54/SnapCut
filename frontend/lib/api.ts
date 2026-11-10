@@ -112,6 +112,7 @@ function mapShop(s: any): Shop {
     isOpen: s.is_open ?? s.isOpen ?? true,
     isEmergency: s.is_emergency ?? s.isEmergency ?? false,
     emergencyReason: s.emergency_reason ?? s.emergencyReason,
+    resumeAt: s.resume_at ?? s.resumeAt ?? undefined,
     avgDurationPerClient: s.avg_service_duration ?? s.avgDurationPerClient ?? 25,
     currentQueueCount: s.current_queue_count ?? s.currentQueueCount ?? 0,
     estimatedWaitMinutes: s.estimated_wait_minutes ?? s.estimatedWaitMinutes ?? 0,
@@ -558,11 +559,12 @@ export async function toggleShopEmergency(
   shopId: string,
   isEmergency: boolean,
   reason?: string,
+  resumeAt?: string,
 ): Promise<void> {
   const res = await fetch(`${API_BASE_URL()}/shops/${shopId}/emergency`, {
     method: 'PATCH',
     headers: authHeaders(),
-    body: JSON.stringify({ is_emergency: isEmergency, reason }),
+    body: JSON.stringify({ is_emergency: isEmergency, reason, resume_at: resumeAt }),
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.message || data.error || 'Could not update emergency');

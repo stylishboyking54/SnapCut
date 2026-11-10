@@ -64,6 +64,11 @@ export default function BarberEmergencyPage() {
         if (mine) {
           setIsEmergency(mine.isEmergency);
           setEmergencyReason(mine.emergencyReason || '');
+          // Restore countdown from server-stored resume_at
+          if (mine.isEmergency && mine.resumeAt) {
+            const stored = new Date(mine.resumeAt);
+            if (stored.getTime() > Date.now()) setResumeAt(stored);
+          }
           const live = await getShopLiveQueue(mine.id);
           if (!cancelled) setAffectedBookings(live.queue);
         }
@@ -132,10 +137,10 @@ export default function BarberEmergencyPage() {
     try {
       const mins = getDurationMinutes();
       const reason = buildReason();
-      await toggleShopEmergency(shop.id, true, reason);
+      const at = new Date(Date.now() + mins * 60 * 1000);
+      await toggleShopEmergency(shop.id, true, reason, at.toISOString());
       setIsEmergency(true);
       setEmergencyReason(reason);
-      const at = new Date(Date.now() + mins * 60 * 1000);
       setResumeAt(at);
       const timeStr = at.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       showAlert(

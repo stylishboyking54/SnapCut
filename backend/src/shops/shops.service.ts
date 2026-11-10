@@ -266,6 +266,9 @@ export class ShopsService {
   }
 
   async findAll(filters?: { city?: string; search?: string; shopType?: string }) {
+    // Auto-resume any shops whose timed pause has expired
+    await this.autoResumeExpired();
+
     if (this.isSupabaseLive()) {
       try {
         let query = this.supabase
@@ -325,6 +328,7 @@ export class ShopsService {
   }
 
   async findOne(id: string) {
+    await this.autoResumeExpired();
     if (this.isSupabaseLive()) {
       try {
         const { data, error } = await this.supabase
@@ -560,6 +564,7 @@ export class ShopsService {
   }
 
   async findMine(ownerId: string) {
+    await this.autoResumeExpired();
     if (this.isSupabaseLive()) {
       const { data, error } = await this.supabase
         .from('shops')
@@ -916,7 +921,7 @@ export class ShopsService {
     return this.localShops[shopIndex];
   }
 
-  async toggleEmergency(shopId: string, ownerId: string, isEmergency: boolean, reason?: string) {
+  async toggleEmergency(shopId: string, ownerId: string, isEmergency: boolean, reason?: string, resumeAt?: string) {
     if (this.isSupabaseLive()) {
       const { data: owned } = await this.supabase
         .from('shops')
@@ -931,17 +936,37 @@ export class ShopsService {
         .update({
           is_emergency: isEmergency,
           emergency_reason: isEmergency ? reason || null : null,
+          resume_at: isEmergency && resumeAt ? resumeAt : null,
         })
         .eq('id', shopId);
       if (error) throw new BadRequestException(error.message);
-      return { is_emergency: isEmergency, shop_id: shopId, emergency_reason: reason };
+      return { is_emergency: isEmergency, shop_id: shopId, emergency_reason: reason, resume_at: resumeAt || null };
     }
 
     const shopIndex = this.localShops.findIndex((s) => s.id === shopId && s.owner_id === ownerId);
     if (shopIndex !== -1) {
       this.localShops[shopIndex].is_emergency = isEmergency;
       (this.localShops[shopIndex] as any).emergency_reason = reason;
+      (this.localShops[shopIndex] as any).resume_at = isEmergency && resumeAt ? resumeAt : null;
     }
-    return { is_emergency: isEmergency, shop_id: shopId, emergency_reason: reason };
+    return { is_emergency: isEmergency, shop_id: shopId, emergency_reason: reason, resume_at: resumeAt || null };
+  }
+
+  /**
+   * Auto-resume shops whose pause timer has expired.
+   * Called on shop reads so there's no need for a cron job.
+   */
+  async autoResumeExpired() {
+    if (!this.isSupabaseLive()) return;
+    try {
+      await this.supabase
+        .from('shops')
+        .update({ is_emergency: false, emergency_reason: null, resume_at: null })
+        .eq('is_emergency', true)
+        .not('resume_at', 'is', null)
+        .lte('resume_at', new Date().toISOString());
+    } catch {
+      /* best-effort */
+    }
   }
 }

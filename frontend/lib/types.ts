@@ -42,6 +42,7 @@ export interface Shop {
   isOpen: boolean;
   isEmergency: boolean;
   emergencyReason?: string;
+  resumeAt?: string;
   avgDurationPerClient: number; // minutes
   currentQueueCount: number;
   estimatedWaitMinutes: number;

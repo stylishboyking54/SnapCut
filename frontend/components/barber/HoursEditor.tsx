@@ -198,3 +198,4 @@ export default function HoursEditor({ shopId, initialHours, onSaved }: HoursEdit
     </section>
   );
 }
+

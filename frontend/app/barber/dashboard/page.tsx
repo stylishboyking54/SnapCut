@@ -163,15 +163,51 @@ export default function BarberDashboardPage() {
             className="btn-secondary"
             style={{
               fontSize: 12.5,
-              borderColor: 'rgba(180, 35, 24, 0.35)',
+              borderColor: shop.isEmergency ? 'var(--brand-danger)' : 'rgba(180, 35, 24, 0.35)',
+              background: shop.isEmergency ? 'var(--brand-danger-soft)' : undefined,
               color: 'var(--brand-danger)',
             }}
           >
             <AlertTriangleIcon size={14} color="var(--brand-danger)" />
-            Pause line
+            {shop.isEmergency ? 'Line paused' : 'Pause line'}
           </Link>
         </div>
       </div>
+
+      {shop.isEmergency && (
+        <div
+          className="alert-banner"
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            background: 'var(--brand-danger-soft)',
+            color: 'var(--brand-danger)',
+            border: '1px solid var(--brand-danger)',
+            padding: '12px 16px',
+            borderRadius: 'var(--radius-md)',
+            flexWrap: 'wrap',
+            gap: 12,
+          }}
+        >
+          <div>
+            <strong>Line is currently paused</strong>
+            {shop.emergencyReason && <span> — {shop.emergencyReason}</span>}
+            {shop.resumeAt && (
+              <span style={{ display: 'block', fontSize: 12.5, marginTop: 2, opacity: 0.9 }}>
+                Resumes around {new Date(shop.resumeAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </span>
+            )}
+          </div>
+          <Link
+            href="/barber/emergency"
+            className="btn-secondary"
+            style={{ fontSize: 12, borderColor: 'var(--brand-danger)', color: 'var(--brand-danger)' }}
+          >
+            Manage pause
+          </Link>
+        </div>
+      )}
 
       {week && (
         <WeekCard
