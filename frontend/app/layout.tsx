@@ -8,8 +8,11 @@ export const metadata: Metadata = {
   description:
     'See live barber queues nearby, join when a chair opens, and skip the walk-in wait.',
   icons: {
-    icon: '/logo.png',
-    apple: '/logo.png',
+    icon: [
+      { url: '/favicon.ico' },
+      { url: '/icon.png', type: 'image/png' },
+    ],
+    apple: '/apple-icon.png',
   },
 };
 
