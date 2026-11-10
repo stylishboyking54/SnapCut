@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import { useParams } from 'next/navigation';
 import { getMyBookings, getShopById, getShopLiveQueue, joinShopQueue } from '@/lib/api';
 import { getSession, requestSignIn } from '@/lib/auth';
@@ -9,6 +10,27 @@ import { Shop, Service, QueueItem } from '@/lib/types';
 import { CoffeeIcon } from '@/components/ui/Icons';
 import CountUp from '@/components/ui/CountUp';
 import ShopFilm from '@/components/ui/ShopFilm';
+
+const RouteMap = dynamic(() => import('@/components/map/RouteMap'), {
+  ssr: false,
+  loading: () => (
+    <div
+      style={{
+        width: '100%',
+        height: 280,
+        borderRadius: 'var(--radius-md)',
+        background: 'var(--bg-elevated)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        color: 'var(--text-muted)',
+        fontSize: 13,
+      }}
+    >
+      Loading map & route…
+    </div>
+  ),
+});
 
 function ShopDetailContent() {
   const params = useParams();
@@ -421,6 +443,27 @@ function ShopDetailContent() {
             </div>
           )}
         </div>
+      </div>
+
+      {/* Location & Directions Card */}
+      <div className="panel" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+          <div>
+            <h2 className="panel-title" style={{ margin: 0 }}>Location & Route</h2>
+            <p className="panel-sub" style={{ margin: '4px 0 0 0' }}>
+              Preview your route and estimated travel time before joining the line.
+            </p>
+          </div>
+        </div>
+
+        <RouteMap
+          shopName={shop.name}
+          shopAddress={shop.address}
+          shopLat={shop.lat}
+          shopLng={shop.lng}
+          height={300}
+          autoLocate={true}
+        />
       </div>
 
     </div>

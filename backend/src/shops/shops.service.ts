@@ -161,6 +161,9 @@ type LocalQueueEntry = {
   id: string;
   shop_id: string;
   shop_name: string;
+  shop_address?: string;
+  shop_lat?: number;
+  shop_lng?: number;
   customer_name: string;
   customer_avatar: string;
   service_id?: string;
@@ -225,7 +228,7 @@ export class ShopsService {
     return Boolean(url && !url.includes('placeholder') && !url.includes('your-project'));
   }
 
-  private mapLiveQueueItem(shopId: string, shopName: string, b: any) {
+  private mapLiveQueueItem(shopId: string, shopName: string, b: any, shop?: any) {
     const scheduled = b.scheduled_at ? new Date(b.scheduled_at) : new Date();
     const status =
       b.status === 'in_progress'
@@ -237,6 +240,9 @@ export class ShopsService {
       id: b.id,
       shop_id: shopId,
       shop_name: shopName,
+      shop_address: shop?.address || b.shops?.address,
+      shop_lat: shop?.lat ?? b.shops?.lat,
+      shop_lng: shop?.lng ?? b.shops?.lng,
       customer_name: b.profiles?.full_name || 'Guest',
       customer_avatar: b.profiles?.avatar_url || '',
       service_id: b.service_id,

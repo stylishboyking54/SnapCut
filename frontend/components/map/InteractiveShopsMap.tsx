@@ -20,6 +20,7 @@ export default function InteractiveShopsMap({
   const mapInstance = useRef<any>(null);
   const markersRef = useRef<Map<string, any>>(new Map());
   const userMarkerRef = useRef<any>(null);
+  const routeLayerRef = useRef<any>(null);
 
   const [userCoords, setUserCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [locating, setLocating] = useState(false);
@@ -119,11 +120,43 @@ export default function InteractiveShopsMap({
     };
   }, [shops]);
 
-  // When selected shop changes, smoothly pan to it
+  // When selected shop changes, smoothly pan to it and draw route if user location is known
   useEffect(() => {
     if (!mapInstance.current || !selectedShop?.lat || !selectedShop?.lng) return;
-    mapInstance.current.flyTo([selectedShop.lat, selectedShop.lng], 15, { duration: 1.2 });
-  }, [selectedShop]);
+
+    import('leaflet').then((L) => {
+      if (!mapInstance.current) return;
+      if (routeLayerRef.current) {
+        mapInstance.current.removeLayer(routeLayerRef.current);
+        routeLayerRef.current = null;
+      }
+
+      if (userCoords && selectedShop.lat && selectedShop.lng) {
+        routeLayerRef.current = L.polyline(
+          [
+            [userCoords.lat, userCoords.lng],
+            [selectedShop.lat, selectedShop.lng],
+          ],
+          {
+            color: '#2563eb',
+            weight: 4,
+            opacity: 0.85,
+            dashArray: '6, 8',
+          }
+        ).addTo(mapInstance.current);
+
+        mapInstance.current.fitBounds(
+          [
+            [userCoords.lat, userCoords.lng],
+            [selectedShop.lat, selectedShop.lng],
+          ],
+          { padding: [60, 60], maxZoom: 16 }
+        );
+      } else {
+        mapInstance.current.flyTo([selectedShop.lat, selectedShop.lng], 15, { duration: 1.2 });
+      }
+    });
+  }, [selectedShop, userCoords]);
 
   // User location request
   const handleLocateUser = () => {

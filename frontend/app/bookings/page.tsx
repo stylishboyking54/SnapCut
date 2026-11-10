@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import { QueueItem } from '@/lib/types';
 import { askShopForMoreTime, cancelBooking, getMyBookings, tellShopIAmHere, ticketSaysHere } from '@/lib/api';
 import { getSession } from '@/lib/auth';
@@ -10,12 +11,34 @@ import { ClockIcon, MapPinIcon, ScissorsIcon } from '@/components/ui/Icons';
 import { timeGreeting, todayLabel } from '@/lib/greeting';
 import CountUp from '@/components/ui/CountUp';
 
+const RouteMap = dynamic(() => import('@/components/map/RouteMap'), {
+  ssr: false,
+  loading: () => (
+    <div
+      style={{
+        width: '100%',
+        height: 240,
+        borderRadius: 'var(--radius-md)',
+        background: 'var(--bg-elevated)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        color: 'var(--text-muted)',
+        fontSize: 13,
+      }}
+    >
+      Loading route map…
+    </div>
+  ),
+});
+
 export default function BookingsPage() {
   const [activeBookings, setActiveBookings] = useState<QueueItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [needsAuth, setNeedsAuth] = useState(false);
+  const [openRouteId, setOpenRouteId] = useState<string | null>(null);
 
   const showNotification = (msg: string) => {
     setToast(msg);
@@ -204,9 +227,9 @@ export default function BookingsPage() {
                     <p style={{ fontSize: 14.5, fontWeight: 600, marginTop: 4, color: 'var(--brand-primary)' }}>
                       {booking.serviceName} · GHS {booking.price} · {booking.serviceDuration} min
                     </p>
-                    <p className="muted" style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6, fontSize: 13 }}>
+                    <p className="muted" style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6, fontSize: 13, flexWrap: 'wrap' }}>
                       <MapPinIcon size={14} color="var(--text-muted)" />
-                      Live queue spot
+                      <span>{booking.shopAddress || 'Live queue spot'}</span>
                     </p>
                   </div>
 
@@ -236,7 +259,30 @@ export default function BookingsPage() {
                     >
                       +10 min
                     </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setOpenRouteId(openRouteId === booking.id ? null : booking.id)}
+                      className="btn-secondary"
+                      style={{ fontSize: 12.5, minHeight: 36, padding: '8px 12px', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                    >
+                      <MapPinIcon size={14} />
+                      {openRouteId === booking.id ? 'Hide route map' : '📍 View route to shop'}
+                    </button>
                   </div>
+
+                  {openRouteId === booking.id && (
+                    <div style={{ marginTop: 4 }}>
+                      <RouteMap
+                        shopName={booking.shopName}
+                        shopAddress={booking.shopAddress}
+                        shopLat={booking.shopLat}
+                        shopLng={booking.shopLng}
+                        height={260}
+                        autoLocate={true}
+                      />
+                    </div>
+                  )}
 
                   <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', paddingTop: 4 }}>
                     <Link href={`/shops/${booking.shopId}`} className="btn-secondary" style={{ fontSize: 13 }}>

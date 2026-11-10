@@ -13,7 +13,7 @@ export class BookingsService {
       .from('bookings')
       .select(`
         *,
-        shops(name, address, cover_image_url, is_emergency),
+        shops(id, name, address, cover_image_url, is_emergency, lat, lng),
         services(name, duration, price)
       `)
       .eq('customer_id', customerId)
