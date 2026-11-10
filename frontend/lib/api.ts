@@ -201,6 +201,26 @@ export async function joinShopQueue(
   };
 }
 
+export async function getBookingRows(): Promise<any[]> {
+  const res = await fetch(`${API_BASE_URL()}/bookings`, {
+    cache: 'no-store',
+    headers: authHeaders(),
+  });
+  if (!res.ok) return [];
+  const data = await res.json();
+  return Array.isArray(data) ? data : [];
+}
+
+export async function getShopBookingRows(shopId: string): Promise<any[]> {
+  const res = await fetch(`${API_BASE_URL()}/bookings/shop/${shopId}`, {
+    cache: 'no-store',
+    headers: authHeaders(),
+  });
+  if (!res.ok) return [];
+  const data = await res.json();
+  return Array.isArray(data) ? data : [];
+}
+
 export async function getMyBookings(): Promise<QueueItem[]> {
   const res = await fetch(`${API_BASE_URL()}/bookings`, {
     cache: 'no-store',

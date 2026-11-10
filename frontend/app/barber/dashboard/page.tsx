@@ -6,12 +6,18 @@ import {
   advanceShopQueue,
   cancelBooking,
   getMyShop,
+  getShopBookingRows,
   getShopLiveQueue,
 } from '@/lib/api';
 import { QueueItem, Shop } from '@/lib/types';
 import { ScissorsIcon, CoffeeIcon, AlertTriangleIcon } from '@/components/ui/Icons';
 import { proCopy, useProKind } from '@/lib/proRole';
 import { subscribeBookings } from '@/lib/realtime';
+import CountUp from '@/components/ui/CountUp';
+import WeekCard from '@/components/ui/WeekCard';
+import { timeGreeting, todayLabel } from '@/lib/greeting';
+import { getSession } from '@/lib/auth';
+import { summarizeWeek, WeekSummary } from '@/lib/weekStats';
 
 export default function BarberDashboardPage() {
   const kind = useProKind();
@@ -21,6 +27,8 @@ export default function BarberDashboardPage() {
   const [queue, setQueue] = useState<QueueItem[]>([]);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  const [week, setWeek] = useState<WeekSummary | null>(null);
+  const [hello, setHello] = useState('Good evening');
 
   const showNotice = (msg: string) => {
     setNotice(msg);
@@ -47,6 +55,9 @@ export default function BarberDashboardPage() {
         if (cancelled) return;
         setShop(mine);
         if (mine) {
+          setHello(timeGreeting(getSession()?.profile.full_name));
+          const rows = await getShopBookingRows(mine.id);
+          if (!cancelled) setWeek(summarizeWeek(rows));
           await refreshQueue(mine.id);
           unsub = subscribeBookings({
             shopId: mine.id,
@@ -144,8 +155,8 @@ export default function BarberDashboardPage() {
     <div className="page-enter" style={{ maxWidth: 960, width: '100%', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 22 }}>
       <div className="page-header-row">
         <div>
-          <div className="eyebrow">{copy.eyebrowToday}</div>
-          <h1 style={{ fontSize: 28, fontWeight: 600, marginTop: 4 }}>{shop.name}</h1>
+          <div className="eyebrow">{todayLabel()} · {shop.name}</div>
+          <h1 style={{ fontSize: 28, fontWeight: 600, marginTop: 4 }}>{hello}</h1>
         </div>
 
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -167,6 +178,19 @@ export default function BarberDashboardPage() {
           </Link>
         </div>
       </div>
+
+      {week && (
+        <WeekCard
+          title="This week"
+          subtitle={kind === 'salon' ? 'Services you finished or still have on the book.' : 'Cuts on your book over the last 7 days.'}
+          totalLabel="Clients"
+          total={week.visits}
+          unit="people"
+          asideLabel="Chair time"
+          aside={week.visits ? `${week.minutes} min · GHS ${Math.round(week.spend)}` : 'Line hasn’t started yet'}
+          days={week.days}
+        />
+      )}
 
       {notice && (
         <div
@@ -309,7 +333,7 @@ export default function BarberDashboardPage() {
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                   <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: 13, fontWeight: 650 }}>~{client.estimatedWaitMinutes}m</div>
+                    <div style={{ fontSize: 13, fontWeight: 650 }}>~<CountUp value={client.estimatedWaitMinutes} />m</div>
                   </div>
                   <button
                     type="button"

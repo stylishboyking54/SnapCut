@@ -7,6 +7,7 @@ import { getShopById, getShopLiveQueue, joinShopQueue } from '@/lib/api';
 import { getSession, requestSignIn } from '@/lib/auth';
 import { Shop, Service, QueueItem } from '@/lib/types';
 import { CoffeeIcon } from '@/components/ui/Icons';
+import CountUp from '@/components/ui/CountUp';
 
 function ShopDetailContent() {
   const params = useParams();
@@ -154,7 +155,9 @@ function ShopDetailContent() {
           <div style={{ display: 'flex', gap: 20, marginTop: 8 }}>
             <div>
               <div className="eyebrow">In line</div>
-              <div style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 600 }}>{queueItems.length}</div>
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 600 }}>
+                <CountUp value={queueItems.length} />
+              </div>
             </div>
             <div>
               <div className="eyebrow">Seat in</div>
@@ -166,7 +169,7 @@ function ShopDetailContent() {
                   color: shop.estimatedWaitMinutes === 0 ? 'var(--brand-success)' : 'var(--text-primary)',
                 }}
               >
-                ~{shop.estimatedWaitMinutes}m
+                ~<CountUp value={shop.estimatedWaitMinutes} />m
               </div>
             </div>
           </div>

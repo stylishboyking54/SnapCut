@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { BellIcon, AlertTriangleIcon } from '@/components/ui/Icons';
+import { BellIcon, AlertTriangleIcon, SearchIcon } from '@/components/ui/Icons';
+import { AuthSession, getSession } from '@/lib/auth';
 
 export type ThemeType = 'paper' | 'ink';
 
@@ -13,9 +14,10 @@ interface NavbarProps {
 
 export default function Navbar({
   currentRole,
-  notificationCount = 2,
+  notificationCount = 0,
 }: NavbarProps) {
   const [currentTheme, setCurrentTheme] = useState<ThemeType>('paper');
+  const [session, setSession] = useState<AuthSession | null>(null);
   const isInk = currentTheme === 'ink';
 
   useEffect(() => {
@@ -23,7 +25,16 @@ export default function Navbar({
     const theme: ThemeType = saved === 'ink' ? 'ink' : 'paper';
     setCurrentTheme(theme);
     document.documentElement.setAttribute('data-theme', theme);
+    const sync = () => setSession(getSession());
+    sync();
+    window.addEventListener('snapcut-auth', sync);
+    return () => window.removeEventListener('snapcut-auth', sync);
   }, []);
+
+  const name = session?.profile.full_name || '';
+  const initials = name
+    ? name.split(' ').map((p) => p[0]).join('').slice(0, 2).toUpperCase()
+    : '';
 
   const toggleTheme = () => {
     const nextTheme: ThemeType = currentTheme === 'paper' ? 'ink' : 'paper';
@@ -55,6 +66,9 @@ export default function Navbar({
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+        <Link href="/#shop-search" className="icon-btn" title="Search shops" aria-label="Search shops">
+          <SearchIcon size={16} />
+        </Link>
         <button
           type="button"
           role="switch"
@@ -87,6 +101,18 @@ export default function Navbar({
         <Link href="/notifications" className="icon-btn" title="Notifications">
           <BellIcon size={14} />
           {notificationCount > 0 && <span className="notif-dot">{notificationCount}</span>}
+        </Link>
+        <Link
+          href="/profile"
+          className="avatar-chip"
+          title={name || 'Profile'}
+          aria-label={name ? `${name} — account` : 'Account'}
+        >
+          {session?.profile.avatar_url ? (
+            <img src={session.profile.avatar_url} alt="" />
+          ) : (
+            initials || '·'
+          )}
         </Link>
       </div>
     </header>

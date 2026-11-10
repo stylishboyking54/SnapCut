@@ -29,7 +29,9 @@ export class BookingsService {
       .from('shops').select('owner_id').eq('id', shopId).single();
     if (shop?.owner_id !== ownerId) throw new ForbiddenException('Not your shop');
 
-    const today = new Date().toISOString().split('T')[0];
+    const from = new Date();
+    from.setDate(from.getDate() - 6);
+    from.setHours(0, 0, 0, 0);
     const { data, error } = await this.supabase
       .from('bookings')
       .select(`
@@ -38,7 +40,7 @@ export class BookingsService {
         services(name, duration, price)
       `)
       .eq('shop_id', shopId)
-      .gte('scheduled_at', `${today}T00:00:00`)
+      .gte('scheduled_at', from.toISOString())
       .order('scheduled_at');
 
     if (error) throw error;

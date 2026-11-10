@@ -7,6 +7,7 @@ import { cancelBooking, getMyBookings } from '@/lib/api';
 import { getSession } from '@/lib/auth';
 import { subscribeBookings } from '@/lib/realtime';
 import { ClockIcon, MapPinIcon, ScissorsIcon } from '@/components/ui/Icons';
+import CountUp from '@/components/ui/CountUp';
 
 export default function BookingsPage() {
   const [activeBookings, setActiveBookings] = useState<QueueItem[]>([]);
@@ -162,7 +163,7 @@ export default function BookingsPage() {
                     <div className="eyebrow">Ticket {booking.id.slice(0, 8).toUpperCase()}</div>
                     <div className="status-mark wait" style={{ marginTop: 6 }}>
                       <span className="status-dot live" />
-                      Position #{booking.queuePosition}
+                      Position #<CountUp value={booking.queuePosition} />
                       {ahead === 0 ? ' · you\'re next' : ` · ${ahead} ahead`}
                     </div>
                   </div>
@@ -171,7 +172,7 @@ export default function BookingsPage() {
                     <div style={{ fontFamily: 'var(--font-display)', fontSize: 26, fontWeight: 600 }}>
                       {booking.scheduledTime || '—'}
                     </div>
-                    <div className="muted" style={{ fontSize: 12.5 }}>~{currentWait} min left</div>
+                    <div className="muted" style={{ fontSize: 12.5 }}>~<CountUp value={currentWait} /> min left</div>
                   </div>
                 </div>
 

@@ -2,10 +2,14 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
-import { getShops, joinShopQueue } from '@/lib/api';
+import { getBookingRows, getShops, joinShopQueue } from '@/lib/api';
 import { getSession, requestSignIn } from '@/lib/auth';
+import { timeGreeting, todayLabel } from '@/lib/greeting';
+import { summarizeWeek, WeekSummary } from '@/lib/weekStats';
+import WeekCard from '@/components/ui/WeekCard';
 import { Shop } from '@/lib/types';
 import { SearchIcon, CompassIcon } from '@/components/ui/Icons';
+import CountUp from '@/components/ui/CountUp';
 
 export default function HomePage() {
   const [shops, setShops] = useState<Shop[]>([]);
@@ -15,6 +19,28 @@ export default function HomePage() {
   const [shopType, setShopType] = useState<'all' | 'barber' | 'salon'>('all');
   const [bookingToast, setBookingToast] = useState<string | null>(null);
   const [joiningId, setJoiningId] = useState<string | null>(null);
+  const [hello, setHello] = useState('Good evening');
+  const [when, setWhen] = useState('');
+  const [week, setWeek] = useState<WeekSummary | null>(null);
+
+  useEffect(() => {
+    const syncHello = () => {
+      const session = getSession();
+      setHello(timeGreeting(session?.profile.full_name));
+      setWhen(todayLabel());
+      if (!session) {
+        setWeek(null);
+        return;
+      }
+      getBookingRows().then((rows) => setWeek(summarizeWeek(rows))).catch(() => setWeek(null));
+    };
+    syncHello();
+    if (window.location.hash === '#shop-search') {
+      document.getElementById('shop-search')?.focus();
+    }
+    window.addEventListener('snapcut-auth', syncHello);
+    return () => window.removeEventListener('snapcut-auth', syncHello);
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -100,9 +126,9 @@ export default function HomePage() {
     <div className="page-enter" style={{ maxWidth: 980, width: '100%', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 28 }}>
       <div className="page-header-row">
         <div>
-          <div className="eyebrow">Downtown · Metro City</div>
+          <div className="eyebrow">{when || 'Today'} · Snapcut</div>
           <h1 className="brand-hero" style={{ marginTop: 6 }}>
-            Snapcut
+            {hello}
           </h1>
           <p className="secondary home-lead" style={{ marginTop: 8, fontSize: 15, maxWidth: 420, lineHeight: 1.45 }}>
             See who&apos;s ahead, join when a chair opens, walk in when it&apos;s your turn.
@@ -119,6 +145,7 @@ export default function HomePage() {
         <div className="search-bar">
           <SearchIcon size={17} color="var(--text-muted)" />
           <input
+            id="shop-search"
             type="text"
             placeholder="Search shops, barbers, or cuts…"
             value={searchQuery}
@@ -175,6 +202,19 @@ export default function HomePage() {
         </div>
       </div>
 
+      {week && (
+        <WeekCard
+          title="Your week"
+          subtitle="Chairs you joined in the last 7 days."
+          totalLabel="Visits"
+          total={week.visits}
+          unit="stops"
+          asideLabel="Time in the chair"
+          aside={week.visits ? `${week.minutes} min · GHS ${Math.round(week.spend)}` : 'Nothing booked yet'}
+          days={week.days}
+        />
+      )}
+
       <div className="list-stack">
         {shopsLoading && (
           <div className="panel" style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: 14 }}>
@@ -187,7 +227,7 @@ export default function HomePage() {
             ? 'Shift delayed'
             : isZeroWait
             ? 'Chair open now'
-            : `${shop.currentQueueCount} ahead · ~${shop.estimatedWaitMinutes} min`;
+            : null;
 
           const badgeClass = shop.isEmergency ? 'emergency' : isZeroWait ? 'open' : 'wait';
 
@@ -198,7 +238,12 @@ export default function HomePage() {
                 <span className="shop-row-rating">★ {shop.rating}</span>
                 <span className={`shop-row-badge ${badgeClass}`}>
                   <span className={`status-dot ${isZeroWait && !shop.isEmergency ? 'live' : ''}`} />
-                  {waitLabel}
+                  {waitLabel ?? (
+                    <>
+                      <CountUp value={shop.currentQueueCount} /> ahead · ~
+                      <CountUp value={shop.estimatedWaitMinutes} /> min
+                    </>
+                  )}
                 </span>
               </div>
 
