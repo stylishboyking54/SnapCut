@@ -74,7 +74,7 @@ function AuthCompleteInner() {
     return (
       <div className="role-welcome">
         <div className="role-welcome-card">
-          <div className="eyebrow">Welcome to Snapcut</div>
+          <div className="eyebrow">Welcome to SnapCut</div>
           <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 26, marginTop: 8 }}>
             Who are you?
           </h1>
@@ -141,12 +141,12 @@ function AuthCompleteInner() {
               style={{ marginTop: 18, width: '100%' }}
               onClick={() => router.replace('/')}
             >
-              Back to Snapcut
+              Back to SnapCut
             </button>
           </>
         ) : (
           <>
-            <div className="eyebrow">Snapcut</div>
+            <div className="eyebrow">SnapCut</div>
             <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 26, marginTop: 8 }}>
               Signing you in…
             </h1>

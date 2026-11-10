@@ -44,7 +44,7 @@ export default function AdminShopsPage() {
           <div className="date-pill"><span className="status-dot live" />{todayLabel()}</div>
           <h1 style={{ fontSize: 28, fontWeight: 600, marginTop: 10 }}>{timeGreeting(getSession()?.profile.full_name)}</h1>
           <p className="secondary" style={{ marginTop: 6, fontSize: 14, maxWidth: 480, lineHeight: 1.45 }}>
-            Every shop on Snapcut. Mark one as checked when you have looked it over. Open shows the customer page.
+            Every shop on SnapCut. Mark one as checked when you have looked it over. Open shows the customer page.
           </p>
         </div>
         <Link href="/admin" className="btn-secondary">← Home</Link>

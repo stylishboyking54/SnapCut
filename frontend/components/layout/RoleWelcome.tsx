@@ -64,7 +64,7 @@ export default function RoleWelcome({ onComplete, initialStep = 'signin' }: Role
     setBusy(true);
     setError(null);
     try {
-      await register(email.trim(), password, fullName.trim() || 'Snapcut', 'customer');
+      await register(email.trim(), password, fullName.trim() || 'SnapCut', 'customer');
       setStep('role');
       setBusy(false);
     } catch (err) {
@@ -128,7 +128,7 @@ export default function RoleWelcome({ onComplete, initialStep = 'signin' }: Role
           </>
         ) : (
           <>
-            <div className="eyebrow">Snapcut</div>
+            <div className="eyebrow">SnapCut</div>
             <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 600, marginTop: 6 }}>
               {step === 'signup' ? 'Create an account' : 'Sign in'}
             </h1>

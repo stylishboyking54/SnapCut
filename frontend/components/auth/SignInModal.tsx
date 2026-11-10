@@ -73,7 +73,7 @@ export default function SignInModal({
         await register(
           email.trim(),
           password,
-          fullName.trim() || email.trim().split('@')[0] || 'Snapcut',
+          fullName.trim() || email.trim().split('@')[0] || 'SnapCut',
           'customer',
         );
         setMode('role');
@@ -119,7 +119,7 @@ export default function SignInModal({
         )}
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8, marginTop: 4 }}>
-          <img src="/logo.png" alt="Snapcut" width={38} height={38} style={{ borderRadius: 10, objectFit: 'cover', flexShrink: 0 }} />
+          <img src="/logo.png" alt="SnapCut" width={38} height={38} style={{ borderRadius: 10, objectFit: 'cover', flexShrink: 0 }} />
           <h2 id="auth-modal-title" style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 600, margin: 0 }}>
             {mode === 'role' ? 'Who are you?' : mode === 'login' ? 'Sign in' : 'Create an account'}
           </h2>

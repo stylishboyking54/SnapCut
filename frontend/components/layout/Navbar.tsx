@@ -77,13 +77,13 @@ export default function Navbar({
       <Link href="/" className="top-brand" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         <img
           src="/logo.png"
-          alt="Snapcut"
+          alt="SnapCut"
           width={32}
           height={32}
           style={{ borderRadius: 8, objectFit: 'cover', flexShrink: 0 }}
         />
         <span>
-          <strong className="topbar-wordmark">Snapcut</strong>
+          <strong className="topbar-wordmark">SnapCut</strong>
           <em className="live-sync-pill">Live line</em>
         </span>
       </Link>
@@ -178,7 +178,7 @@ export default function Navbar({
           <button
             type="button"
             className="btn-primary top-signin"
-            onClick={() => requestSignIn('Sign in to your Snapcut account.')}
+            onClick={() => requestSignIn('Sign in to your SnapCut account.')}
           >
             <UserIcon size={14} />
             Sign in

@@ -353,7 +353,7 @@ export default function HomePage() {
             </div>
             <p className="muted" style={{ fontSize: 13.5, marginTop: 8, lineHeight: 1.45, maxWidth: 360, marginLeft: 'auto', marginRight: 'auto' }}>
               {shops.length === 0
-                ? 'Barbers and salons show up here once they open a Snapcut line. Check back soon, or clear filters if you had any on.'
+                ? 'Barbers and salons show up here once they open a SnapCut line. Check back soon, or clear filters if you had any on.'
                 : 'Try another name, clear filters, or switch Barber / Salon.'}
             </p>
             {(searchQuery || filter !== 'all' || shopType !== 'all') && (

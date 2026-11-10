@@ -37,7 +37,7 @@ export default function AdminDashboardPage() {
 
       <div className="stat-row">
         <div className="stat-chip">
-          <div><b>{loading ? '…' : shops.length}</b><small>Shops on Snapcut</small></div>
+          <div><b>{loading ? '…' : shops.length}</b><small>Shops on SnapCut</small></div>
         </div>
         <div className="stat-chip">
           <div><b>{loading ? '…' : peopleWaiting}</b><small>People waiting</small></div>

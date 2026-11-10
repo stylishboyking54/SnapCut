@@ -28,7 +28,7 @@ async function bootstrap() {
         callback(null, true);
         return;
       }
-      // Always allow Snapcut Vercel deploys even if FRONTEND_URL wasn't updated
+      // Always allow SnapCut Vercel deploys even if FRONTEND_URL wasn't updated
       if (/^https:\/\/([a-z0-9-]+\.)*vercel\.app$/i.test(origin)) {
         callback(null, true);
         return;
@@ -47,6 +47,6 @@ async function bootstrap() {
 
   const port = process.env.PORT || 3001;
   await app.listen(port);
-  console.log(`🚀 Snapcut API running on: http://localhost:${port}/api`);
+  console.log(`🚀 SnapCut API running on: http://localhost:${port}/api`);
 }
 bootstrap();

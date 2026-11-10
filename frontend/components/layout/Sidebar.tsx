@@ -86,13 +86,13 @@ export default function Sidebar({ navItems, role, onSignIn }: SidebarProps) {
       <div className="sidebar-logo" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         <img
           src="/logo.png"
-          alt="Snapcut"
+          alt="SnapCut"
           width={40}
           height={40}
           style={{ borderRadius: 11, objectFit: 'cover', flexShrink: 0 }}
         />
         <div>
-          <span className="sidebar-logo-text">Snapcut</span>
+          <span className="sidebar-logo-text">SnapCut</span>
           <div className="sidebar-logo-sub">{brandSub}</div>
         </div>
       </div>

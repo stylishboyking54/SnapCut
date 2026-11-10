@@ -265,7 +265,7 @@ export async function setAccountRole(role: 'customer' | 'barber' | 'salon') {
 
 /**
  * After server /auth/callback exchanged the code into cookies,
- * read the session and sync Snapcut profile/role.
+ * read the session and sync SnapCut profile/role.
  */
 export async function completeOAuthSession(preferredRole?: AuthRole): Promise<AuthSession> {
   const supabase = createClient();
@@ -286,7 +286,7 @@ export async function completeOAuthSession(preferredRole?: AuthRole): Promise<Au
     user.user_metadata?.full_name ||
     user.user_metadata?.name ||
     user.email?.split('@')[0] ||
-    'Snapcut User';
+    'SnapCut User';
   const avatarUrl =
     user.user_metadata?.avatar_url || user.user_metadata?.picture || null;
 

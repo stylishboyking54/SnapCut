@@ -171,7 +171,7 @@ export class BookingsService {
       status === 'in_progress'
         ? "You're up — head to the chair."
         : status === 'completed'
-        ? 'All done. Thanks for visiting Snapcut.'
+        ? 'All done. Thanks for visiting SnapCut.'
         : status === 'cancelled'
         ? 'Your spot was released.'
         : `Your booking status changed to: ${status}`;
@@ -259,7 +259,7 @@ export class BookingsService {
       user_id: current.customer_id,
       booking_id: current.id,
       type: 'queue_update',
-      message: 'All done. Thanks for visiting Snapcut.',
+      message: 'All done. Thanks for visiting SnapCut.',
     });
 
     const remaining = active.filter((b) => b.id !== current.id);

@@ -155,7 +155,7 @@ export async function getShops(filters?: {
     const data = await res.json();
     return (data || []).map(mapShop);
   } catch (error) {
-    console.warn('[Snapcut API] Shops fetch failed:', error);
+    console.warn('[SnapCut API] Shops fetch failed:', error);
     return [];
   }
 }
@@ -174,7 +174,7 @@ export async function getShopById(id: string): Promise<Shop | null> {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return mapShop(await res.json());
   } catch (error) {
-    console.warn(`[Snapcut API] Shop ${id} fetch failed:`, error);
+    console.warn(`[SnapCut API] Shop ${id} fetch failed:`, error);
     return null;
   }
 }
@@ -222,7 +222,7 @@ export async function getShopLiveQueue(shopId: string): Promise<{
       isOpen: data.is_open ?? true,
     };
   } catch (error) {
-    console.warn(`[Snapcut API] Live queue ${shopId} failed:`, error);
+    console.warn(`[SnapCut API] Live queue ${shopId} failed:`, error);
     return {
       queue: [],
       totalInQueue: 0,

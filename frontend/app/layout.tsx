@@ -4,7 +4,7 @@ import './globals.css';
 import AppLayout from '@/components/layout/AppLayout';
 
 export const metadata: Metadata = {
-  title: 'Snapcut — Find a cut without the wait',
+  title: 'SnapCut — Find a cut without the wait',
   description:
     'See live barber queues nearby, join when a chair opens, and skip the walk-in wait.',
   icons: {
@@ -32,7 +32,7 @@ export default function RootLayout({
         <Suspense
           fallback={
             <div style={{ padding: 40, textAlign: 'center', color: '#6b6560' }}>
-              Loading Snapcut…
+              Loading SnapCut…
             </div>
           }
         >

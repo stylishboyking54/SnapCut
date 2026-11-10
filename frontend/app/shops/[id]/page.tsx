@@ -81,7 +81,7 @@ function ShopDetailContent() {
       <div className="page-enter" style={{ maxWidth: 480, margin: '0 auto', textAlign: 'center', padding: '48px 20px' }}>
         <h1 style={{ fontSize: 24, fontWeight: 600 }}>Shop not found</h1>
         <p className="secondary" style={{ marginTop: 10, fontSize: 14, lineHeight: 1.45 }}>
-          This shop may have closed its Snapcut line, or the link is outdated.
+          This shop may have closed its SnapCut line, or the link is outdated.
         </p>
         <Link href="/" className="btn-primary" style={{ marginTop: 18, display: 'inline-flex' }}>
           Browse shops
