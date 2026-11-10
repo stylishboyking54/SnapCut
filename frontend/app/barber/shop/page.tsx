@@ -315,33 +315,109 @@ export default function BarberShopSettingsPage() {
       </div>
 
       {shop && (
-        <section className="panel" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <section className="panel" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div>
             <h2 className="panel-title">Shop photos</h2>
-            <p className="panel-sub">Add a few. They scroll across your card so people can see the place.</p>
+            <p className="panel-sub">
+              Add up to 8 photos. They automatically scroll on your shop card so customers can see your space.
+              {shop.photos && shop.photos.length > 0 && (
+                <span style={{ color: 'var(--brand-primary)', fontWeight: 600 }}>
+                  {' '}{shop.photos.length}/8 added
+                </span>
+              )}
+            </p>
           </div>
-          <div className="shop-photo-row">
-            {(shop.photos?.length ? shop.photos : shop.coverImage ? [shop.coverImage] : []).map((src) => (
-              <div key={src} className="shop-photo-thumb">
-                <img src={src} alt="" />
-                <button type="button" disabled={photoBusy} onClick={() => void handleRemovePhoto(src)}>Remove</button>
-              </div>
-            ))}
-          </div>
-          <label className="btn-secondary" style={{ width: 'fit-content', cursor: 'pointer' }}>
-            {photoBusy ? 'Saving photo…' : 'Add a photo'}
-            <input
-              type="file"
-              accept="image/*"
-              hidden
-              disabled={photoBusy}
-              onChange={(e) => {
-                const file = e.target.files?.[0] || null;
-                e.target.value = '';
-                void handleAddPhoto(file);
+
+          {/* Photo grid preview */}
+          {(shop.photos?.length ? shop.photos : shop.coverImage ? [shop.coverImage] : []).length > 0 && (
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))',
+                gap: 8,
               }}
-            />
-          </label>
+            >
+              {(shop.photos?.length ? shop.photos : shop.coverImage ? [shop.coverImage] : []).map((src, idx) => (
+                <div
+                  key={src}
+                  style={{
+                    position: 'relative',
+                    aspectRatio: '1',
+                    borderRadius: 'var(--radius-sm)',
+                    overflow: 'hidden',
+                    border: '1.5px solid var(--border)',
+                  }}
+                >
+                  <img
+                    src={src}
+                    alt={`Photo ${idx + 1}`}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                  />
+                  {/* Order badge */}
+                  <span
+                    style={{
+                      position: 'absolute',
+                      top: 4,
+                      left: 4,
+                      background: 'rgba(0,0,0,0.55)',
+                      color: '#fff',
+                      fontSize: 10,
+                      fontWeight: 700,
+                      padding: '1px 5px',
+                      borderRadius: 99,
+                    }}
+                  >
+                    {idx + 1}
+                  </span>
+                  <button
+                    type="button"
+                    disabled={photoBusy}
+                    onClick={() => void handleRemovePhoto(src)}
+                    style={{
+                      position: 'absolute',
+                      bottom: 4,
+                      right: 4,
+                      background: 'rgba(220,38,38,0.85)',
+                      color: '#fff',
+                      border: 'none',
+                      borderRadius: 'var(--radius-xs)',
+                      fontSize: 11,
+                      fontWeight: 600,
+                      padding: '3px 7px',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Remove
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Add photo button */}
+          {(!shop.photos || shop.photos.length < 8) && (
+            <label
+              className="btn-secondary"
+              style={{ width: 'fit-content', cursor: 'pointer' }}
+            >
+              {photoBusy ? 'Uploading…' : '+ Add a photo'}
+              <input
+                type="file"
+                accept="image/*"
+                hidden
+                disabled={photoBusy}
+                onChange={(e) => {
+                  const file = e.target.files?.[0] || null;
+                  e.target.value = '';
+                  void handleAddPhoto(file);
+                }}
+              />
+            </label>
+          )}
+
+          <p className="muted" style={{ fontSize: 12 }}>
+            First photo appears first in the scroll. Max 8 photos, each under 1.5 MB.
+          </p>
         </section>
       )}
 
