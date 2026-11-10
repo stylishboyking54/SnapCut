@@ -186,14 +186,25 @@ export default function NotificationsPage() {
                     </div>
                   </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => handleClear(n.id)}
-                  className="btn-secondary"
-                  style={{ fontSize: 11, minHeight: 28, padding: '3px 8px', flexShrink: 0 }}
-                >
-                  Clear
-                </button>
+                <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                  {(n.message.toLowerCase().includes('all done') || n.message.toLowerCase().includes('thanks')) && (
+                    <Link
+                      href="/bookings"
+                      className="btn-primary"
+                      style={{ fontSize: 11, minHeight: 28, padding: '3px 10px', background: '#f59e0b', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                    >
+                      ⭐ Rate cut
+                    </Link>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => handleClear(n.id)}
+                    className="btn-secondary"
+                    style={{ fontSize: 11, minHeight: 28, padding: '3px 8px', flexShrink: 0 }}
+                  >
+                    Clear
+                  </button>
+                </div>
               </div>
             );
           })}

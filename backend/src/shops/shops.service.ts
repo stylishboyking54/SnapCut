@@ -1007,4 +1007,69 @@ export class ShopsService {
       /* best-effort */
     }
   }
+
+  async rateShop(shopId: string, customerId: string, rating: number, comment?: string, bookingId?: string) {
+    const validRating = Math.min(5, Math.max(1, Math.round(Number(rating) || 5)));
+
+    if (this.isSupabaseLive()) {
+      const { data: shop } = await this.supabase
+        .from('shops')
+        .select('id, rating, review_count, name')
+        .eq('id', shopId)
+        .single();
+
+      if (!shop) throw new NotFoundException('Shop not found');
+
+      const currentRating = Number(shop.rating) || 5.0;
+      const currentCount = Number(shop.review_count) || 0;
+      const newCount = currentCount + 1;
+      const newRating = Math.round(((currentRating * currentCount + validRating) / newCount) * 10) / 10;
+
+      await this.supabase
+        .from('shops')
+        .update({
+          rating: newRating,
+          review_count: newCount,
+        })
+        .eq('id', shopId);
+
+      if (bookingId) {
+        try {
+          const { data: b } = await this.supabase
+            .from('bookings')
+            .select('notes')
+            .eq('id', bookingId)
+            .single();
+          const existingNotes = b?.notes || '';
+          if (!existingNotes.includes('[[rated:')) {
+            await this.supabase
+              .from('bookings')
+              .update({ notes: `${existingNotes} [[rated:${validRating}]]`.trim() })
+              .eq('id', bookingId);
+          }
+        } catch {
+          // best-effort note tagging
+        }
+      }
+
+      return {
+        success: true,
+        rating: newRating,
+        review_count: newCount,
+        message: 'Thank you for rating!',
+      };
+    }
+
+    const shopIndex = this.localShops.findIndex((s) => s.id === shopId);
+    if (shopIndex !== -1) {
+      const currentRating = Number(this.localShops[shopIndex].rating) || 5.0;
+      const currentCount = Number(this.localShops[shopIndex].review_count) || 0;
+      const newCount = currentCount + 1;
+      const newRating = Math.round(((currentRating * currentCount + validRating) / newCount) * 10) / 10;
+      this.localShops[shopIndex].rating = newRating;
+      this.localShops[shopIndex].review_count = newCount;
+      return { success: true, rating: newRating, review_count: newCount };
+    }
+    return { success: true, rating: validRating, review_count: 1 };
+  }
 }

@@ -4,7 +4,8 @@ import React, { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { QueueItem } from '@/lib/types';
-import { askShopForMoreTime, cancelBooking, getMyBookings, tellShopIAmHere, ticketSaysHere } from '@/lib/api';
+import { askShopForMoreTime, cancelBooking, getMyBookings, tellShopIAmHere, ticketSaysHere, getCompletedUnratedBooking } from '@/lib/api';
+import RatingModal from '@/components/reviews/RatingModal';
 import { getSession } from '@/lib/auth';
 import { subscribeBookings } from '@/lib/realtime';
 import { ClockIcon, MapPinIcon, ScissorsIcon } from '@/components/ui/Icons';
@@ -39,6 +40,8 @@ export default function BookingsPage() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [needsAuth, setNeedsAuth] = useState(false);
   const [openRouteId, setOpenRouteId] = useState<string | null>(null);
+  const [unratedBooking, setUnratedBooking] = useState<QueueItem | null>(null);
+  const [ratingModalOpen, setRatingModalOpen] = useState(false);
 
   const showNotification = (msg: string) => {
     setToast(msg);
@@ -56,6 +59,7 @@ export default function BookingsPage() {
     setNeedsAuth(false);
     try {
       const items = await getMyBookings();
+      void getCompletedUnratedBooking().then((unr) => setUnratedBooking(unr));
       setActiveBookings((prev) => {
         // Toast when position / status changes while watching
         if (prev.length && items.length) {
@@ -181,6 +185,41 @@ export default function BookingsPage() {
           }}
         >
           {toast}
+        </div>
+      )}
+
+      {unratedBooking && (
+        <div
+          className="panel"
+          style={{
+            border: '1.5px solid #f59e0b',
+            background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.08) 0%, rgba(240, 65, 43, 0.05) 100%)',
+            padding: '18px 20px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: 14,
+            borderRadius: 'var(--radius-md)',
+          }}
+        >
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 700, fontSize: 15 }}>
+              <span>✂️</span>
+              <span>How was your cut at {unratedBooking.shopName}?</span>
+            </div>
+            <p className="secondary" style={{ fontSize: 13, margin: '4px 0 0 0' }}>
+              Your session is finished. Leave a quick rating to let them know how they did!
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setRatingModalOpen(true)}
+            className="btn-primary"
+            style={{ fontSize: 13, minHeight: 36, padding: '6px 16px', background: '#f59e0b' }}
+          >
+            ⭐ Rate your cut
+          </button>
         </div>
       )}
 
@@ -332,6 +371,20 @@ export default function BookingsPage() {
             Find a shop
           </Link>
         </div>
+      )}
+      {unratedBooking && (
+        <RatingModal
+          shopId={unratedBooking.shopId}
+          shopName={unratedBooking.shopName}
+          bookingId={unratedBooking.id}
+          serviceName={unratedBooking.serviceName}
+          isOpen={ratingModalOpen}
+          onClose={() => setRatingModalOpen(false)}
+          onSubmitted={(stars) => {
+            setUnratedBooking(null);
+            showNotification(`Thanks! You rated ${unratedBooking.shopName} ${stars} stars.`);
+          }}
+        />
       )}
     </div>
   );

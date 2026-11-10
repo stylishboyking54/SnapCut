@@ -622,3 +622,51 @@ export async function markNotificationsRead(): Promise<void> {
     throw new Error(err.message || 'Could not mark read');
   }
 }
+
+export async function getCompletedUnratedBooking(): Promise<QueueItem | null> {
+  const session = getSession();
+  if (!session?.access_token) return null;
+
+  try {
+    const res = await fetch(`${API_BASE_URL()}/bookings`, {
+      cache: 'no-store',
+      headers: authHeaders(),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (!Array.isArray(data)) return null;
+
+    const unrated = data.find((b: any) => {
+      if (b.status !== 'completed') return false;
+      const notes = b.notes || '';
+      if (notes.includes('[[rated:')) return false;
+      const dt = new Date(b.scheduled_at || b.created_at);
+      const ageHours = (Date.now() - dt.getTime()) / (1000 * 60 * 60);
+      return ageHours < 72; // within last 3 days
+    });
+
+    return unrated ? mapQueueItem(unrated) : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function rateShop(
+  shopId: string,
+  payload: { rating: number; comment?: string; bookingId?: string }
+): Promise<{ success: boolean; rating: number; review_count: number }> {
+  const res = await fetch(`${API_BASE_URL()}/shops/${shopId}/rate`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify({
+      rating: payload.rating,
+      comment: payload.comment,
+      booking_id: payload.bookingId,
+    }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || 'Could not submit rating');
+  }
+  return res.json();
+}

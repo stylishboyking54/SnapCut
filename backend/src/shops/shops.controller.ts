@@ -148,4 +148,14 @@ export class ShopsController {
   ) {
     return this.shopsService.toggleEmergency(id, req.user.id, body.is_emergency, body.reason, body.resume_at);
   }
+
+  @Post(':id/rate')
+  @UseGuards(SupabaseAuthGuard)
+  rateShop(
+    @Param('id') id: string,
+    @Req() req: any,
+    @Body() body: { rating: number; comment?: string; booking_id?: string },
+  ) {
+    return this.shopsService.rateShop(id, req.user.id, body.rating, body.comment, body.booking_id);
+  }
 }
