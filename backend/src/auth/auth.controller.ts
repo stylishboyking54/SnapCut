@@ -66,7 +66,8 @@ export class AuthController {
   async oauth(@Req() req: any, @Body() dto: OAuthSyncDto) {
     const token = req.headers.authorization?.split(' ')[1];
     if (!token) throw new UnauthorizedException('Missing access token');
-    return this.authService.syncOAuth(token, dto.role || 'customer');
+    // Pass undefined when no role is supplied so syncOAuth preserves the existing role
+    return this.authService.syncOAuth(token, dto.role || undefined);
   }
 
   @Post('role')

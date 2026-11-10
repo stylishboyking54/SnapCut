@@ -172,10 +172,19 @@ export class AuthService {
       .eq('id', user.id)
       .maybeSingle();
 
-    const kept = existing?.role === 'barber' || existing?.role === 'salon' || existing?.role === 'customer'
-      ? existing.role
-      : 'customer';
-    const nextRole = existing?.role === 'admin' ? 'admin' : role || kept;
+    // Keep whatever role is already in the DB; only override if a new role was explicitly passed.
+    // Never demote admin. Never reset an existing barber/salon to customer.
+    const existingRole = existing?.role as string | undefined;
+    let nextRole: string;
+    if (existingRole === 'admin') {
+      nextRole = 'admin';
+    } else if (role) {
+      // Caller explicitly chose a role (e.g. first-time Google sign-up)
+      nextRole = role;
+    } else {
+      // Returning user — preserve whatever they already are
+      nextRole = existingRole || 'customer';
+    }
 
     const { data: profile, error: upsertErr } = await this.supabase
       .from('profiles')
