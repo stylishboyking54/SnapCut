@@ -136,7 +136,7 @@ export default function HomePage() {
   const peopleAhead = shops.reduce((sum, s) => sum + (s.currentQueueCount || 0), 0);
 
   return (
-    <div className="page-enter" style={{ maxWidth: 980, width: '100%', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 28 }}>
+    <div className="page-enter" style={{ maxWidth: 1120, width: '100%', margin: 0, display: 'flex', flexDirection: 'column', gap: 28 }}>
       <div className="page-header-row">
         <div>
           <div className="date-pill">

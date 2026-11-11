@@ -158,7 +158,7 @@ export default function BookingsPage() {
   };
 
   return (
-    <div className="page-enter" style={{ maxWidth: 720, width: '100%', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 24 }}>
+    <div className="page-enter" style={{ maxWidth: 1080, width: '100%', margin: 0, display: 'flex', flexDirection: 'column', gap: 24 }}>
       <div className="page-header-row">
         <div>
           <div className="date-pill"><span className="status-dot live" />{todayLabel()}</div>
@@ -266,7 +266,7 @@ export default function BookingsPage() {
             </p>
           </div>
         ) : (
-          <div className="list-stack">
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: 14 }}>
             {pastBookings.map((b) => {
               const isCompleted = b.status === 'completed';
               const hasRated = b.notes && b.notes.includes('[[rated:');

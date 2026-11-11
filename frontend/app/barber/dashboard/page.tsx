@@ -143,7 +143,7 @@ export default function BarberDashboardPage() {
   }
 
   return (
-    <div className="page-enter" style={{ maxWidth: 960, width: '100%', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 22 }}>
+    <div className="page-enter" style={{ maxWidth: 1120, width: '100%', margin: 0, display: 'flex', flexDirection: 'column', gap: 22 }}>
       <div className="page-header-row">
         <div>
           <div className="date-pill"><span className="status-dot live" />{todayLabel()}</div>

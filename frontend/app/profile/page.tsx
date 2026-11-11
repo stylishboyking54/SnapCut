@@ -138,7 +138,7 @@ export default function ProfilePage() {
 
   if (!session) {
     return (
-      <div className="page-enter" style={{ maxWidth: 560, margin: '0 auto' }}>
+      <div className="page-enter" style={{ maxWidth: 640, width: '100%', margin: 0 }}>
         <h1 style={{ fontSize: 34, fontWeight: 600, letterSpacing: '-0.03em' }}>Profile</h1>
         <div className="panel profile-hero" style={{ marginTop: 16 }}>
           <span className="avatar-chip lg"><UserIcon size={32} /></span>
@@ -162,7 +162,7 @@ export default function ProfilePage() {
   const isPro = role === 'barber' || role === 'salon';
 
   return (
-    <div className="page-enter" style={{ maxWidth: 920, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
+    <div className="page-enter" style={{ maxWidth: 1040, width: '100%', margin: 0, display: 'flex', flexDirection: 'column', gap: 16 }}>
       <h1 style={{ fontSize: 34, fontWeight: 600, letterSpacing: '-0.03em' }}>Profile</h1>
 
       <div className="profile-grid">

@@ -493,7 +493,7 @@ export default function BarberShopSettingsPage() {
   const creating = !shop;
 
   return (
-    <div className="page-enter" style={{ maxWidth: 960, width: '100%', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 22 }}>
+    <div className="page-enter" style={{ maxWidth: 1120, width: '100%', margin: 0, display: 'flex', flexDirection: 'column', gap: 22 }}>
       <div className="page-header-row">
         <div>
           <div className="date-pill"><span className="status-dot live" />{todayLabel()}</div>
@@ -543,12 +543,13 @@ export default function BarberShopSettingsPage() {
                     borderRadius: 'var(--radius-sm)',
                     overflow: 'hidden',
                     border: '1.5px solid var(--border)',
+                    background: 'var(--bg-elevated)',
                   }}
                 >
                   <img
                     src={src}
                     alt={`Photo ${idx + 1}`}
-                    style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                    style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }}
                   />
                   {/* Order badge */}
                   <span

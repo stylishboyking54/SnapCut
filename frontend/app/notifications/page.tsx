@@ -91,7 +91,7 @@ export default function NotificationsPage() {
   const unreadCount = notifications.filter((n) => !n.isRead).length;
 
   return (
-    <div className="page-enter" style={{ maxWidth: 680, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 22 }}>
+    <div className="page-enter" style={{ maxWidth: 1040, width: '100%', margin: 0, display: 'flex', flexDirection: 'column', gap: 22 }}>
       <div className="page-header-row">
         <div>
           <div className="date-pill"><span className="status-dot live" />{todayLabel()}</div>

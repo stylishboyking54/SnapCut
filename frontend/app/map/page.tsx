@@ -66,9 +66,9 @@ export default function MapPage() {
     <div
       className="page-enter"
       style={{
-        maxWidth: 1040,
+        maxWidth: 1120,
         width: '100%',
-        margin: '0 auto',
+        margin: 0,
         display: 'flex',
         flexDirection: 'column',
         gap: 22,

@@ -154,7 +154,7 @@ function ShopDetailContent() {
   };
 
   return (
-    <div className="page-enter" style={{ maxWidth: 980, width: '100%', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 24 }}>
+    <div className="page-enter" style={{ maxWidth: 1120, width: '100%', margin: 0, display: 'flex', flexDirection: 'column', gap: 24 }}>
       <Link href="/" className="muted" style={{ fontSize: 13, fontWeight: 600, width: 'fit-content' }}>
         ← All shops
       </Link>
