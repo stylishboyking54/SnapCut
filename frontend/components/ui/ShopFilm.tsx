@@ -61,15 +61,6 @@ export default function ShopFilm({ photos }: { photos: string[] }) {
       <div className="shop-film" ref={scroller}>
         {frames.map((src, i) => (
           <div key={src + i} className="shop-film-frame">
-            {/* Soft blurred ambient backdrop to fill letterbox areas naturally without blank bands */}
-            <img
-              src={src}
-              alt=""
-              aria-hidden="true"
-              draggable={false}
-              className="ambient-bg"
-            />
-            {/* Crisp main photo: 100% fully displayed without cropping any parts */}
             <img
               src={src}
               alt=""
