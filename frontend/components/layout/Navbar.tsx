@@ -126,7 +126,7 @@ export default function Navbar({
           </Link>
         )}
 
-        <Link href="/notifications" className="icon-btn" title="Notifications" style={{ marginLeft: 4 }}>
+        <Link href="/notifications" className="icon-btn" title="Notifications">
           <BellIcon size={14} />
           {notificationCount > 0 && <span className="notif-dot">{notificationCount}</span>}
         </Link>
