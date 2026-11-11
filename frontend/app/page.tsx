@@ -2,17 +2,20 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { getBookingRows, getMyBookings, getShops, joinShopQueue } from '@/lib/api';
 import { getSession, requestSignIn } from '@/lib/auth';
 import { timeGreeting, todayLabel } from '@/lib/greeting';
 import { summarizeWeek, WeekSummary } from '@/lib/weekStats';
 import WeekCard from '@/components/ui/WeekCard';
 import ShopFilm from '@/components/ui/ShopFilm';
+import JoinLineModal from '@/components/ui/JoinLineModal';
 import { Shop } from '@/lib/types';
 import { SearchIcon, CompassIcon } from '@/components/ui/Icons';
 import CountUp from '@/components/ui/CountUp';
 
 export default function HomePage() {
+  const router = useRouter();
   const [shops, setShops] = useState<Shop[]>([]);
   const [shopsLoading, setShopsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -21,6 +24,7 @@ export default function HomePage() {
   const [bookingToast, setBookingToast] = useState<string | null>(null);
   const [joiningId, setJoiningId] = useState<string | null>(null);
   const [joinedShopId, setJoinedShopId] = useState<string | null>(null);
+  const [modalShop, setModalShop] = useState<Shop | null>(null);
   const [hello, setHello] = useState('Good evening');
   const [when, setWhen] = useState('');
   const [week, setWeek] = useState<WeekSummary | null>(null);
@@ -323,22 +327,31 @@ export default function HomePage() {
                 </Link>
                 <button
                   type="button"
-                  disabled={shop.isEmergency || joiningId === shop.id || joinedShopId === shop.id}
-                  onClick={() => handleQuickJoin(shop)}
+                  disabled={shop.isEmergency}
+                  onClick={() => {
+                    if (joinedShopId === shop.id) {
+                      router.push('/bookings');
+                      return;
+                    }
+                    const session = getSession();
+                    if (!session) {
+                      requestSignIn(`Sign in to join the line at ${shop.name}`);
+                      return;
+                    }
+                    setModalShop(shop);
+                  }}
                   className={joinedShopId === shop.id ? 'btn-secondary' : 'btn-primary'}
                   style={{
                     fontSize: 13.5,
                     width: '100%',
                     opacity: shop.isEmergency ? 0.45 : 1,
-                    cursor: shop.isEmergency || joinedShopId === shop.id ? 'default' : 'pointer',
+                    cursor: shop.isEmergency ? 'default' : 'pointer',
                   }}
                 >
                   {shop.isEmergency
                     ? 'Paused'
                     : joinedShopId === shop.id
-                    ? 'Joined'
-                    : joiningId === shop.id
-                    ? 'Joining…'
+                    ? 'View ticket'
                     : 'Join line'}
                 </button>
               </div>
@@ -390,6 +403,25 @@ export default function HomePage() {
           </button>
         </div>
       )}
+      <JoinLineModal
+        shop={modalShop}
+        isOpen={!!modalShop}
+        onClose={() => setModalShop(null)}
+        onSuccess={(shopId, result) => {
+          setShops((prev) =>
+            prev.map((s) =>
+              s.id === shopId
+                ? {
+                    ...s,
+                    currentQueueCount: result.totalInQueue,
+                    estimatedWaitMinutes: result.estimatedTotalWait,
+                  }
+                : s
+            )
+          );
+          setJoinedShopId(shopId);
+        }}
+      />
     </div>
   );
 }
