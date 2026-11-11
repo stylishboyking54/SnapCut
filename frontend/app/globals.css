@@ -479,23 +479,23 @@ img { max-width: 100%; height: auto; display: block; }
     gap: 10px !important;
   }
   .shop-row {
-    grid-template-rows: 135px auto auto !important;
+    grid-template-rows: 155px auto auto !important;
     border-radius: 18px !important;
   }
   .shop-row-media {
-    height: 140px !important;
-    min-height: 140px !important;
+    height: 155px !important;
+    min-height: 155px !important;
     border-radius: 18px 18px 0 0 !important;
     background: var(--bg-surface) !important;
   }
-  .shop-row-media img.main-photo,
-  .shop-film-frame img.main-photo {
-    object-fit: contain !important;
+  .shop-row-media img,
+  .shop-film img,
+  .shop-film-img {
+    object-fit: cover !important;
     object-position: center !important;
-    max-width: 100% !important;
-    max-height: 100% !important;
     width: 100% !important;
     height: 100% !important;
+    display: block !important;
   }
   .shop-row-badge, .shop-row-rating {
     font-size: 10.5px !important;
@@ -773,7 +773,7 @@ img { max-width: 100%; height: auto; display: block; }
 .shop-row {
   display: grid;
   grid-template-columns: 1fr;
-  grid-template-rows: 180px auto auto;
+  grid-template-rows: 200px auto auto;
   grid-template-areas:
     "media"
     "body"
@@ -792,41 +792,17 @@ img { max-width: 100%; height: auto; display: block; }
   border-color: var(--text-muted);
   box-shadow: var(--card-shadow-hover);
 }
-.shop-film-frame {
-  position: relative;
-  flex: 0 0 100%;
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  scroll-snap-align: start;
-  background: var(--bg-surface);
-}
-.shop-film-frame .main-photo {
-  position: relative;
-  max-width: 100% !important;
-  max-height: 100% !important;
-  width: 100% !important;
-  height: 100% !important;
-  object-fit: contain !important;
-  object-position: center !important;
-  display: block;
-  z-index: 2;
-  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-}
-.shop-row:hover .shop-film-frame .main-photo {
-  transform: scale(1.02);
+.shop-row:hover .shop-film img,
+.shop-row:hover .shop-film-img {
+  transform: scale(1.03);
 }
 .shop-row-media {
   grid-area: media;
-  height: 180px;
-  min-height: 180px;
+  height: 200px;
+  min-height: 200px;
   position: relative;
   overflow: hidden;
   background: var(--bg-surface);
-  border-bottom: 1px solid var(--bg-border-subtle);
 }
 .shop-film {
   display: flex;
@@ -835,9 +811,20 @@ img { max-width: 100%; height: auto; display: block; }
   overflow-x: auto;
   scroll-snap-type: x mandatory;
   scrollbar-width: none;
-  background: var(--bg-surface);
 }
 .shop-film::-webkit-scrollbar { display: none; }
+.shop-film-img,
+.shop-film img,
+.shop-row-media img {
+  flex: 0 0 100% !important;
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  object-position: center !important;
+  display: block !important;
+  scroll-snap-align: start;
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
 .shop-film-empty {
   background: var(--bg-surface);
 }

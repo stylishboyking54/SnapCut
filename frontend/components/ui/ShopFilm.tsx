@@ -60,14 +60,13 @@ export default function ShopFilm({ photos }: { photos: string[] }) {
       {/* Scrollable photo strip */}
       <div className="shop-film" ref={scroller}>
         {frames.map((src, i) => (
-          <div key={src + i} className="shop-film-frame">
-            <img
-              src={src}
-              alt=""
-              draggable={false}
-              className="main-photo"
-            />
-          </div>
+          <img
+            key={src + i}
+            src={src}
+            alt=""
+            draggable={false}
+            className="shop-film-img"
+          />
         ))}
       </div>
 
