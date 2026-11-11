@@ -476,34 +476,44 @@ img { max-width: 100%; height: auto; display: block; }
   }
 
   .shop-grid {
-    gap: 8px !important;
+    gap: 10px !important;
   }
   .shop-row {
-    grid-template-rows: 92px auto auto !important;
-    border-radius: 16px !important;
+    grid-template-rows: 135px auto auto !important;
+    border-radius: 18px !important;
   }
   .shop-row-media {
-    height: 92px !important;
-    min-height: 92px !important;
+    height: 135px !important;
+    min-height: 135px !important;
+    border-radius: 18px 18px 0 0 !important;
+  }
+  .shop-row-media img,
+  .shop-film img {
+    object-fit: cover !important;
+    object-position: center !important;
+    width: 100% !important;
+    height: 100% !important;
   }
   .shop-row-badge, .shop-row-rating {
-    font-size: 10px !important;
-    padding: 3px 6px !important;
+    font-size: 10.5px !important;
+    padding: 3px 8px !important;
+    border-radius: 999px !important;
   }
-  .shop-row-badge { left: 6px; bottom: 6px; max-width: calc(100% - 12px); }
-  .shop-row-rating { top: 6px; right: 6px; }
+  .shop-row-badge { left: 8px; bottom: 8px; max-width: calc(100% - 16px); }
+  .shop-row-rating { top: 8px; right: 8px; }
   .shop-row-body {
     grid-area: body;
-    padding: 8px 8px 2px !important;
+    padding: 10px 10px 4px !important;
     gap: 4px !important;
     justify-content: flex-start !important;
   }
   .shop-row-body h3 {
-    font-size: 13.5px !important;
-    line-height: 1.15 !important;
+    font-size: 14.5px !important;
+    line-height: 1.2 !important;
+    font-weight: 700 !important;
   }
   .shop-row-body .muted {
-    font-size: 11px !important;
+    font-size: 11.5px !important;
     display: -webkit-box;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
@@ -513,16 +523,17 @@ img { max-width: 100%; height: auto; display: block; }
     font-size: 13px !important;
   }
   .shop-row-actions {
-    flex-direction: column !important;
-    padding: 6px 8px 8px !important;
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    padding: 6px 10px 10px !important;
     gap: 6px !important;
   }
   .shop-row-actions .btn-primary,
   .shop-row-actions .btn-secondary {
-    flex: 1;
-    min-height: 30px !important;
-    padding: 4px 8px !important;
-    font-size: 11.5px !important;
+    min-height: 32px !important;
+    padding: 4px 6px !important;
+    font-size: 12px !important;
+    white-space: nowrap !important;
   }
 
   .shop-row-chips {
