@@ -4,8 +4,11 @@ import { authHeaders, getApiBaseUrl, getSession } from './auth';
 const API_BASE_URL = () => getApiBaseUrl();
 
 function mapQueueItem(q: any, shopId?: string): QueueItem {
+  const isPast = q.status === 'completed' || q.status === 'cancelled';
   const scheduled = q.scheduled_at
-    ? new Date(q.scheduled_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })
+    ? isPast
+      ? new Date(q.scheduled_at).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+      : new Date(q.scheduled_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })
     : q.scheduled_time || '';
   return {
     id: q.id,
@@ -16,6 +19,7 @@ function mapQueueItem(q: any, shopId?: string): QueueItem {
     shopLng: q.shops?.lng ?? q.shop_lng ?? undefined,
     customerName: q.customer_name || q.profiles?.full_name || 'You',
     customerAvatar: q.customer_avatar || q.profiles?.avatar_url || '',
+    customerPhone: q.profiles?.phone || q.customer_phone || undefined,
     serviceName: q.service_name || q.services?.name || 'Service',
     serviceDuration: q.service_duration || q.services?.duration || 30,
     price: Number(q.price ?? q.services?.price ?? 0),
@@ -669,4 +673,53 @@ export async function rateShop(
     throw new Error(err.message || 'Could not submit rating');
   }
   return res.json();
+}
+
+export async function getAllMyBookings(): Promise<{ active: QueueItem[]; past: QueueItem[] }> {
+  const res = await fetch(`${API_BASE_URL()}/bookings`, {
+    cache: 'no-store',
+    headers: authHeaders(),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || `Bookings failed (${res.status})`);
+  }
+  const data = await res.json();
+  const list = Array.isArray(data) ? data : [];
+  const active: QueueItem[] = [];
+  const past: QueueItem[] = [];
+
+  for (const b of list) {
+    const mapped = mapQueueItem(b);
+    if (['pending', 'confirmed', 'in_progress'].includes(b.status)) {
+      active.push(mapped);
+    } else {
+      past.push(mapped);
+    }
+  }
+
+  return { active, past };
+}
+
+export async function getShopBookingsWithHistory(shopId: string): Promise<{
+  active: QueueItem[];
+  past: QueueItem[];
+  all: QueueItem[];
+}> {
+  const [liveQueueData, dbRows] = await Promise.all([
+    getShopLiveQueue(shopId).catch(() => ({ queue: [] })),
+    getShopBookingRows(shopId).catch(() => []),
+  ]);
+
+  const active = liveQueueData.queue || [];
+
+  const past: QueueItem[] = (dbRows || [])
+    .filter((r: any) => ['completed', 'cancelled'].includes(r.status))
+    .map((r: any) => mapQueueItem(r, shopId));
+
+  return {
+    active,
+    past,
+    all: [...active, ...past],
+  };
 }

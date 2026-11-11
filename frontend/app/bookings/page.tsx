@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { QueueItem } from '@/lib/types';
-import { askShopForMoreTime, cancelBooking, getMyBookings, tellShopIAmHere, ticketSaysHere, getCompletedUnratedBooking } from '@/lib/api';
+import { askShopForMoreTime, cancelBooking, getMyBookings, getAllMyBookings, tellShopIAmHere, ticketSaysHere, getCompletedUnratedBooking } from '@/lib/api';
 import RatingModal from '@/components/reviews/RatingModal';
 import { getSession } from '@/lib/auth';
 import { subscribeBookings } from '@/lib/realtime';
@@ -35,12 +35,15 @@ const RouteMap = dynamic(() => import('@/components/map/RouteMap'), {
 
 export default function BookingsPage() {
   const [activeBookings, setActiveBookings] = useState<QueueItem[]>([]);
+  const [pastBookings, setPastBookings] = useState<QueueItem[]>([]);
+  const [activeTab, setActiveTab] = useState<'active' | 'past'>('active');
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [needsAuth, setNeedsAuth] = useState(false);
   const [openRouteId, setOpenRouteId] = useState<string | null>(null);
   const [unratedBooking, setUnratedBooking] = useState<QueueItem | null>(null);
+  const [targetRatingBooking, setTargetRatingBooking] = useState<QueueItem | null>(null);
   const [ratingModalOpen, setRatingModalOpen] = useState(false);
 
   const showNotification = (msg: string) => {
@@ -58,13 +61,14 @@ export default function BookingsPage() {
     }
     setNeedsAuth(false);
     try {
-      const items = await getMyBookings();
+      const { active, past } = await getAllMyBookings();
+      setPastBookings(past);
       void getCompletedUnratedBooking().then((unr) => setUnratedBooking(unr));
       setActiveBookings((prev) => {
         // Toast when position / status changes while watching
-        if (prev.length && items.length) {
+        if (prev.length && active.length) {
           const before = prev[0];
-          const after = items.find((i) => i.id === before.id);
+          const after = active.find((i) => i.id === before.id);
           if (after && after.queuePosition !== before.queuePosition) {
             showNotification(`You're now #${after.queuePosition} in line.`);
           } else if (after && after.status === 'in_progress' && before.status !== 'in_progress') {
@@ -73,11 +77,12 @@ export default function BookingsPage() {
             showNotification('Your ticket was updated.');
           }
         }
-        return items;
+        return active;
       });
     } catch (err) {
       showNotification(err instanceof Error ? err.message : 'Could not load tickets');
       setActiveBookings([]);
+      setPastBookings([]);
     } finally {
       setLoading(false);
     }
@@ -223,17 +228,138 @@ export default function BookingsPage() {
         </div>
       )}
 
+            {/* Tabs: Active Spots vs Past Tickets */}
+      <div className="filter-pills-row" style={{ width: 'fit-content' }}>
+        <button
+          type="button"
+          className={`filter-seg ${activeTab === 'active' ? 'active' : ''}`}
+          onClick={() => setActiveTab('active')}
+        >
+          Active Line {activeBookings.length > 0 ? `(${activeBookings.length})` : ''}
+        </button>
+        <button
+          type="button"
+          className={`filter-seg ${activeTab === 'past' ? 'active' : ''}`}
+          onClick={() => setActiveTab('past')}
+        >
+          Past Tickets {pastBookings.length > 0 ? `(${pastBookings.length})` : ''}
+        </button>
+      </div>
+
       {loading ? (
         <div className="panel" style={{ textAlign: 'center', color: 'var(--text-muted)' }}>
-          Loading ticket…
+          Loading tickets…
         </div>
       ) : needsAuth ? (
         <div className="panel" style={{ textAlign: 'center', padding: '40px 24px' }}>
-          <h2 style={{ fontSize: 20, fontWeight: 600 }}>Sign in to see your ticket</h2>
+          <h2 style={{ fontSize: 20, fontWeight: 600 }}>Sign in to see your tickets</h2>
           <p className="secondary" style={{ fontSize: 14, maxWidth: 340, margin: '8px auto 0', lineHeight: 1.5 }}>
-            Your place in line, wait time, and updates show up here after you join a shop.
+            Your place in line, past visits, and updates show up here after you join a shop.
           </p>
         </div>
+      ) : activeTab === 'past' ? (
+        pastBookings.length === 0 ? (
+          <div className="panel" style={{ textAlign: 'center', padding: '40px 24px' }}>
+            <div style={{ fontSize: 16, fontWeight: 650 }}>No past tickets yet</div>
+            <p className="muted" style={{ fontSize: 13.5, marginTop: 8 }}>
+              Visits you complete or cancel will appear here so you can rebook or review them easily.
+            </p>
+          </div>
+        ) : (
+          <div className="list-stack">
+            {pastBookings.map((b) => {
+              const isCompleted = b.status === 'completed';
+              const hasRated = b.notes && b.notes.includes('[[rated:');
+              let ratingVal = '';
+              if (hasRated) {
+                const match = b.notes?.match(/\[\[rated:(\d+)\]\]/);
+                if (match) ratingVal = match[1];
+              }
+
+              return (
+                <div
+                  key={b.id}
+                  className="panel"
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 12,
+                    padding: 16,
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 8 }}>
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span className="eyebrow">Ticket #{b.id.slice(0, 8).toUpperCase()}</span>
+                        <span
+                          style={{
+                            fontSize: 11,
+                            fontWeight: 700,
+                            padding: '2px 8px',
+                            borderRadius: 99,
+                            background: isCompleted ? 'var(--brand-success-soft)' : 'var(--bg-elevated)',
+                            color: isCompleted ? 'var(--brand-success)' : 'var(--text-muted)',
+                          }}
+                        >
+                          {isCompleted ? 'Finished' : 'Cancelled'}
+                        </span>
+                      </div>
+                      <h3 style={{ fontSize: 18, fontWeight: 700, marginTop: 6, marginBottom: 2 }}>{b.shopName}</h3>
+                      {b.shopAddress && (
+                        <p className="muted" style={{ fontSize: 12.5, margin: 0 }}>
+                          {b.shopAddress}
+                        </p>
+                      )}
+                    </div>
+
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-muted)' }}>
+                        {b.scheduledTime || 'Previous visit'}
+                      </div>
+                      <div style={{ fontSize: 14, fontWeight: 700, marginTop: 4 }}>
+                        GHS {b.price}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10, borderTop: '1px solid var(--bg-border)', paddingTop: 10 }}>
+                    <div style={{ fontSize: 13, color: 'var(--brand-primary)', fontWeight: 600 }}>
+                      {b.serviceName} ({b.serviceDuration} min)
+                    </div>
+
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                      {hasRated ? (
+                        <span style={{ fontSize: 12, fontWeight: 700, color: '#f59e0b', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                          ★ {ratingVal} Rated
+                        </span>
+                      ) : isCompleted ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setTargetRatingBooking(b);
+                            setRatingModalOpen(true);
+                          }}
+                          className="btn-secondary"
+                          style={{ fontSize: 12, minHeight: 30, padding: '4px 10px', color: '#f59e0b', borderColor: '#f59e0b' }}
+                        >
+                          ⭐ Rate cut
+                        </button>
+                      ) : null}
+
+                      <Link
+                        href={`/shops/${b.shopId}`}
+                        className="btn-primary"
+                        style={{ fontSize: 12, minHeight: 30, padding: '4px 12px', textDecoration: 'none' }}
+                      >
+                        Book again
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )
       ) : activeBookings.length > 0 ? (
         <div className="list-stack">
           {activeBookings.map((booking) => {
@@ -372,17 +498,23 @@ export default function BookingsPage() {
           </Link>
         </div>
       )}
-      {unratedBooking && (
+      {(targetRatingBooking || unratedBooking) && (
         <RatingModal
-          shopId={unratedBooking.shopId}
-          shopName={unratedBooking.shopName}
-          bookingId={unratedBooking.id}
-          serviceName={unratedBooking.serviceName}
+          shopId={(targetRatingBooking || unratedBooking)!.shopId}
+          shopName={(targetRatingBooking || unratedBooking)!.shopName}
+          bookingId={(targetRatingBooking || unratedBooking)!.id}
+          serviceName={(targetRatingBooking || unratedBooking)!.serviceName}
           isOpen={ratingModalOpen}
-          onClose={() => setRatingModalOpen(false)}
+          onClose={() => {
+            setRatingModalOpen(false);
+            setTargetRatingBooking(null);
+          }}
           onSubmitted={(stars) => {
+            const name = (targetRatingBooking || unratedBooking)!.shopName;
             setUnratedBooking(null);
-            showNotification(`Thanks! You rated ${unratedBooking.shopName} ${stars} stars.`);
+            setTargetRatingBooking(null);
+            void loadBookings();
+            showNotification(`Thanks! You rated ${name} ${stars} stars.`);
           }}
         />
       )}

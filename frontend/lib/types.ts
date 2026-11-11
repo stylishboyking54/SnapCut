@@ -62,6 +62,7 @@ export interface QueueItem {
   shopLng?: number;
   customerName: string;
   customerAvatar?: string;
+  customerPhone?: string;
   serviceName: string;
   serviceDuration: number;
   price: number;
