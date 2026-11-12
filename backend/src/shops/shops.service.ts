@@ -1,5 +1,5 @@
 import { Injectable, Inject, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
-import { SupabaseClient } from '@supabase/supabase-js';
+import { SupabaseClient, createClient } from '@supabase/supabase-js';
 import { SUPABASE_ADMIN } from '../supabase/supabase.module';
 
 const SEED_SHOPS = [
@@ -410,6 +410,7 @@ export class ShopsService {
       customer_name?: string;
       notes?: string;
       customer_id?: string;
+      user_jwt?: string;
     },
   ) {
     const name = (dto.customer_name || 'Guest').trim();
@@ -474,7 +475,16 @@ export class ShopsService {
       // Unique slot (unique index on shop_id + scheduled_at)
       scheduledAt.setSeconds(scheduledAt.getSeconds() + position);
 
-      const { data: booking, error: bookErr } = await this.supabase
+      // Use a user-scoped client so auth.uid() matches customer_id for RLS
+      const insertClient = dto.user_jwt
+        ? createClient(
+            process.env.SUPABASE_URL!,
+            process.env.SUPABASE_ANON_KEY!,
+            { global: { headers: { Authorization: `Bearer ${dto.user_jwt}` } } },
+          )
+        : this.supabase;
+
+      const { data: booking, error: bookErr } = await insertClient
         .from('bookings')
         .insert({
           shop_id: shopId,

@@ -65,7 +65,7 @@ export class ShopsController {
       const { data } = await this.supabase.auth.getUser(token);
       customerId = data.user?.id;
     }
-    return this.shopsService.joinQueue(id, { ...(body || {}), customer_id: customerId });
+    return this.shopsService.joinQueue(id, { ...(body || {}), customer_id: customerId, user_jwt: token ?? undefined });
   }
 
   @Post()
