@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Shop, Service } from '@/lib/types';
 import { joinShopQueue } from '@/lib/api';
@@ -180,8 +180,8 @@ export default function JoinLineModal({
 }: JoinLineModalProps) {
   const router = useRouter();
 
-  const todayIso = useMemo(() => getTodayIsoDate(), []);
-  const tomorrowIso = useMemo(() => getTomorrowIsoDate(), []);
+  const todayIso = getTodayIsoDate();
+  const tomorrowIso = getTomorrowIsoDate();
 
   const [selectedServiceId, setSelectedServiceId] = useState<string>('');
   const [selectedDate, setSelectedDate] = useState<string>(todayIso);
@@ -208,6 +208,7 @@ export default function JoinLineModal({
     }
   };
 
+  // Safe early exit: all hooks are declared above, NO hooks after this line
   if (!isOpen || !shop) return null;
 
   const services = shop.services?.length
@@ -218,6 +219,27 @@ export default function JoinLineModal({
   const selectedService = services.find((s) => s.id === currentServiceId) || services[0];
 
   const validation = validateSelection(selectedDate, selectedTime, shop);
+
+  // Generate quick time chips based on working hours (simple calculation, no conditional hook)
+  const quickTimeSlots: string[] = (() => {
+    if (!validation.isOpenDay) return [];
+    const hours = shop.workingHours?.find((h) => {
+      const [y, m, d] = selectedDate.split('-').map(Number);
+      return h.dayOfWeek === new Date(y, m - 1, d).getDay();
+    });
+    const startH = parseInt((hours?.startTime || '09:00').slice(0, 2), 10) || 9;
+    const endH = parseInt((hours?.endTime || '18:00').slice(0, 2), 10) || 18;
+
+    const slots: string[] = [];
+    for (let h = startH; h < endH; h += 2) {
+      slots.push(`${String(h).padStart(2, '0')}:00`);
+    }
+    const openClock = (hours?.startTime || '09:00').slice(0, 5);
+    if (!slots.includes(openClock)) {
+      slots.unshift(openClock);
+    }
+    return slots.slice(0, 5);
+  })();
 
   const handleConfirm = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -259,26 +281,6 @@ export default function JoinLineModal({
       setBusy(false);
     }
   };
-
-  // Generate quick time chips based on working hours
-  const quickTimeSlots = useMemo(() => {
-    if (!validation.isOpenDay) return [];
-    const hours = shop.workingHours?.find((h) => {
-      const [y, m, d] = selectedDate.split('-').map(Number);
-      return h.dayOfWeek === new Date(y, m - 1, d).getDay();
-    });
-    const startH = parseInt((hours?.startTime || '09:00').slice(0, 2), 10);
-    const endH = parseInt((hours?.endTime || '18:00').slice(0, 2), 10);
-
-    const slots: string[] = [];
-    for (let h = startH; h < endH; h += 2) {
-      slots.push(`${String(h).padStart(2, '0')}:00`);
-    }
-    if (!slots.includes((hours?.startTime || '09:00').slice(0, 5))) {
-      slots.unshift((hours?.startTime || '09:00').slice(0, 5));
-    }
-    return slots.slice(0, 5);
-  }, [selectedDate, shop.workingHours, validation.isOpenDay]);
 
   return (
     <div
