@@ -692,6 +692,13 @@ export default function JoinLineModal({
                 : `Confirm · GHS ${selectedService ? selectedService.price : ''}`}
             </button>
           </div>
+
+          <div style={{ textAlign: 'center', fontSize: 11.5, color: 'var(--text-muted)', marginTop: 2 }}>
+            By joining, you agree to SnapCut&apos;s{' '}
+            <a href="/terms" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--brand-accent)', textDecoration: 'underline' }}>
+              Terms &amp; Conditions
+            </a>
+          </div>
         </form>
       </div>
     </div>

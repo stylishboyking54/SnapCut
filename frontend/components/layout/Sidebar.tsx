@@ -174,6 +174,16 @@ export default function Sidebar({ navItems, role, onSignIn }: SidebarProps) {
           )}
         </div>
       </div>
+
+      <div style={{ padding: '0 16px 12px', textAlign: 'center' }}>
+        <Link
+          href="/terms"
+          className="muted"
+          style={{ fontSize: 11.5, textDecoration: 'none', opacity: 0.8 }}
+        >
+          Terms &amp; Conditions
+        </Link>
+      </div>
     </aside>
   );
 }
