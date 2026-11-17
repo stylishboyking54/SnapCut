@@ -17,7 +17,7 @@ export default function TermsModal({ open, onClose, onAccept }: TermsModalProps)
       style={{
         position: 'fixed',
         inset: 0,
-        zIndex: 1200,
+        zIndex: 2000,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
