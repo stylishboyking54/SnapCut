@@ -55,7 +55,13 @@ export class ShopsController {
   @Post(':id/join')
   async joinQueue(
     @Param('id') id: string,
-    @Body() body: { service_id?: string; customer_name?: string; notes?: string },
+    @Body()
+    body: {
+      service_id?: string;
+      customer_name?: string;
+      notes?: string;
+      scheduled_at?: string;
+    },
     @Req() req: any,
   ) {
     let customerId: string | undefined;
@@ -65,7 +71,12 @@ export class ShopsController {
       const { data } = await this.supabase.auth.getUser(token);
       customerId = data.user?.id;
     }
-    return this.shopsService.joinQueue(id, { ...(body || {}), customer_id: customerId, user_jwt: token ?? undefined });
+    return this.shopsService.joinQueue(id, {
+      ...(body || {}),
+      customer_id: customerId,
+      user_jwt: token ?? undefined,
+      scheduled_at: body?.scheduled_at,
+    });
   }
 
   @Post()

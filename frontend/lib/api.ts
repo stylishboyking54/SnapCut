@@ -5,11 +5,21 @@ const API_BASE_URL = () => getApiBaseUrl();
 
 function mapQueueItem(q: any, shopId?: string): QueueItem {
   const isPast = q.status === 'completed' || q.status === 'cancelled';
-  const scheduled = q.scheduled_at
-    ? isPast
-      ? new Date(q.scheduled_at).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
-      : new Date(q.scheduled_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })
-    : q.scheduled_time || '';
+  let scheduled = q.scheduled_time || '';
+  if (q.scheduled_at) {
+    const d = new Date(q.scheduled_at);
+    if (!isNaN(d.getTime())) {
+      const isToday = new Date().toDateString() === d.toDateString();
+      const timeStr = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+      if (isPast) {
+        scheduled = d.toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+      } else if (isToday) {
+        scheduled = timeStr;
+      } else {
+        scheduled = `${d.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })} · ${timeStr}`;
+      }
+    }
+  }
   return {
     id: q.id,
     shopId: q.shop_id || shopId || q.shops?.id || '',
@@ -248,7 +258,12 @@ export async function getShopLiveQueue(shopId: string): Promise<{
  */
 export async function joinShopQueue(
   shopId: string,
-  payload: { serviceId?: string; customerName?: string; notes?: string } = {},
+  payload: {
+    serviceId?: string;
+    customerName?: string;
+    notes?: string;
+    scheduledAt?: string;
+  } = {},
 ): Promise<{
   booking: QueueItem;
   queue: QueueItem[];
@@ -266,6 +281,7 @@ export async function joinShopQueue(
       service_id: payload.serviceId,
       customer_name: payload.customerName || session.profile.full_name,
       notes: payload.notes,
+      scheduled_at: payload.scheduledAt,
     }),
   });
 

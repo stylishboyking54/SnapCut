@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, Suspense } from 'react';
+import React, { useState, useEffect, useMemo, Suspense } from 'react';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { useParams } from 'next/navigation';
@@ -28,18 +28,164 @@ const RouteMap = dynamic(() => import('@/components/map/RouteMap'), {
         fontSize: 13,
       }}
     >
-      Loading map & route…
+      Loading map route…
     </div>
   ),
 });
+
+function getTodayIsoDate(): string {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, '0');
+  const d = String(now.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+function getTomorrowIsoDate(): string {
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const y = tomorrow.getFullYear();
+  const m = String(tomorrow.getMonth() + 1).padStart(2, '0');
+  const d = String(tomorrow.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+function getDefaultTime(targetDateIso: string, shop: Shop): string {
+  const todayIso = getTodayIsoDate();
+  const isToday = targetDateIso === todayIso;
+  const now = new Date();
+
+  const [y, m, d] = targetDateIso.split('-').map(Number);
+  const dateObj = new Date(y, m - 1, d);
+  const dayOfWeek = dateObj.getDay();
+
+  const hours = shop.workingHours?.find((h) => h.dayOfWeek === dayOfWeek);
+  const startTime = (hours?.startTime || '09:00').slice(0, 5);
+  const endTime = (hours?.endTime || '18:00').slice(0, 5);
+
+  if (!isToday) return startTime;
+
+  const currentTotalMins = now.getHours() * 60 + now.getMinutes() + (shop.estimatedWaitMinutes || 0);
+  const roundedMins = Math.ceil(currentTotalMins / 5) * 5;
+  const h = Math.floor(roundedMins / 60);
+  const min = roundedMins % 60;
+  const roundedTime = `${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}`;
+
+  if (roundedTime < startTime) return startTime;
+  if (roundedTime > endTime) return endTime;
+  return roundedTime;
+}
+
+function validateSelection(
+  dateIso: string,
+  timeStr: string,
+  shop: Shop,
+): { valid: boolean; error: string | null; hoursText?: string; dayName: string; isOpenDay: boolean } {
+  if (!dateIso) return { valid: false, error: 'Please choose a date.', dayName: '', isOpenDay: false };
+
+  const [y, m, d] = dateIso.split('-').map(Number);
+  const dateObj = new Date(y, m - 1, d);
+  const dayOfWeek = dateObj.getDay();
+  const dayName = dateObj.toLocaleDateString([], { weekday: 'long' });
+
+  let hours = shop.workingHours?.find((h) => h.dayOfWeek === dayOfWeek);
+  if (!shop.workingHours || shop.workingHours.length === 0) {
+    if (dayOfWeek === 0) {
+      return { valid: false, error: 'The shop is closed on Sundays.', dayName, isOpenDay: false };
+    }
+    hours = { dayOfWeek, dayName, startTime: '09:00', endTime: '18:00', isOpen: true };
+  } else if (!hours || !hours.isOpen) {
+    return { valid: false, error: `The shop is closed on ${dayName}s.`, dayName, isOpenDay: false };
+  }
+
+  const startTime = (hours.startTime || '09:00').slice(0, 5);
+  const endTime = (hours.endTime || '18:00').slice(0, 5);
+
+  if (!timeStr) {
+    return { valid: false, error: 'Please choose a time.', hoursText: `${startTime} – ${endTime}`, dayName, isOpenDay: true };
+  }
+
+  const [th, tm] = timeStr.split(':').map(Number);
+  const timeMins = th * 60 + (tm || 0);
+
+  const [sh, sm] = startTime.split(':').map(Number);
+  const startMins = sh * 60 + (sm || 0);
+
+  const [eh, em] = endTime.split(':').map(Number);
+  const endMins = eh * 60 + (em || 0);
+
+  if (timeMins < startMins) {
+    return {
+      valid: false,
+      error: `Barber starts at ${startTime} on ${dayName}s. Chosen time is before working hours.`,
+      hoursText: `${startTime} – ${endTime}`,
+      dayName,
+      isOpenDay: true,
+    };
+  }
+
+  if (timeMins >= endMins) {
+    return {
+      valid: false,
+      error: `Barber closes at ${endTime} on ${dayName}s. Chosen time is after working hours.`,
+      hoursText: `${startTime} – ${endTime}`,
+      dayName,
+      isOpenDay: true,
+    };
+  }
+
+  const todayIso = getTodayIsoDate();
+  if (dateIso === todayIso) {
+    const now = new Date();
+    const currentMins = now.getHours() * 60 + now.getMinutes();
+    if (timeMins < currentMins) {
+      return {
+        valid: false,
+        error: 'That time has already passed today. Please pick an upcoming time.',
+        hoursText: `${startTime} – ${endTime}`,
+        dayName,
+        isOpenDay: true,
+      };
+    }
+  }
+
+  if (shop.breaks?.length) {
+    for (const b of shop.breaks) {
+      const bStart = (b.startTime || '').slice(0, 5);
+      const bEnd = (b.endTime || '').slice(0, 5);
+      if (bStart && bEnd) {
+        const [bsh, bsm] = bStart.split(':').map(Number);
+        const [beh, bem] = bEnd.split(':').map(Number);
+        const bsMins = bsh * 60 + (bsm || 0);
+        const beMins = beh * 60 + (bem || 0);
+        if (timeMins >= bsMins && timeMins < beMins) {
+          return {
+            valid: false,
+            error: `Barber is on break from ${bStart} to ${bEnd}${b.reason ? ` (${b.reason})` : ''}.`,
+            hoursText: `${startTime} – ${endTime}`,
+            dayName,
+            isOpenDay: true,
+          };
+        }
+      }
+    }
+  }
+
+  return { valid: true, error: null, hoursText: `${startTime} – ${endTime}`, dayName, isOpenDay: true };
+}
 
 function ShopDetailContent() {
   const params = useParams();
   const shopId = (params?.id as string) || '';
 
+  const todayIso = useMemo(() => getTodayIsoDate(), []);
+  const tomorrowIso = useMemo(() => getTomorrowIsoDate(), []);
+
   const [shop, setShop] = useState<Shop | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [selectedService, setSelectedService] = useState<Service | null>(null);
+  const [bookingDate, setBookingDate] = useState<string>(todayIso);
+  const [bookingTime, setBookingTime] = useState<string>('10:00');
   const [queueItems, setQueueItems] = useState<QueueItem[]>([]);
   const [customerName, setCustomerName] = useState('');
   const [customerNotes, setCustomerNotes] = useState('');
@@ -78,6 +224,9 @@ function ShopDetailContent() {
         if (apiShop.services.length > 0) {
           setSelectedService(apiShop.services[0]);
         }
+        const initDate = getTodayIsoDate();
+        setBookingDate(initDate);
+        setBookingTime(getDefaultTime(initDate, apiShop));
         setQueueItems(apiQueue?.queue || []);
       })
       .catch(() => {
@@ -91,6 +240,17 @@ function ShopDetailContent() {
       active = false;
     };
   }, [shopId]);
+
+  const validation = shop
+    ? validateSelection(bookingDate, bookingTime, shop)
+    : { valid: false, error: null, dayName: '', isOpenDay: false };
+
+  const handleDateChange = (newDate: string) => {
+    setBookingDate(newDate);
+    if (shop) {
+      setBookingTime(getDefaultTime(newDate, shop));
+    }
+  };
 
   if (loading) {
     return (
@@ -118,6 +278,11 @@ function ShopDetailContent() {
     e.preventDefault();
     if (!selectedService || !customerName.trim() || shop.isEmergency || isJoining) return;
 
+    if (!validation.valid) {
+      setJoinError(validation.error || 'Please select a valid working time.');
+      return;
+    }
+
     if (!getSession()) {
       requestSignIn('Join the line with an account.');
       return;
@@ -126,10 +291,15 @@ function ShopDetailContent() {
     setIsJoining(true);
     setJoinError(null);
     try {
+      const [y, m, d] = bookingDate.split('-').map(Number);
+      const [hour, minute] = bookingTime.split(':').map(Number);
+      const scheduledDate = new Date(y, m - 1, d, hour, minute, 0);
+
       const result = await joinShopQueue(shop.id, {
         serviceId: selectedService.id,
         customerName: customerName.trim(),
         notes: customerNotes.trim() || undefined,
+        scheduledAt: scheduledDate.toISOString(),
       });
       setQueueItems(result.queue);
       setShop((prev) =>
@@ -141,7 +311,6 @@ function ShopDetailContent() {
             }
           : null
       );
-      setCustomerName('');
       setCustomerNotes('');
       setJoinedShopId(shop.id);
       setBookingSuccess(true);
@@ -346,9 +515,10 @@ function ShopDetailContent() {
 
         <div className="panel">
           <h2 className="panel-title">Join the line</h2>
-          <p className="panel-sub">Pick a cut, leave your name, get a seat time.</p>
+          <p className="panel-sub">Pick a service, set date & time, secure your spot.</p>
 
           <form onSubmit={handleJoinQueue} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            {/* Service selector */}
             <div className="field">
               <label>Service</label>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -382,6 +552,140 @@ function ShopDetailContent() {
               </div>
             </div>
 
+            {/* Day / Date Selector */}
+            <div className="field">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                <label style={{ margin: 0 }}>Day</label>
+                <span className="muted" style={{ fontSize: 11.5 }}>
+                  {bookingDate === todayIso ? 'Today' : validation.dayName}
+                </span>
+              </div>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  onClick={() => handleDateChange(todayIso)}
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: 'var(--radius-sm)',
+                    fontSize: 12,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    border: bookingDate === todayIso ? '1.5px solid var(--brand-accent)' : '1px solid var(--bg-border)',
+                    background: bookingDate === todayIso ? 'var(--brand-accent)' : 'var(--bg-elevated)',
+                    color: bookingDate === todayIso ? '#fff' : 'var(--text-primary)',
+                  }}
+                >
+                  Today
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleDateChange(tomorrowIso)}
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: 'var(--radius-sm)',
+                    fontSize: 12,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    border: bookingDate === tomorrowIso ? '1.5px solid var(--brand-accent)' : '1px solid var(--bg-border)',
+                    background: bookingDate === tomorrowIso ? 'var(--brand-accent)' : 'var(--bg-elevated)',
+                    color: bookingDate === tomorrowIso ? '#fff' : 'var(--text-primary)',
+                  }}
+                >
+                  Tomorrow
+                </button>
+                <input
+                  type="date"
+                  min={todayIso}
+                  value={bookingDate}
+                  onChange={(e) => handleDateChange(e.target.value)}
+                  style={{
+                    flex: 1,
+                    minWidth: 130,
+                    padding: '6px 10px',
+                    borderRadius: 'var(--radius-sm)',
+                    background: 'var(--bg-elevated)',
+                    border: '1px solid var(--bg-border)',
+                    fontSize: 12.5,
+                    fontWeight: 600,
+                    color: 'var(--text-primary)',
+                  }}
+                />
+              </div>
+              <div
+                style={{
+                  marginTop: 6,
+                  fontSize: 12,
+                  color: validation.isOpenDay ? 'var(--text-muted)' : 'var(--brand-danger)',
+                  fontWeight: validation.isOpenDay ? 500 : 650,
+                }}
+              >
+                {validation.isOpenDay ? (
+                  <>🕒 {validation.dayName} hours: <strong>{validation.hoursText || '09:00 – 18:00'}</strong></>
+                ) : (
+                  <>🚫 Closed on {validation.dayName}s. Please pick another day.</>
+                )}
+              </div>
+            </div>
+
+            {/* Time Selector */}
+            <div className="field">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                <label style={{ margin: 0 }}>Time</label>
+                {validation.hoursText && (
+                  <span className="muted" style={{ fontSize: 11.5 }}>
+                    Working: {validation.hoursText}
+                  </span>
+                )}
+              </div>
+              <input
+                type="time"
+                value={bookingTime}
+                onChange={(e) => setBookingTime(e.target.value)}
+                disabled={!validation.isOpenDay}
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  borderRadius: 'var(--radius-sm)',
+                  background: 'var(--bg-elevated)',
+                  border: !validation.valid && validation.error?.includes('working hours') || !validation.valid && validation.error?.includes('passed')
+                    ? '1.5px solid var(--brand-danger)'
+                    : '1px solid var(--bg-border)',
+                  fontSize: 14,
+                  fontWeight: 700,
+                  color: 'var(--text-primary)',
+                }}
+              />
+              <div style={{ marginTop: 6 }}>
+                {!validation.valid ? (
+                  <div
+                    style={{
+                      padding: '5px 8px',
+                      borderRadius: 'var(--radius-xs)',
+                      background: 'var(--brand-danger-soft)',
+                      color: 'var(--brand-danger)',
+                      fontSize: 12,
+                      fontWeight: 650,
+                    }}
+                  >
+                    ⚠️ {validation.error}
+                  </div>
+                ) : (
+                  <div
+                    style={{
+                      padding: '4px 8px',
+                      borderRadius: 'var(--radius-xs)',
+                      background: 'rgba(34, 197, 94, 0.12)',
+                      color: '#16a34a',
+                      fontSize: 12,
+                      fontWeight: 600,
+                    }}
+                  >
+                    ✓ Time fits barber&apos;s working hours ({validation.hoursText})
+                  </div>
+                )}
+              </div>
+            </div>
+
             <div className="field">
               <label>Your name</label>
               <input
@@ -405,18 +709,20 @@ function ShopDetailContent() {
 
             <button
               type="submit"
-              disabled={shop.isEmergency || !customerName.trim() || isJoining || joinedShopId === shop.id}
+              disabled={shop.isEmergency || !customerName.trim() || isJoining || joinedShopId === shop.id || !validation.valid}
               className={joinedShopId === shop.id ? 'btn-secondary' : 'btn-primary'}
               style={{
                 marginTop: 4,
-                opacity: shop.isEmergency || !customerName.trim() ? 0.5 : 1,
-                cursor: shop.isEmergency || !customerName.trim() || isJoining || joinedShopId === shop.id ? 'default' : 'pointer',
+                opacity: shop.isEmergency || !customerName.trim() || !validation.valid ? 0.5 : 1,
+                cursor: shop.isEmergency || !customerName.trim() || isJoining || joinedShopId === shop.id || !validation.valid ? 'default' : 'pointer',
               }}
             >
               {shop.isEmergency
                 ? 'Paused for now'
                 : joinedShopId === shop.id
                 ? 'Joined'
+                : !validation.valid
+                ? (validation.error?.includes('closed') ? 'Shop Closed on this day' : 'Barber Off at this time')
                 : isJoining
                 ? 'Joining…'
                 : 'Join line'}

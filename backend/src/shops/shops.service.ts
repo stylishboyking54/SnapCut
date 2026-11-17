@@ -2,6 +2,78 @@ import { Injectable, Inject, NotFoundException, ForbiddenException, BadRequestEx
 import { SupabaseClient, createClient } from '@supabase/supabase-js';
 import { SUPABASE_ADMIN } from '../supabase/supabase.module';
 
+const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+function parseTimeToMinutes(timeStr: string): number {
+  if (!timeStr) return 0;
+  const parts = String(timeStr).split(':');
+  const h = parseInt(parts[0], 10) || 0;
+  const m = parseInt(parts[1], 10) || 0;
+  return h * 60 + m;
+}
+
+function validateWorkingHours(
+  targetDate: Date,
+  workingHours: any[],
+  breaks?: any[],
+) {
+  const dayOfWeek = targetDate.getDay();
+  const dayName = DAY_NAMES[dayOfWeek];
+
+  const list = workingHours || [];
+  let row = list.find((h: any) => Number(h.day_of_week ?? h.dayOfWeek) === dayOfWeek);
+
+  // If no working hours configured, default: Mon-Sat 09:00-18:00, Sun closed
+  if (!list.length) {
+    if (dayOfWeek === 0) {
+      throw new BadRequestException('The shop is closed on Sundays.');
+    }
+    row = {
+      day_of_week: dayOfWeek,
+      start_time: '09:00',
+      end_time: '18:00',
+      is_open: true,
+    };
+  } else if (!row || row.is_open === false || row.isOpen === false) {
+    throw new BadRequestException(`The shop is closed on ${dayName}s.`);
+  }
+
+  const startTimeStr = (row.start_time || row.startTime || '09:00').toString().slice(0, 5);
+  const endTimeStr = (row.end_time || row.endTime || '18:00').toString().slice(0, 5);
+
+  const startMins = parseTimeToMinutes(startTimeStr);
+  const endMins = parseTimeToMinutes(endTimeStr);
+  const targetMins = targetDate.getHours() * 60 + targetDate.getMinutes();
+
+  if (targetMins < startMins) {
+    throw new BadRequestException(
+      `The shop opens at ${startTimeStr} on ${dayName}. Chosen time is before working hours.`,
+    );
+  }
+
+  if (targetMins >= endMins) {
+    throw new BadRequestException(
+      `The shop closes at ${endTimeStr} on ${dayName}. Chosen time is outside working hours.`,
+    );
+  }
+
+  if (breaks && breaks.length > 0) {
+    for (const b of breaks) {
+      const bStartStr = (b.start_time || b.startTime || '').toString().slice(0, 5);
+      const bEndStr = (b.end_time || b.endTime || '').toString().slice(0, 5);
+      if (bStartStr && bEndStr) {
+        const bStart = parseTimeToMinutes(bStartStr);
+        const bEnd = parseTimeToMinutes(bEndStr);
+        if (targetMins >= bStart && targetMins < bEnd) {
+          throw new BadRequestException(
+            `The barber is on break from ${bStartStr} to ${bEndStr}${b.reason ? ` (${b.reason})` : ''}.`,
+          );
+        }
+      }
+    }
+  }
+}
+
 const SEED_SHOPS = [
   {
     id: 'shop-1',
@@ -279,7 +351,7 @@ export class ShopsService {
       try {
         let query = this.supabase
           .from('shops')
-          .select(`*, services(*), profiles!owner_id(full_name, avatar_url)`)
+          .select(`*, services(*), working_hours(*), breaks(*), profiles!owner_id(full_name, avatar_url)`)
           .order('name');
         if (filters?.city) query = query.ilike('city', `%${filters.city}%`);
         if (filters?.search) query = query.ilike('name', `%${filters.search}%`);
@@ -296,6 +368,8 @@ export class ShopsService {
             current_queue_count: 0,
             estimated_wait_minutes: 0,
             distance_km: s.distance_km ?? 1.2,
+            working_hours: s.working_hours || [],
+            breaks: s.breaks || [],
           }));
         }
       } catch {
@@ -411,6 +485,7 @@ export class ShopsService {
       notes?: string;
       customer_id?: string;
       user_jwt?: string;
+      scheduled_at?: string;
     },
   ) {
     const name = (dto.customer_name || 'Guest').trim();
@@ -418,7 +493,7 @@ export class ShopsService {
     if (this.isSupabaseLive()) {
       const { data: shop, error: shopErr } = await this.supabase
         .from('shops')
-        .select('*, services(*)')
+        .select('*, services(*), working_hours(*), breaks(*)')
         .eq('id', shopId)
         .single();
       if (shopErr || !shop) throw new NotFoundException('Shop not found');
@@ -458,22 +533,56 @@ export class ShopsService {
           .update({ full_name: name })
           .eq('id', customerId);
       }
+
       const today = new Date().toISOString().split('T')[0];
+      let scheduledAt: Date;
+      let isFutureDate = false;
+
+      if (dto.scheduled_at) {
+        scheduledAt = new Date(dto.scheduled_at);
+        if (isNaN(scheduledAt.getTime())) {
+          throw new BadRequestException('Invalid date or time provided.');
+        }
+        if (scheduledAt.getTime() < Date.now() - 5 * 60 * 1000) {
+          throw new BadRequestException('Scheduled time cannot be in the past.');
+        }
+        validateWorkingHours(scheduledAt, shop.working_hours || [], shop.breaks || []);
+        const targetDay = scheduledAt.toISOString().split('T')[0];
+        isFutureDate = targetDay !== today;
+      } else {
+        scheduledAt = new Date();
+        validateWorkingHours(scheduledAt, shop.working_hours || [], shop.breaks || []);
+      }
+
+      const targetDay = scheduledAt.toISOString().split('T')[0];
       const { count } = await this.supabase
         .from('bookings')
         .select('*', { count: 'exact', head: true })
         .eq('shop_id', shopId)
         .in('status', ['pending', 'confirmed', 'in_progress'])
-        .gte('scheduled_at', `${today}T00:00:00`)
-        .lte('scheduled_at', `${today}T23:59:59`);
+        .gte('scheduled_at', `${targetDay}T00:00:00`)
+        .lte('scheduled_at', `${targetDay}T23:59:59`);
 
       const position = (count || 0) + 1;
       const avg = shop.avg_service_duration || service.duration || 30;
-      const wait = Math.max(0, (position - 1) * avg);
-      const scheduledAt = new Date();
-      scheduledAt.setMinutes(scheduledAt.getMinutes() + wait);
+
+      let wait = 0;
+      if (!dto.scheduled_at) {
+        wait = Math.max(0, (position - 1) * avg);
+        scheduledAt.setMinutes(scheduledAt.getMinutes() + wait);
+      } else if (!isFutureDate) {
+        wait = Math.max(0, Math.round((scheduledAt.getTime() - Date.now()) / 60000));
+      }
+
       // Unique slot (unique index on shop_id + scheduled_at)
-      scheduledAt.setSeconds(scheduledAt.getSeconds() + position);
+      scheduledAt.setSeconds(scheduledAt.getSeconds() + (position % 60));
+
+      const status =
+        isFutureDate || scheduledAt.getTime() > Date.now() + 15 * 60 * 1000
+          ? 'confirmed'
+          : position === 1
+          ? 'in_progress'
+          : 'confirmed';
 
       // Use a user-scoped client so auth.uid() matches customer_id for RLS
       const insertClient = dto.user_jwt
@@ -491,7 +600,7 @@ export class ShopsService {
           customer_id: customerId,
           service_id: service.id,
           scheduled_at: scheduledAt.toISOString(),
-          status: position === 1 ? 'in_progress' : 'confirmed',
+          status,
           queue_position: position,
           estimated_wait_minutes: wait,
           notes: dto.notes || null,
@@ -524,6 +633,21 @@ export class ShopsService {
       shop.services.find((s) => s.id === dto.service_id) || shop.services[0];
     if (!service) throw new NotFoundException('No services available');
 
+    let scheduledAt: Date;
+    if (dto.scheduled_at) {
+      scheduledAt = new Date(dto.scheduled_at);
+      if (isNaN(scheduledAt.getTime())) {
+        throw new BadRequestException('Invalid date or time provided.');
+      }
+      if (scheduledAt.getTime() < Date.now() - 5 * 60 * 1000) {
+        throw new BadRequestException('Scheduled time cannot be in the past.');
+      }
+      validateWorkingHours(scheduledAt, shop.working_hours || [], shop.breaks || []);
+    } else {
+      scheduledAt = new Date();
+      validateWorkingHours(scheduledAt, shop.working_hours || [], shop.breaks || []);
+    }
+
     const queue = this.localQueues.get(shopId) || [];
     for (const [otherId, otherQueue] of this.localQueues) {
       const open = otherQueue.find(
@@ -540,15 +664,19 @@ export class ShopsService {
       }
     }
     const position = queue.length + 1;
-    const avg = shop.avg_service_duration || service.duration;
-    const wait = Math.max(0, (position - 1) * avg);
-    const seat = new Date();
-    seat.setMinutes(seat.getMinutes() + wait);
-    const scheduled_time = seat.toLocaleTimeString([], {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false,
-    });
+    const avg = shop.avg_service_duration || service.duration || 30;
+    let wait = 0;
+    if (!dto.scheduled_at) {
+      wait = Math.max(0, (position - 1) * avg);
+      scheduledAt.setMinutes(scheduledAt.getMinutes() + wait);
+    } else {
+      wait = Math.max(0, Math.round((scheduledAt.getTime() - Date.now()) / 60000));
+    }
+
+    const isToday = new Date().toDateString() === scheduledAt.toDateString();
+    const scheduled_time = isToday
+      ? scheduledAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })
+      : `${scheduledAt.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })} · ${scheduledAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}`;
 
     const entry: LocalQueueEntry = {
       id: `q-${Date.now()}`,
@@ -563,7 +691,7 @@ export class ShopsService {
       queue_position: position,
       estimated_wait_minutes: wait,
       scheduled_time,
-      status: position === 1 ? 'in_progress' : 'waiting',
+      status: !isToday || scheduledAt.getTime() > Date.now() + 15 * 60 * 1000 ? 'waiting' : position === 1 ? 'in_progress' : 'waiting',
       notes: dto.notes,
     };
 
