@@ -387,14 +387,19 @@ export async function cancelBooking(bookingId: string): Promise<void> {
 }
 
 /** Barber/Salon: finish current client and call the next */
-export async function advanceShopQueue(shopId: string): Promise<{
+export async function advanceShopQueue(shopId: string, bookingId?: string): Promise<{
   advanced: boolean;
   remaining?: number;
   message?: string;
 }> {
+  const token = await ensureFreshToken();
   const res = await fetch(`${API_BASE_URL()}/bookings/shop/${shopId}/advance`, {
     method: 'POST',
-    headers: authHeaders(),
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : authHeaders()),
+    },
+    body: JSON.stringify(bookingId ? { booking_id: bookingId } : {}),
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.message || data.error || 'Could not advance queue');
@@ -416,9 +421,13 @@ export type OwnShopPayload = {
 
 /** Current pro's shop, or null if not set up yet */
 export async function getMyShop(): Promise<Shop | null> {
+  const token = await ensureFreshToken();
   const res = await fetch(`${API_BASE_URL()}/shops/mine`, {
     cache: 'no-store',
-    headers: authHeaders(),
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : authHeaders()),
+    },
   });
   if (res.status === 404) return null;
   if (!res.ok) {

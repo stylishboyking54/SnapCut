@@ -105,7 +105,7 @@ export default function BarberDashboardPage() {
     };
   }, [refreshQueue]);
 
-  const handleNextClient = async () => {
+  const handleNextClient = async (clientToFinish?: QueueItem) => {
     if (!shop || busy || queue.length === 0) return;
     const current = queue.find((q) => q.status === 'in_progress');
     const waiting = queue.filter((q) => q.status !== 'in_progress');
@@ -121,12 +121,13 @@ export default function BarberDashboardPage() {
 
     setBusy(true);
     try {
-      const result = await advanceShopQueue(shop.id);
+      const result = await advanceShopQueue(shop.id, clientToFinish?.id);
       await refreshQueue(shop.id);
       if (result.message) {
         showNotice(result.message);
       } else if (result.advanced) {
-        showNotice(current ? copy.finishNotice(current.customerName) : 'Called next client to chair.');
+        const clientName = clientToFinish ? clientToFinish.customerName : current?.customerName;
+        showNotice(clientName ? copy.finishNotice(clientName) : 'Called next client to chair.');
       } else {
         showNotice(copy.lineClear);
       }
@@ -447,7 +448,7 @@ export default function BarberDashboardPage() {
                   </div>
                 </div>
 
-                <button type="button" onClick={handleNextClient} className="btn-primary" disabled={busy}>
+                <button type="button" onClick={() => handleNextClient(client)} className="btn-primary" disabled={busy}>
                   <ScissorsIcon size={15} />
                   {busy ? '…' : copy.doneNext}
                 </button>
@@ -481,7 +482,7 @@ export default function BarberDashboardPage() {
                   </div>
                   <button
                     type="button"
-                    onClick={handleNextClient}
+                    onClick={() => handleNextClient()}
                     className={due ? 'btn-primary' : 'btn-secondary'}
                     disabled={busy || !due}
                     style={!due ? { opacity: 0.6, cursor: 'not-allowed' } : undefined}
@@ -515,7 +516,7 @@ export default function BarberDashboardPage() {
                 </div>
                 <button
                   type="button"
-                  onClick={handleNextClient}
+                  onClick={() => handleNextClient()}
                   className={due ? 'btn-primary' : 'btn-secondary'}
                   disabled={busy || !due}
                   title={due ? 'Call client to chair' : `Client appointment is at ${nextClient.scheduledTime}`}
