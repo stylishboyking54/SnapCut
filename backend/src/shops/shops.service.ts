@@ -296,9 +296,63 @@ export class ShopsService {
     }
   }
 
-  private isSupabaseLive(): boolean {
+  isSupabaseLive(): boolean {
     const url = process.env.SUPABASE_URL;
     return Boolean(url && !url.includes('placeholder') && !url.includes('your-project'));
+  }
+
+  findLocalShop(id: string) {
+    return this.localShops.find((s) => s.id === id) || null;
+  }
+
+  getLocalQueue(shopId: string) {
+    return this.localQueues.get(shopId) || [];
+  }
+
+  advanceLocalQueue(shopId: string, bookingId?: string) {
+    const queue = this.localQueues.get(shopId) || [];
+    if (!queue.length) {
+      return { advanced: false, message: 'Line is empty' };
+    }
+
+    const inProgressIndex = bookingId
+      ? queue.findIndex((item) => item.id === bookingId)
+      : queue.findIndex((item) => item.status === 'in_progress');
+
+    let finishedName: string | null = null;
+    if (inProgressIndex !== -1) {
+      finishedName = queue[inProgressIndex].customer_name;
+      queue.splice(inProgressIndex, 1);
+    }
+
+    const nextWaiting = queue.find((item) => item.status !== 'in_progress');
+    let nextCustomerName: string | null = null;
+    if (nextWaiting) {
+      nextWaiting.status = 'in_progress';
+      nextCustomerName = nextWaiting.customer_name;
+    }
+
+    const avg = this.localShops.find((s) => s.id === shopId)?.avg_service_duration || 25;
+    queue.forEach((item, idx) => {
+      item.queue_position = idx + 1;
+      item.estimated_wait_minutes = Math.max(0, idx * avg);
+    });
+
+    this.localQueues.set(shopId, queue);
+
+    const msg = finishedName
+      ? nextCustomerName
+        ? `Finished ${finishedName}. Called ${nextCustomerName} to chair.`
+        : `Finished ${finishedName}. Chair is free.`
+      : nextCustomerName
+      ? `Called ${nextCustomerName} to chair.`
+      : 'Called next client to chair.';
+
+    return {
+      advanced: true,
+      message: msg,
+      next_customer_name: nextCustomerName || undefined,
+    };
   }
 
   private mapLiveQueueItem(shopId: string, shopName: string, b: any, shop?: any) {
