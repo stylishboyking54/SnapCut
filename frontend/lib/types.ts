@@ -69,6 +69,7 @@ export interface QueueItem {
   queuePosition: number;
   estimatedWaitMinutes: number;
   scheduledTime: string; // e.g. "15:30"
+  scheduledAt?: string; // ISO date-time string e.g. "2026-11-20T10:00:00.000Z"
   status: 'in_progress' | 'waiting' | 'completed' | 'cancelled' | 'shifted';
   notes?: string;
 }

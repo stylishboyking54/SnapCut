@@ -7,7 +7,7 @@ import {
   cancelBooking,
   getMyShop,
   getShopBookingRows,
-  getShopLiveQueue,
+  getShopBookingsWithHistory,
   ticketSaysHere,
 } from '@/lib/api';
 import { QueueItem, Shop } from '@/lib/types';
@@ -26,6 +26,7 @@ export default function BarberDashboardPage() {
   const [shop, setShop] = useState<Shop | null>(null);
   const [shopLoading, setShopLoading] = useState(true);
   const [queue, setQueue] = useState<QueueItem[]>([]);
+  const [upcomingList, setUpcomingList] = useState<QueueItem[]>([]);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [week, setWeek] = useState<WeekSummary | null>(null);
@@ -38,8 +39,9 @@ export default function BarberDashboardPage() {
 
   const refreshQueue = useCallback(async (shopId: string) => {
     try {
-      const live = await getShopLiveQueue(shopId);
-      setQueue(live.queue);
+      const data = await getShopBookingsWithHistory(shopId);
+      setQueue(data.todayQueue || data.active || []);
+      setUpcomingList(data.upcoming || []);
     } catch {
       /* keep current */
     }
@@ -162,6 +164,9 @@ export default function BarberDashboardPage() {
         </div>
 
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <Link href="/barber/bookings" className="btn-secondary" style={{ fontSize: 12.5 }}>
+            All Bookings {upcomingList.length > 0 ? `(${upcomingList.length} upcoming)` : ''}
+          </Link>
           <Link href="/barber/schedule" className="btn-secondary" style={{ fontSize: 12.5 }}>
             <CoffeeIcon size={14} />
             Open hours
@@ -217,6 +222,106 @@ export default function BarberDashboardPage() {
         </div>
       )}
 
+      {/* Upcoming Bookings on Future Days Card */}
+      <section
+        className="panel"
+        style={{
+          border: upcomingList.length > 0 ? '1.5px solid var(--brand-accent)' : undefined,
+          background: upcomingList.length > 0
+            ? 'linear-gradient(135deg, rgba(240, 65, 43, 0.05) 0%, rgba(245, 158, 11, 0.03) 100%)'
+            : undefined,
+          padding: '18px 20px',
+        }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 18 }}>📅</span>
+              <h2 className="panel-title" style={{ margin: 0, fontSize: 16 }}>
+                Upcoming Bookings on Future Days ({upcomingList.length})
+              </h2>
+            </div>
+            <p className="secondary" style={{ fontSize: 13, margin: '4px 0 0 0' }}>
+              {upcomingList.length === 0
+                ? 'No clients have booked for future days yet. Future calendar slots are open.'
+                : `You have ${upcomingList.length} client${upcomingList.length === 1 ? '' : 's'} booked ahead for upcoming days.`}
+            </p>
+          </div>
+          <Link
+            href="/barber/bookings?tab=upcoming"
+            className={upcomingList.length > 0 ? 'btn-primary' : 'btn-secondary'}
+            style={{ fontSize: 12.5, minHeight: 34, padding: '6px 14px', textDecoration: 'none' }}
+          >
+            {upcomingList.length > 0 ? 'View Upcoming Schedule →' : 'View Calendar'}
+          </Link>
+        </div>
+
+        {upcomingList.length > 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 14 }}>
+            {upcomingList.slice(0, 3).map((item) => (
+              <div
+                key={item.id}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '10px 14px',
+                  borderRadius: 'var(--radius-sm)',
+                  background: 'var(--bg-surface)',
+                  border: '1px solid var(--bg-border)',
+                  flexWrap: 'wrap',
+                  gap: 10,
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span
+                    style={{
+                      fontSize: 12,
+                      fontWeight: 700,
+                      padding: '2px 8px',
+                      borderRadius: 99,
+                      background: 'var(--brand-accent)',
+                      color: '#ffffff',
+                    }}
+                  >
+                    #{item.queuePosition}
+                  </span>
+                  <div>
+                    <span style={{ fontWeight: 650, fontSize: 13.5 }}>{item.customerName}</span>
+                    <span className="muted" style={{ fontSize: 12.5, marginLeft: 8 }}>
+                      · {item.serviceName} (GHS {item.price})
+                    </span>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <span style={{ fontSize: 12.5, fontWeight: 650, color: 'var(--brand-accent)' }}>
+                    🗓️ {item.scheduledTime}
+                  </span>
+                  {item.customerPhone && (
+                    <a
+                      href={`tel:${item.customerPhone}`}
+                      style={{ fontSize: 12, color: 'var(--text-muted)', textDecoration: 'none' }}
+                    >
+                      📞 Call
+                    </a>
+                  )}
+                </div>
+              </div>
+            ))}
+            {upcomingList.length > 3 && (
+              <div style={{ textAlign: 'center', marginTop: 4 }}>
+                <Link
+                  href="/barber/bookings?tab=upcoming"
+                  style={{ fontSize: 12, color: 'var(--brand-accent)', fontWeight: 600, textDecoration: 'none' }}
+                >
+                  +{upcomingList.length - 3} more upcoming client{upcomingList.length - 3 === 1 ? '' : 's'} · See full schedule
+                </Link>
+              </div>
+            )}
+          </div>
+        )}
+      </section>
+
       {week && (
         <WeekCard
           title="This week"
@@ -251,7 +356,6 @@ export default function BarberDashboardPage() {
             <span className={`status-dot ${inChairClient ? 'live' : ''}`} />
             {inChairClient ? copy.inSeat : copy.seatEmpty}
           </div>
-
         </div>
 
         {inChairClient ? (
@@ -306,7 +410,7 @@ export default function BarberDashboardPage() {
       </section>
 
       <section className="panel">
-        <h2 className="panel-title">Waiting ({waitingClients.length})</h2>
+        <h2 className="panel-title">Waiting Today ({waitingClients.length})</h2>
         <p className="panel-sub">{copy.waitingSub}</p>
 
         {waitingClients.length === 0 ? (

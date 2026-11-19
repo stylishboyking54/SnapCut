@@ -36,6 +36,7 @@ function mapQueueItem(q: any, shopId?: string): QueueItem {
     queuePosition: q.queue_position ?? 0,
     estimatedWaitMinutes: q.estimated_wait_minutes ?? 0,
     scheduledTime: scheduled,
+    scheduledAt: q.scheduled_at || q.scheduledAt || undefined,
     status: q.status === 'confirmed' || q.status === 'pending' ? 'waiting' : q.status || 'waiting',
     notes: q.notes,
   };
@@ -230,6 +231,7 @@ export async function getShopLiveQueue(shopId: string): Promise<{
       queuePosition: q.queue_position,
       estimatedWaitMinutes: q.estimated_wait_minutes,
       scheduledTime: q.scheduled_time || '15:30',
+      scheduledAt: q.scheduled_at || q.scheduledAt || undefined,
       status: q.status || 'waiting',
       notes: q.notes,
     }));
@@ -714,11 +716,20 @@ export async function getAllMyBookings(): Promise<{ active: QueueItem[]; past: Q
     }
   }
 
+  // Sort active tickets chronologically: soonest date & time first
+  active.sort((a, b) => {
+    const timeA = a.scheduledAt ? new Date(a.scheduledAt).getTime() : 0;
+    const timeB = b.scheduledAt ? new Date(b.scheduledAt).getTime() : 0;
+    return timeA - timeB;
+  });
+
   return { active, past };
 }
 
 export async function getShopBookingsWithHistory(shopId: string): Promise<{
   active: QueueItem[];
+  todayQueue: QueueItem[];
+  upcoming: QueueItem[];
   past: QueueItem[];
   all: QueueItem[];
 }> {
@@ -727,15 +738,56 @@ export async function getShopBookingsWithHistory(shopId: string): Promise<{
     getShopBookingRows(shopId).catch(() => []),
   ]);
 
-  const active = liveQueueData.queue || [];
+  const mappedDbRows: QueueItem[] = (dbRows || []).map((r: any) => mapQueueItem(r, shopId));
 
-  const past: QueueItem[] = (dbRows || [])
-    .filter((r: any) => ['completed', 'cancelled'].includes(r.status))
-    .map((r: any) => mapQueueItem(r, shopId));
+  // Merge liveQueueData.queue with dbRows, avoiding duplicates by id
+  const itemMap = new Map<string, QueueItem>();
+  for (const item of liveQueueData.queue || []) {
+    itemMap.set(item.id, item);
+  }
+  for (const item of mappedDbRows) {
+    if (!itemMap.has(item.id)) {
+      itemMap.set(item.id, item);
+    }
+  }
+
+  const allItems = Array.from(itemMap.values());
+  const isFinished = (status: string) => status === 'completed' || status === 'cancelled';
+
+  const past = allItems.filter((item) => isFinished(item.status));
+  const activeItems = allItems.filter((item) => !isFinished(item.status));
+
+  // Sort active chronologically by scheduled date/time ASC (earliest appointment first)
+  activeItems.sort((a, b) => {
+    const timeA = a.scheduledAt ? new Date(a.scheduledAt).getTime() : 0;
+    const timeB = b.scheduledAt ? new Date(b.scheduledAt).getTime() : 0;
+    return timeA - timeB;
+  });
+
+  // Calculate dynamic line positions in chronological order
+  activeItems.forEach((item, idx) => {
+    item.queuePosition = idx + 1;
+  });
+
+  const todayIso = new Date().toISOString().split('T')[0];
+  const todayQueue: QueueItem[] = [];
+  const upcoming: QueueItem[] = [];
+
+  for (const item of activeItems) {
+    const itemDate = item.scheduledAt ? item.scheduledAt.split('T')[0] : '';
+    const isToday = itemDate ? itemDate === todayIso : !item.scheduledTime.includes('·');
+    if (isToday) {
+      todayQueue.push(item);
+    } else {
+      upcoming.push(item);
+    }
+  }
 
   return {
-    active,
+    active: activeItems,
+    todayQueue,
+    upcoming,
     past,
-    all: [...active, ...past],
+    all: [...activeItems, ...past],
   };
 }

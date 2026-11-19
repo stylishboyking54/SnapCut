@@ -245,6 +245,7 @@ type LocalQueueEntry = {
   queue_position: number;
   estimated_wait_minutes: number;
   scheduled_time: string;
+  scheduled_at?: string;
   status: 'in_progress' | 'waiting' | 'confirmed' | 'completed' | 'cancelled';
   notes?: string;
 };
@@ -554,14 +555,12 @@ export class ShopsService {
         validateWorkingHours(scheduledAt, shop.working_hours || [], shop.breaks || []);
       }
 
-      const targetDay = scheduledAt.toISOString().split('T')[0];
       const { count } = await this.supabase
         .from('bookings')
         .select('*', { count: 'exact', head: true })
         .eq('shop_id', shopId)
         .in('status', ['pending', 'confirmed', 'in_progress'])
-        .gte('scheduled_at', `${targetDay}T00:00:00`)
-        .lte('scheduled_at', `${targetDay}T23:59:59`);
+        .lte('scheduled_at', scheduledAt.toISOString());
 
       const position = (count || 0) + 1;
       const avg = shop.avg_service_duration || service.duration || 30;
@@ -610,6 +609,9 @@ export class ShopsService {
         )
         .single();
       if (bookErr) throw new BadRequestException(bookErr.message);
+
+      // Resequence all active bookings chronologically so earlier days & times are ordered first
+      await this.resequenceShopQueue(shopId);
 
       const live = await this.getLiveQueue(shopId);
       return {
@@ -691,20 +693,79 @@ export class ShopsService {
       queue_position: position,
       estimated_wait_minutes: wait,
       scheduled_time,
+      scheduled_at: scheduledAt.toISOString(),
       status: !isToday || scheduledAt.getTime() > Date.now() + 15 * 60 * 1000 ? 'waiting' : position === 1 ? 'in_progress' : 'waiting',
       notes: dto.notes,
     };
 
     queue.push(entry);
-    this.localQueues.set(shopId, queue);
+
+    // Resequence local active queue chronologically by scheduled date/time ASC
+    const inProgress = queue.filter((b) => b.status === 'in_progress');
+    const waiting = queue.filter((b) => b.status !== 'in_progress');
+    waiting.sort((a, b) => {
+      const tA = a.scheduled_at ? new Date(a.scheduled_at).getTime() : 0;
+      const tB = b.scheduled_at ? new Date(b.scheduled_at).getTime() : 0;
+      return tA - tB;
+    });
+
+    const ordered = [...inProgress, ...waiting];
+    for (let i = 0; i < ordered.length; i++) {
+      ordered[i].queue_position = i + 1;
+      ordered[i].estimated_wait_minutes = Math.max(0, i * avg);
+    }
+
+    this.localQueues.set(shopId, ordered);
     this.syncShopQueueStats(shopId);
 
+    const resequencedEntry = ordered.find((b) => b.id === entry.id) || entry;
+
     return {
-      booking: entry,
-      queue,
-      total_in_queue: queue.length,
+      booking: resequencedEntry,
+      queue: ordered,
+      total_in_queue: ordered.length,
       estimated_total_wait: shop.estimated_wait_minutes,
     };
+  }
+
+  async resequenceShopQueue(shopId: string) {
+    if (!this.isSupabaseLive()) return;
+    try {
+      const { data: shop } = await this.supabase
+        .from('shops')
+        .select('avg_service_duration')
+        .eq('id', shopId)
+        .single();
+      const avg = shop?.avg_service_duration || 30;
+
+      const { data: active } = await this.supabase
+        .from('bookings')
+        .select('id, status, scheduled_at')
+        .eq('shop_id', shopId)
+        .in('status', ['pending', 'confirmed', 'in_progress'])
+        .order('scheduled_at', { ascending: true });
+
+      if (!active?.length) return;
+
+      const inProgress = active.filter((b) => b.status === 'in_progress');
+      const waiting = active.filter((b) => b.status !== 'in_progress');
+      waiting.sort(
+        (a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime(),
+      );
+      const ordered = [...inProgress, ...waiting];
+
+      for (let i = 0; i < ordered.length; i++) {
+        await this.supabase
+          .from('bookings')
+          .update({
+            queue_position: i + 1,
+            estimated_wait_minutes: Math.max(0, i * avg),
+          })
+          .eq('id', ordered[i].id);
+      }
+    } catch (err) {
+      console.warn('Failed to resequence shop queue:', err);
+    }
   }
 
   async findMine(ownerId: string) {

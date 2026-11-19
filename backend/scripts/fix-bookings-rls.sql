@@ -27,3 +27,4 @@ BEGIN
     RAISE NOTICE 'Policy already exists, skipping.';
   END IF;
 END $$;
+

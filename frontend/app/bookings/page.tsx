@@ -366,6 +366,7 @@ export default function BookingsPage() {
             const currentWait = booking.estimatedWaitMinutes;
             const here = ticketSaysHere(booking.notes);
             const ahead = Math.max(0, booking.queuePosition - 1);
+            const isDifferentDay = Boolean(booking.scheduledTime && booking.scheduledTime.includes('·'));
             return (
               <div key={booking.id} className="queue-ticket">
                 <div className="queue-ticket-header">
@@ -374,7 +375,7 @@ export default function BookingsPage() {
                     <div className="status-mark wait" style={{ marginTop: 6 }}>
                       <span className="status-dot live" />
                       Position #<CountUp value={booking.queuePosition} />
-                      {ahead === 0 ? ' · you\'re next' : ` · ${ahead} ahead`}
+                      {ahead === 0 ? (isDifferentDay ? ' · first on line' : ' · you\'re next') : ` · ${ahead} ahead`}
                     </div>
                   </div>
                   <div style={{ textAlign: 'right' }}>
@@ -382,7 +383,9 @@ export default function BookingsPage() {
                     <div style={{ fontFamily: 'var(--font-display)', fontSize: 26, fontWeight: 600 }}>
                       {booking.scheduledTime || '—'}
                     </div>
-                    <div className="muted" style={{ fontSize: 12.5 }}>~<CountUp value={currentWait} /> min left</div>
+                    <div className="muted" style={{ fontSize: 12.5 }}>
+                      {isDifferentDay ? 'Upcoming appointment' : <>~<CountUp value={currentWait} /> min left</>}
+                    </div>
                   </div>
                 </div>
 

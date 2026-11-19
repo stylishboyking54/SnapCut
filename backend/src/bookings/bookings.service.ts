@@ -37,7 +37,7 @@ export class BookingsService {
         services(name, duration, price)
       `)
       .eq('shop_id', shopId)
-      .order('scheduled_at', { ascending: false });
+      .order('scheduled_at', { ascending: true });
 
     if (error) throw error;
     return data;
@@ -98,14 +98,12 @@ export class BookingsService {
       throw new BadRequestException('This time slot is already booked');
     }
 
-    // 4. Get current queue position
-    const scheduledDate = dto.scheduled_at.split('T')[0];
+    // 4. Get current queue position chronologically
     const { count } = await this.supabase
       .from('bookings')
       .select('*', { count: 'exact', head: true })
       .eq('shop_id', dto.shop_id)
-      .in('status', ['pending', 'confirmed'])
-      .gte('scheduled_at', `${scheduledDate}T00:00:00`)
+      .in('status', ['pending', 'confirmed', 'in_progress'])
       .lte('scheduled_at', dto.scheduled_at);
 
     const queuePosition = (count || 0) + 1;
@@ -125,6 +123,10 @@ export class BookingsService {
       .single();
 
     if (error) throw error;
+
+    // Resequence all active bookings chronologically
+    await this.resequenceShopQueue(dto.shop_id);
+
     return booking;
   }
 
@@ -182,9 +184,8 @@ export class BookingsService {
     return data;
   }
 
-  /** Recalc queue_position + wait for active bookings in a shop (today). */
+  /** Recalc queue_position + wait for active bookings in a shop chronologically. */
   async resequenceShopQueue(shopId: string) {
-    const today = new Date().toISOString().split('T')[0];
     const { data: shop } = await this.supabase
       .from('shops')
       .select('avg_service_duration')
@@ -194,18 +195,19 @@ export class BookingsService {
 
     const { data: active } = await this.supabase
       .from('bookings')
-      .select('id, status')
+      .select('id, status, scheduled_at')
       .eq('shop_id', shopId)
       .in('status', ['pending', 'confirmed', 'in_progress'])
-      .gte('scheduled_at', `${today}T00:00:00`)
-      .lte('scheduled_at', `${today}T23:59:59`)
-      .order('queue_position', { ascending: true });
+      .order('scheduled_at', { ascending: true });
 
     if (!active?.length) return;
 
-    // Keep in_progress first, then waiting in current order
+    // Keep in_progress first, then sort waiting chronologically by scheduled_at
     const inProgress = active.filter((b) => b.status === 'in_progress');
     const waiting = active.filter((b) => b.status !== 'in_progress');
+    waiting.sort(
+      (a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime(),
+    );
     const ordered = [...inProgress, ...waiting];
 
     for (let i = 0; i < ordered.length; i++) {
