@@ -1,5 +1,5 @@
 import { Shop, QueueItem } from './types';
-import { authHeaders, getApiBaseUrl, getSession } from './auth';
+import { authHeaders, getApiBaseUrl, getSession, ensureFreshToken, handleSessionExpired } from './auth';
 
 const API_BASE_URL = () => getApiBaseUrl();
 
@@ -272,13 +272,19 @@ export async function joinShopQueue(
   totalInQueue: number;
   estimatedTotalWait: number;
 }> {
+  const token = await ensureFreshToken();
   const session = getSession();
-  if (!session?.access_token) {
+  if (!token || !session) {
+    handleSessionExpired('Sign in to join the line');
     throw new Error('Sign in to join the line');
   }
+
   const res = await fetch(`${API_BASE_URL()}/shops/${shopId}/join`, {
     method: 'POST',
-    headers: authHeaders(),
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
     body: JSON.stringify({
       service_id: payload.serviceId,
       customer_name: payload.customerName || session.profile.full_name,
@@ -289,7 +295,12 @@ export async function joinShopQueue(
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err.message || `Join failed (${res.status})`);
+    const message = err.message || '';
+    if (res.status === 401 || (res.status === 403 && message.toLowerCase().includes('sign in'))) {
+      handleSessionExpired('Your session has expired. Please sign in again.');
+      throw new Error('Your session has expired. Please sign in again.');
+    }
+    throw new Error(message || `Join failed (${res.status})`);
   }
 
   const data = await res.json();

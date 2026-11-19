@@ -1,4 +1,4 @@
-import { Injectable, Inject, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
+import { Injectable, Inject, NotFoundException, ForbiddenException, BadRequestException, UnauthorizedException } from '@nestjs/common';
 import { SupabaseClient, createClient } from '@supabase/supabase-js';
 import { SUPABASE_ADMIN } from '../supabase/supabase.module';
 
@@ -511,7 +511,7 @@ export class ShopsService {
       if (!service) throw new NotFoundException('No services available');
 
       if (!dto.customer_id) {
-        throw new ForbiddenException('Sign in to join the line');
+        throw new UnauthorizedException('Sign in to join the line');
       }
       const customerId = dto.customer_id;
       const { data: openLine } = await this.supabase

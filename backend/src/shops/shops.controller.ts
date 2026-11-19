@@ -1,6 +1,7 @@
 import {
   Controller, Get, Post, Patch, Delete, Body, Param, Query,
   UseGuards, Req, ParseFloatPipe, DefaultValuePipe, Inject,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { ShopsService } from './shops.service';
@@ -68,8 +69,13 @@ export class ShopsController {
     const header = req.headers?.authorization as string | undefined;
     const token = header?.startsWith('Bearer ') ? header.slice(7) : null;
     if (token) {
-      const { data } = await this.supabase.auth.getUser(token);
-      customerId = data.user?.id;
+      const { data, error } = await this.supabase.auth.getUser(token);
+      if (error || !data?.user) {
+        throw new UnauthorizedException('Your session has expired. Please sign in again.');
+      }
+      customerId = data.user.id;
+    } else {
+      throw new UnauthorizedException('Sign in to join the line');
     }
     return this.shopsService.joinQueue(id, {
       ...(body || {}),

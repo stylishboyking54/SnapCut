@@ -125,8 +125,12 @@ export default function HomePage() {
       setJoinedShopId(shop.id);
       setBookingToast(`You're in line at ${shop.name}. Open Ticket to watch your turn.`);
       setTimeout(() => setBookingToast(null), 4500);
-    } catch (err) {
-      setBookingToast(err instanceof Error ? err.message : 'Could not join the line.');
+    } catch (err: any) {
+      const msg = err instanceof Error ? err.message : 'Could not join the line.';
+      if (msg.toLowerCase().includes('sign in') || msg.toLowerCase().includes('expired')) {
+        return;
+      }
+      setBookingToast(msg);
       setTimeout(() => setBookingToast(null), 4500);
     } finally {
       setJoiningId(null);

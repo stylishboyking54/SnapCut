@@ -276,8 +276,13 @@ export default function JoinLineModal({
       }
       onClose();
       router.push('/bookings');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not join line');
+    } catch (err: any) {
+      const msg = err instanceof Error ? err.message : 'Could not join line';
+      if (msg.toLowerCase().includes('sign in') || msg.toLowerCase().includes('expired')) {
+        onClose();
+        return;
+      }
+      setError(msg);
       setBusy(false);
     }
   };

@@ -73,6 +73,52 @@ export function clearSession() {
   window.dispatchEvent(new Event('snapcut-auth'));
 }
 
+export function handleSessionExpired(reason = 'Your session has expired. Please sign in again.') {
+  clearSession();
+  requestSignIn(reason);
+}
+
+export async function ensureFreshToken(): Promise<string | null> {
+  if (typeof window === 'undefined') return null;
+  const session = getSession();
+  if (!session?.access_token) return null;
+
+  try {
+    const supabase = createClient();
+    const { data } = await supabase.auth.getSession();
+    if (data?.session?.access_token) {
+      if (data.session.access_token !== session.access_token) {
+        session.access_token = data.session.access_token;
+        if (data.session.refresh_token) {
+          session.refresh_token = data.session.refresh_token;
+        }
+        saveSession(session);
+      }
+      return data.session.access_token;
+    }
+
+    if (session.refresh_token) {
+      const { data: refreshed, error } = await supabase.auth.refreshSession({
+        refresh_token: session.refresh_token,
+      });
+      if (refreshed?.session?.access_token) {
+        session.access_token = refreshed.session.access_token;
+        session.refresh_token = refreshed.session.refresh_token;
+        saveSession(session);
+        return refreshed.session.access_token;
+      }
+      if (error) {
+        handleSessionExpired('Your session has expired. Please sign in again.');
+        return null;
+      }
+    }
+  } catch (e) {
+    console.warn('Token freshness check failed:', e);
+  }
+
+  return session.access_token;
+}
+
 export async function syncCurrentProfile(): Promise<AuthProfile | null> {
   if (typeof window === 'undefined') return null;
   const session = getSession();
