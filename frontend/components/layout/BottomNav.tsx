@@ -56,8 +56,9 @@ export default function BottomNav({ navItems }: BottomNavProps) {
     <nav className="bottom-nav">
       {navItems.map((item) => {
         const isActive =
-          pathname === item.href ||
-          (item.href !== '/' && pathname.startsWith(item.href));
+          item.href === '/' || item.href === '/admin'
+            ? pathname === item.href
+            : pathname === item.href || pathname.startsWith(item.href + '/');
 
         const handleClick = (e: React.MouseEvent) => {
           if (!isProtectedCustomerPath(item.href)) return;
