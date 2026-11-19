@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { addShopPhoto, addShopService, createShop, getMyShop, removeShopPhoto, removeShopService, updateShop, updateShopService } from '@/lib/api';
+import { addShopPhoto, addShopService, createShop, deleteShop, getMyShop, removeShopPhoto, removeShopService, updateShop, updateShopService } from '@/lib/api';
 import { Service, Shop } from '@/lib/types';
 import { getSession } from '@/lib/auth';
 import { timeGreeting, todayLabel } from '@/lib/greeting';
@@ -318,6 +318,7 @@ export default function BarberShopSettingsPage() {
   const [lng, setLng] = useState<number | null>(null);
   const [avgDuration, setAvgDuration] = useState(kind === 'salon' ? 45 : 30);
   const [busy, setBusy] = useState(false);
+  const [deleteBusy, setDeleteBusy] = useState(false);
   const [photoBusy, setPhotoBusy] = useState(false);
   const [serviceBusy, setServiceBusy] = useState(false);
   const [newService, setNewService] = useState('');
@@ -479,6 +480,35 @@ export default function BarberShopSettingsPage() {
       setError(err instanceof Error ? err.message : 'Save failed');
     } finally {
       setBusy(false);
+    }
+  };
+
+  const handleDeleteShop = async () => {
+    if (!shop || deleteBusy) return;
+    const confirmName = window.prompt(
+      `Are you sure you want to permanently delete "${shop.name}"?\n\nType the shop name to confirm:`,
+    );
+    if (!confirmName || confirmName.trim().toLowerCase() !== shop.name.trim().toLowerCase()) {
+      if (confirmName !== null) {
+        alert('Shop name did not match. Store deletion cancelled.');
+      }
+      return;
+    }
+
+    setDeleteBusy(true);
+    setError(null);
+    try {
+      await deleteShop(shop.id);
+      setShop(null);
+      setName('');
+      setTagline('');
+      setAddress('');
+      setPhone('');
+      alert(`"${shop.name}" has been permanently deleted.`);
+      router.push('/barber/shop?setup=1');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not delete shop');
+      setDeleteBusy(false);
     }
   };
 
@@ -740,6 +770,53 @@ export default function BarberShopSettingsPage() {
           {busy ? 'Saving…' : creating ? 'Save and open my line' : 'Save changes'}
         </button>
       </form>
+
+      {/* Danger Zone: Delete Store */}
+      {!creating && shop && (
+        <section
+          className="panel"
+          style={{
+            border: '1.5px solid rgba(220, 38, 38, 0.35)',
+            background: 'var(--brand-danger-soft, rgba(220, 38, 38, 0.04))',
+            padding: '24px 22px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 12,
+            borderRadius: 'var(--radius-lg)',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 20 }}>⚠️</span>
+            <h2 style={{ fontSize: 17, fontWeight: 700, margin: 0, color: 'var(--brand-danger)' }}>
+              Danger Zone: Delete this {copy.shopTitle}
+            </h2>
+          </div>
+          <p style={{ fontSize: 13.5, color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>
+            Permanently remove <strong>{shop.name}</strong> from SnapCut. All active line spots, services, schedule hours, and photos will be deleted. This action is permanent and cannot be undone.
+          </p>
+
+          <div style={{ marginTop: 8 }}>
+            <button
+              type="button"
+              onClick={handleDeleteShop}
+              disabled={deleteBusy}
+              className="btn-secondary"
+              style={{
+                borderColor: 'var(--brand-danger)',
+                color: 'var(--brand-danger)',
+                background: 'var(--bg-surface)',
+                fontWeight: 700,
+                fontSize: 13,
+                minHeight: 40,
+                padding: '6px 18px',
+                cursor: 'pointer',
+              }}
+            >
+              {deleteBusy ? 'Deleting store…' : `🗑️ Permanently Delete ${shop.name}`}
+            </button>
+          </div>
+        </section>
+      )}
     </div>
   );
 }

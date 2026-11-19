@@ -500,6 +500,17 @@ export async function updateShop(shopId: string, payload: Partial<OwnShopPayload
   return mapShop(data);
 }
 
+export async function deleteShop(shopId: string): Promise<void> {
+  const res = await fetch(`${API_BASE_URL()}/shops/${shopId}`, {
+    method: 'DELETE',
+    headers: authHeaders(),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.message || data.error || 'Could not delete shop');
+  }
+}
+
 function localStamp(time: string) {
   const [h, m] = time.split(':').map(Number);
   const date = new Date();

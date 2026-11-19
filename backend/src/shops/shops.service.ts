@@ -1094,6 +1094,47 @@ export class ShopsService {
     return this.localShops[shopIndex];
   }
 
+  async deleteShop(id: string, ownerId: string) {
+    if (this.isSupabaseLive()) {
+      const { data: owned } = await this.supabase
+        .from('shops')
+        .select('id')
+        .eq('id', id)
+        .eq('owner_id', ownerId)
+        .maybeSingle();
+
+      if (!owned) {
+        throw new ForbiddenException('Not your shop or shop not found');
+      }
+
+      // Delete associated data first
+      await this.supabase.from('bookings').delete().eq('shop_id', id);
+      await this.supabase.from('services').delete().eq('shop_id', id);
+      await this.supabase.from('working_hours').delete().eq('shop_id', id);
+      await this.supabase.from('breaks').delete().eq('shop_id', id);
+
+      const { error } = await this.supabase.from('shops').delete().eq('id', id);
+      if (error) throw new BadRequestException(error.message);
+
+      return { success: true, message: 'Shop successfully deleted' };
+    }
+
+    // Local / In-memory fallback
+    const idx = this.localShops.findIndex(
+      (s) => s.id === id && (s.owner_id === ownerId || s.owner_id === 'barber-1'),
+    );
+    if (idx !== -1) {
+      this.localShops.splice(idx, 1);
+    } else {
+      const fallbackIdx = this.localShops.findIndex((s) => s.id === id);
+      if (fallbackIdx !== -1) {
+        this.localShops.splice(fallbackIdx, 1);
+      }
+    }
+    this.localQueues.delete(id);
+    return { success: true, message: 'Shop successfully deleted' };
+  }
+
   async saveHours(
     shopId: string,
     ownerId: string,

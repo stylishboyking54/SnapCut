@@ -138,6 +138,13 @@ export class ShopsController {
     return this.shopsService.update(id, req.user.id, dto);
   }
 
+  @Delete(':id')
+  @UseGuards(SupabaseAuthGuard, RolesGuard)
+  @Roles('barber', 'salon')
+  deleteShop(@Param('id') id: string, @Req() req: any) {
+    return this.shopsService.deleteShop(id, req.user.id);
+  }
+
   @Post(':id/hours')
   @UseGuards(SupabaseAuthGuard, RolesGuard)
   @Roles('barber', 'salon')
