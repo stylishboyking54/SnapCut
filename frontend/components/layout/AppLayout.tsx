@@ -222,6 +222,9 @@ export default function AppLayout({ children }: AppLayoutProps) {
     if (role === 'customer' && pathname.startsWith('/barber')) {
       router.replace('/');
     }
+    if (pathname.startsWith('/admin') && role !== 'admin') {
+      router.replace('/');
+    }
   }, [ready, role, pathname, router]);
 
   const handleWelcomeComplete = async (next: AppRole) => {

@@ -596,6 +596,20 @@ export async function verifyAdminShop(shopId: string) {
   return data;
 }
 
+export async function updateAdminUserRole(userId: string, role: string) {
+  const res = await fetch(`${API_BASE_URL()}/admin/users/${userId}/role`, {
+    method: 'PATCH',
+    headers: {
+      ...authHeaders(),
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ role }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.message || 'Could not update user role');
+  return data;
+}
+
 export async function toggleShopEmergency(
   shopId: string,
   isEmergency: boolean,
