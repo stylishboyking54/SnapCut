@@ -44,6 +44,7 @@ export interface Shop {
   emergencyReason?: string;
   resumeAt?: string;
   avgDurationPerClient: number; // minutes
+  chairCount?: number;
   currentQueueCount: number;
   estimatedWaitMinutes: number;
   coverImage: string;

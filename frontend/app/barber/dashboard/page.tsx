@@ -151,8 +151,11 @@ export default function BarberDashboardPage() {
     }
   };
 
-  const inChairClient = queue.find((q) => q.status === 'in_progress') || null;
+  const inChairClients = queue.filter((q) => q.status === 'in_progress');
+  const inChairClient = inChairClients[0] || null;
   const waitingClients = queue.filter((q) => q.status !== 'in_progress');
+  const chairCount = shop?.chairCount || 1;
+  const openChairs = Math.max(0, chairCount - inChairClients.length);
 
   if (shopLoading) {
     return (
@@ -384,41 +387,111 @@ export default function BarberDashboardPage() {
 
       <section className="panel">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, gap: 12, flexWrap: 'wrap' }}>
-          <div className={`status-mark ${inChairClient ? 'open' : 'wait'}`}>
-            <span className={`status-dot ${inChairClient ? 'live' : ''}`} />
-            {inChairClient ? copy.inSeat : copy.seatEmpty}
+          <div className={`status-mark ${inChairClients.length > 0 ? 'open' : 'wait'}`}>
+            <span className={`status-dot ${inChairClients.length > 0 ? 'live' : ''}`} />
+            {chairCount > 1
+              ? `${inChairClients.length} of ${chairCount} Chairs Active`
+              : inChairClient ? copy.inSeat : copy.seatEmpty}
           </div>
+          {chairCount > 1 && (
+            <span className="muted" style={{ fontSize: 12.5 }}>
+              Shop Capacity: <strong>{chairCount} simultaneous clients</strong>
+            </span>
+          )}
         </div>
 
-        {inChairClient ? (
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+        {inChairClients.length > 0 ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {inChairClients.map((client, idx) => (
               <div
-                className="avatar-chip lg"
-                style={{ width: 52, height: 52, minWidth: 52, minHeight: 52, fontSize: 18 }}
+                key={client.id}
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  flexWrap: 'wrap',
+                  gap: 16,
+                  padding: chairCount > 1 ? '14px 16px' : 0,
+                  borderRadius: 'var(--radius-sm)',
+                  background: chairCount > 1 ? 'var(--bg-elevated)' : 'transparent',
+                  border: chairCount > 1 ? '1px solid var(--bg-border-subtle, rgba(255,255,255,0.06))' : 'none',
+                }}
               >
-                {inChairClient.customerName.slice(0, 1)}
-              </div>
-              <div>
-                <div style={{ fontSize: 18, fontWeight: 650 }}>
-                  {inChairClient.customerName}
-                  {ticketSaysHere(inChairClient.notes) ? ' · here now' : ''}
-                </div>
-                <div className="secondary" style={{ fontSize: 13.5, marginTop: 2 }}>
-                  {inChairClient.serviceName} · GHS {inChairClient.price} · {inChairClient.serviceDuration}m
-                </div>
-                {inChairClient.notes && (
-                  <div className="muted" style={{ fontSize: 12.5, marginTop: 4 }}>
-                    Note: {inChairClient.notes}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                  <div
+                    className="avatar-chip lg"
+                    style={{ width: 50, height: 50, minWidth: 50, minHeight: 50, fontSize: 18 }}
+                  >
+                    {client.customerName.slice(0, 1)}
                   </div>
-                )}
-              </div>
-            </div>
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: 17, fontWeight: 650 }}>
+                        {client.customerName}
+                        {ticketSaysHere(client.notes) ? ' · here now' : ''}
+                      </span>
+                      {chairCount > 1 && (
+                        <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 99, background: 'var(--brand-primary)', color: '#fff' }}>
+                          Chair {idx + 1}
+                        </span>
+                      )}
+                    </div>
+                    <div className="secondary" style={{ fontSize: 13, marginTop: 2 }}>
+                      {client.serviceName} · GHS {client.price} · {client.serviceDuration}m
+                    </div>
+                    {client.notes && (
+                      <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>
+                        Note: {client.notes}
+                      </div>
+                    )}
+                  </div>
+                </div>
 
-            <button type="button" onClick={handleNextClient} className="btn-primary" disabled={busy}>
-              <ScissorsIcon size={15} />
-              {busy ? '…' : copy.doneNext}
-            </button>
+                <button type="button" onClick={handleNextClient} className="btn-primary" disabled={busy}>
+                  <ScissorsIcon size={15} />
+                  {busy ? '…' : copy.doneNext}
+                </button>
+              </div>
+            ))}
+
+            {openChairs > 0 && waitingClients.length > 0 && (() => {
+              const nextClient = waitingClients[0];
+              const due = isClientDue(nextClient.scheduledAt);
+              const until = timeUntilDue(nextClient.scheduledAt);
+
+              return (
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '14px 16px',
+                  borderRadius: 'var(--radius-sm)',
+                  border: '1px dashed var(--bg-border, rgba(255,255,255,0.15))',
+                  flexWrap: 'wrap',
+                  gap: 12,
+                  background: 'rgba(255, 255, 255, 0.02)',
+                }}>
+                  <div>
+                    <div style={{ fontSize: 14.5, fontWeight: 650, color: 'var(--text-secondary)' }}>
+                      Chair {inChairClients.length + 1} is Free ({openChairs} chair{openChairs > 1 ? 's' : ''} available)
+                    </div>
+                    <div className="muted" style={{ fontSize: 12.5, marginTop: 3 }}>
+                      Next: {nextClient.customerName} · {due ? 'Ready to sit now' : `Scheduled for ${nextClient.scheduledTime} (${until})`}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleNextClient}
+                    className={due ? 'btn-primary' : 'btn-secondary'}
+                    disabled={busy || !due}
+                    style={!due ? { opacity: 0.6, cursor: 'not-allowed' } : undefined}
+                  >
+                    <ScissorsIcon size={14} />
+                    {due ? `Seat in Chair ${inChairClients.length + 1}` : `Due at ${nextClient.scheduledTime}`}
+                  </button>
+                </div>
+              );
+            })()}
           </div>
         ) : waitingClients.length > 0 ? (
           (() => {

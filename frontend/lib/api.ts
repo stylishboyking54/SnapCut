@@ -132,6 +132,7 @@ function mapShop(s: any): Shop {
     emergencyReason: s.emergency_reason ?? s.emergencyReason,
     resumeAt: s.resume_at ?? s.resumeAt ?? undefined,
     avgDurationPerClient: s.avg_service_duration ?? s.avgDurationPerClient ?? 25,
+    chairCount: Math.max(1, Number(s.chair_count ?? s.chairCount ?? 1)),
     currentQueueCount: s.current_queue_count ?? s.currentQueueCount ?? 0,
     estimatedWaitMinutes: s.estimated_wait_minutes ?? s.estimatedWaitMinutes ?? 0,
     coverImage: photos[0] || '',
@@ -407,6 +408,7 @@ export type OwnShopPayload = {
   city: string;
   phone?: string;
   avg_service_duration?: number;
+  chair_count?: number;
   shop_type?: 'barber' | 'salon';
   lat?: number | null;
   lng?: number | null;

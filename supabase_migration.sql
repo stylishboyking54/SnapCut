@@ -60,6 +60,7 @@ CREATE TABLE shops (
   resume_at            TIMESTAMPTZ,
   is_verified          BOOLEAN DEFAULT FALSE,
   avg_service_duration INT DEFAULT 30,  -- minutes
+  chair_count          INT DEFAULT 1 CHECK (chair_count >= 1),
   shop_type            TEXT NOT NULL DEFAULT 'barber'
                        CHECK (shop_type IN ('barber', 'salon')),
   created_at           TIMESTAMPTZ DEFAULT NOW()

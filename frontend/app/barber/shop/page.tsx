@@ -317,6 +317,7 @@ export default function BarberShopSettingsPage() {
   const [lat, setLat] = useState<number | null>(null);
   const [lng, setLng] = useState<number | null>(null);
   const [avgDuration, setAvgDuration] = useState(kind === 'salon' ? 45 : 30);
+  const [chairCount, setChairCount] = useState(1);
   const [busy, setBusy] = useState(false);
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [photoBusy, setPhotoBusy] = useState(false);
@@ -341,6 +342,7 @@ export default function BarberShopSettingsPage() {
           setCity(mine.city || 'Accra');
           setPhone(mine.phone || '');
           setAvgDuration(mine.avgDurationPerClient || (kind === 'salon' ? 45 : 30));
+          setChairCount(mine.chairCount || 1);
           setLat(mine.lat ?? null);
           setLng(mine.lng ?? null);
         } else if (typeof navigator !== 'undefined' && navigator.geolocation) {
@@ -463,6 +465,7 @@ export default function BarberShopSettingsPage() {
         city: city.trim() || 'Accra',
         phone: phone.trim(),
         avg_service_duration: Number(avgDuration),
+        chair_count: Math.max(1, Math.min(20, Number(chairCount) || 1)),
         shop_type: kind,
         lat: lat,
         lng: lng,
@@ -763,6 +766,20 @@ export default function BarberShopSettingsPage() {
               onChange={(e) => setAvgDuration(Number(e.target.value))}
             />
             <span className="muted" style={{ fontSize: 12 }}>People see a wait based on this. A haircut is often 30 minutes.</span>
+          </div>
+
+          <div className="field">
+            <label>Active Chairs / Stylists (Capacity)</label>
+            <input
+              type="number"
+              min={1}
+              max={20}
+              value={chairCount}
+              onChange={(e) => setChairCount(Math.max(1, Number(e.target.value)))}
+            />
+            <span className="muted" style={{ fontSize: 12 }}>
+              How many clients can be served simultaneously (e.g. 1 for solo, 2 or more if you have apprentices/staff). Up to this many customers can book the same time slot.
+            </span>
           </div>
         </div>
 

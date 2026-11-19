@@ -555,6 +555,25 @@ export class ShopsService {
         validateWorkingHours(scheduledAt, shop.working_hours || [], shop.breaks || []);
       }
 
+      const chairCount = Math.max(1, Number(shop.chair_count) || 1);
+
+      if (dto.scheduled_at) {
+        const { count: slotCount } = await this.supabase
+          .from('bookings')
+          .select('*', { count: 'exact', head: true })
+          .eq('shop_id', shopId)
+          .eq('scheduled_at', dto.scheduled_at)
+          .in('status', ['pending', 'confirmed', 'in_progress']);
+
+        if ((slotCount || 0) >= chairCount) {
+          throw new BadRequestException(
+            chairCount === 1
+              ? 'This time slot is already booked.'
+              : `All ${chairCount} chairs/stylists are already booked for this time slot.`,
+          );
+        }
+      }
+
       const { count } = await this.supabase
         .from('bookings')
         .select('*', { count: 'exact', head: true })
@@ -567,7 +586,7 @@ export class ShopsService {
 
       let wait = 0;
       if (!dto.scheduled_at) {
-        wait = Math.max(0, (position - 1) * avg);
+        wait = Math.max(0, Math.ceil((position - 1) / chairCount) * avg);
         scheduledAt.setMinutes(scheduledAt.getMinutes() + wait);
       } else if (!isFutureDate) {
         wait = Math.max(0, Math.round((scheduledAt.getTime() - Date.now()) / 60000));
@@ -579,7 +598,7 @@ export class ShopsService {
       const status =
         isFutureDate || scheduledAt.getTime() > Date.now() + 15 * 60 * 1000
           ? 'confirmed'
-          : position === 1
+          : position <= chairCount
           ? 'in_progress'
           : 'confirmed';
 
@@ -817,6 +836,7 @@ export class ShopsService {
           city,
           phone: dto.phone || null,
           shop_type: shopType,
+          chair_count: Math.max(1, Math.min(20, Number(dto.chair_count) || 1)),
           avg_service_duration: Number(dto.avg_service_duration) || (shopType === 'salon' ? 45 : 30),
           is_open: true,
           is_emergency: false,
@@ -1078,6 +1098,9 @@ export class ShopsService {
       if (dto.phone !== undefined) patch.phone = dto.phone;
       if (dto.avg_service_duration !== undefined) {
         patch.avg_service_duration = Number(dto.avg_service_duration);
+      }
+      if (dto.chair_count !== undefined) {
+        patch.chair_count = Math.max(1, Math.min(20, Number(dto.chair_count) || 1));
       }
       if (dto.is_open !== undefined) patch.is_open = Boolean(dto.is_open);
       if (dto.lat !== undefined) patch.lat = dto.lat === null ? null : Number(dto.lat);
