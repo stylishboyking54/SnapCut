@@ -20,6 +20,25 @@ import { timeGreeting, todayLabel } from '@/lib/greeting';
 import { getSession } from '@/lib/auth';
 import { summarizeWeek, WeekSummary } from '@/lib/weekStats';
 
+function isClientDue(scheduledAt?: string): boolean {
+  if (!scheduledAt) return true;
+  const t = new Date(scheduledAt).getTime();
+  if (isNaN(t)) return true;
+  // Due if within 15 minutes of appointment or past due
+  return t <= Date.now() + 15 * 60 * 1000;
+}
+
+function timeUntilDue(scheduledAt?: string): string {
+  if (!scheduledAt) return 'Ready';
+  const diffMs = new Date(scheduledAt).getTime() - Date.now();
+  if (diffMs <= 0) return 'Due now';
+  const mins = Math.round(diffMs / 60000);
+  if (mins < 60) return `in ${mins}m`;
+  const hours = Math.floor(mins / 60);
+  const remainingMins = mins % 60;
+  return remainingMins > 0 ? `in ${hours}h ${remainingMins}m` : `in ${hours}h`;
+}
+
 export default function BarberDashboardPage() {
   const kind = useProKind();
   const copy = proCopy(kind);
@@ -88,15 +107,28 @@ export default function BarberDashboardPage() {
 
   const handleNextClient = async () => {
     if (!shop || busy || queue.length === 0) return;
+    const current = queue.find((q) => q.status === 'in_progress');
+    const waiting = queue.filter((q) => q.status !== 'in_progress');
+
+    // If chair is empty, ensure the next waiting client is actually due
+    if (!current && waiting.length > 0) {
+      const nextPerson = waiting[0];
+      if (!isClientDue(nextPerson.scheduledAt)) {
+        showNotice(`Cannot call ${nextPerson.customerName} yet. Their booking is for ${nextPerson.scheduledTime} (${timeUntilDue(nextPerson.scheduledAt)}).`);
+        return;
+      }
+    }
+
     setBusy(true);
     try {
-      const current = queue.find((q) => q.status === 'in_progress') || queue[0];
       const result = await advanceShopQueue(shop.id);
       await refreshQueue(shop.id);
-      if (result.advanced) {
-        showNotice(copy.finishNotice(current.customerName));
+      if (result.message) {
+        showNotice(result.message);
+      } else if (result.advanced) {
+        showNotice(current ? copy.finishNotice(current.customerName) : 'Called next client to chair.');
       } else {
-        showNotice(result.message || copy.lineClear);
+        showNotice(copy.lineClear);
       }
     } catch (err) {
       showNotice(err instanceof Error ? err.message : 'Could not advance line');
@@ -389,18 +421,39 @@ export default function BarberDashboardPage() {
             </button>
           </div>
         ) : waitingClients.length > 0 ? (
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
-            <div>
-              <div style={{ fontSize: 15, fontWeight: 650 }}>{copy.seatEmpty}</div>
-              <div className="muted" style={{ fontSize: 13, marginTop: 4 }}>
-                {waitingClients[0].customerName} is next.
+          (() => {
+            const nextClient = waitingClients[0];
+            const due = isClientDue(nextClient.scheduledAt);
+            const until = timeUntilDue(nextClient.scheduledAt);
+
+            return (
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
+                <div>
+                  <div style={{ fontSize: 15, fontWeight: 650 }}>{copy.seatEmpty}</div>
+                  <div className="muted" style={{ fontSize: 13, marginTop: 4 }}>
+                    {nextClient.customerName} is next · {due ? 'Ready to sit now' : `Scheduled for ${nextClient.scheduledTime} (${until})`}
+                  </div>
+                  {!due && (
+                    <div style={{ fontSize: 12, color: 'var(--brand-primary, #eab308)', marginTop: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span>⏳</span>
+                      <span>Can only be called to chair when appointment time arrives ({until}).</span>
+                    </div>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={handleNextClient}
+                  className={due ? 'btn-primary' : 'btn-secondary'}
+                  disabled={busy || !due}
+                  title={due ? 'Call client to chair' : `Client appointment is at ${nextClient.scheduledTime}`}
+                  style={!due ? { opacity: 0.6, cursor: 'not-allowed' } : undefined}
+                >
+                  <ScissorsIcon size={15} />
+                  {busy ? '…' : due ? 'Call next' : `Due at ${nextClient.scheduledTime}`}
+                </button>
               </div>
-            </div>
-            <button type="button" onClick={handleNextClient} className="btn-primary" disabled={busy}>
-              <ScissorsIcon size={15} />
-              {busy ? '…' : 'Call next'}
-            </button>
-          </div>
+            );
+          })()
         ) : (
           <div style={{ padding: '20px 0', textAlign: 'center' }}>
             <div style={{ fontSize: 15, fontWeight: 650 }}>{copy.nobodyInSeat}</div>
@@ -450,11 +503,40 @@ export default function BarberDashboardPage() {
                     {client.queuePosition}
                   </span>
                   <div>
-                    <div style={{ fontWeight: 650, fontSize: 13.5 }}>
-                      {client.customerName}{ticketSaysHere(client.notes) ? ' · here now' : ''}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                      <span style={{ fontWeight: 650, fontSize: 13.5 }}>
+                        {client.customerName}{ticketSaysHere(client.notes) ? ' · here now' : ''}
+                      </span>
+                      {isClientDue(client.scheduledAt) ? (
+                        <span
+                          style={{
+                            fontSize: 10.5,
+                            fontWeight: 700,
+                            padding: '1px 6px',
+                            borderRadius: 99,
+                            background: 'rgba(34, 197, 94, 0.15)',
+                            color: '#22c55e',
+                          }}
+                        >
+                          Ready to sit
+                        </span>
+                      ) : (
+                        <span
+                          style={{
+                            fontSize: 10.5,
+                            fontWeight: 600,
+                            padding: '1px 6px',
+                            borderRadius: 99,
+                            background: 'var(--bg-elevated)',
+                            color: 'var(--text-muted)',
+                          }}
+                        >
+                          {timeUntilDue(client.scheduledAt)}
+                        </span>
+                      )}
                     </div>
-                    <div className="muted" style={{ fontSize: 12 }}>
-                      {client.serviceName} · {client.scheduledTime}
+                    <div className="muted" style={{ fontSize: 12, marginTop: 2 }}>
+                      {client.serviceName} · Scheduled {client.scheduledTime}
                     </div>
                   </div>
                 </div>

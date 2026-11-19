@@ -222,7 +222,7 @@ export class BookingsService {
     }
   }
 
-  /** Finish current client and call the next person up. */
+  /** Finish current client and call the next person up (only if their time is due). */
   async advanceQueue(shopId: string, ownerId: string) {
     const { data: shop } = await this.supabase
       .from('shops')
@@ -236,7 +236,7 @@ export class BookingsService {
     const today = new Date().toISOString().split('T')[0];
     const { data: active } = await this.supabase
       .from('bookings')
-      .select('id, status, customer_id, queue_position')
+      .select('id, status, customer_id, queue_position, scheduled_at, profiles!customer_id(full_name)')
       .eq('shop_id', shopId)
       .in('status', ['pending', 'confirmed', 'in_progress'])
       .gte('scheduled_at', `${today}T00:00:00`)
@@ -247,37 +247,107 @@ export class BookingsService {
       return { advanced: false, message: 'Line is empty' };
     }
 
-    const current = active.find((b) => b.status === 'in_progress') || active[0];
-    await this.supabase
-      .from('bookings')
-      .update({ status: 'completed' })
-      .eq('id', current.id);
+    const now = Date.now();
+    const DUE_THRESHOLD_MS = 15 * 60 * 1000; // Can call if within 15 min of scheduled time
 
-    await this.supabase.from('notifications').insert({
-      user_id: current.customer_id,
-      booking_id: current.id,
-      type: 'queue_update',
-      message: 'All done. Thanks for visiting SnapCut.',
-    });
+    const inProgressClient = active.find((b) => b.status === 'in_progress');
 
-    const remaining = active.filter((b) => b.id !== current.id);
-    if (remaining.length) {
-      const next = remaining[0];
+    // Case 1: Someone is currently in the chair -> complete their cut
+    if (inProgressClient) {
       await this.supabase
         .from('bookings')
-        .update({ status: 'in_progress' })
-        .eq('id', next.id);
+        .update({ status: 'completed' })
+        .eq('id', inProgressClient.id);
 
       await this.supabase.from('notifications').insert({
-        user_id: next.customer_id,
-        booking_id: next.id,
+        user_id: inProgressClient.customer_id,
+        booking_id: inProgressClient.id,
         type: 'queue_update',
-        message: "You're up — head over now.",
+        message: 'All done. Thanks for visiting SnapCut.',
       });
+
+      const remaining = active.filter((b) => b.id !== inProgressClient.id);
+      if (remaining.length > 0) {
+        const next = remaining[0];
+        const nextScheduledTime = next.scheduled_at ? new Date(next.scheduled_at).getTime() : now;
+        const isNextDue = isNaN(nextScheduledTime) || nextScheduledTime <= now + DUE_THRESHOLD_MS;
+
+        // ONLY seat the next client if their time is due
+        if (isNextDue) {
+          await this.supabase
+            .from('bookings')
+            .update({ status: 'in_progress' })
+            .eq('id', next.id);
+
+          await this.supabase.from('notifications').insert({
+            user_id: next.customer_id,
+            booking_id: next.id,
+            type: 'queue_update',
+            message: "You're up — head over now.",
+          });
+
+          await this.resequenceShopQueue(shopId);
+          return {
+            advanced: true,
+            completed_id: inProgressClient.id,
+            seated: true,
+            remaining: remaining.length,
+          };
+        } else {
+          // Next client is scheduled for later! Leave seat empty.
+          await this.resequenceShopQueue(shopId);
+          const nextTimeStr = new Date(next.scheduled_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          return {
+            advanced: true,
+            completed_id: inProgressClient.id,
+            seated: false,
+            seat_empty: true,
+            message: `Seat is now open. Next appointment is at ${nextTimeStr}.`,
+            remaining: remaining.length,
+          };
+        }
+      }
+
+      await this.resequenceShopQueue(shopId);
+      return { advanced: true, completed_id: inProgressClient.id, remaining: 0, seat_empty: true };
     }
 
+    // Case 2: The chair was empty, so the barber is attempting to call the next waiting client
+    const nextToCall = active[0];
+    const nextScheduledTime = nextToCall.scheduled_at ? new Date(nextToCall.scheduled_at).getTime() : now;
+    const isNextDue = isNaN(nextScheduledTime) || nextScheduledTime <= now + DUE_THRESHOLD_MS;
+
+    const nextTimeStr = nextToCall.scheduled_at
+      ? new Date(nextToCall.scheduled_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      : 'now';
+    const clientName = (nextToCall as any).profiles?.full_name || 'Client';
+
+    if (!isNextDue) {
+      throw new BadRequestException(
+        `It is not ${clientName}'s appointment time yet. They are scheduled for ${nextTimeStr}. You can only call them when their time is near.`,
+      );
+    }
+
+    // Call them to chair
+    await this.supabase
+      .from('bookings')
+      .update({ status: 'in_progress' })
+      .eq('id', nextToCall.id);
+
+    await this.supabase.from('notifications').insert({
+      user_id: nextToCall.customer_id,
+      booking_id: nextToCall.id,
+      type: 'queue_update',
+      message: "You're up — head over now.",
+    });
+
     await this.resequenceShopQueue(shopId);
-    return { advanced: true, completed_id: current.id, remaining: remaining.length };
+    return {
+      advanced: true,
+      seated: true,
+      next_customer_name: clientName,
+      message: `Called ${clientName} to chair.`,
+    };
   }
 
   async shiftBooking(bookingId: string, ownerId: string, newScheduledAt: string) {
