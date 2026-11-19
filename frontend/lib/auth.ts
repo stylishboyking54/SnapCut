@@ -73,6 +73,38 @@ export function clearSession() {
   window.dispatchEvent(new Event('snapcut-auth'));
 }
 
+export async function syncCurrentProfile(): Promise<AuthProfile | null> {
+  if (typeof window === 'undefined') return null;
+  const session = getSession();
+  if (!session?.profile?.id) return null;
+  try {
+    const supabase = createClient();
+    const { data: fresh } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', session.profile.id)
+      .maybeSingle();
+
+    if (fresh && fresh.role) {
+      if (fresh.role !== session.profile.role || fresh.full_name !== session.profile.full_name) {
+        session.profile = {
+          ...session.profile,
+          role: fresh.role as AuthRole,
+          full_name: fresh.full_name || session.profile.full_name,
+          phone: fresh.phone ?? session.profile.phone,
+          avatar_url: fresh.avatar_url ?? session.profile.avatar_url,
+        };
+        saveSession(session);
+        localStorage.setItem(ROLE_KEY, fresh.role);
+      }
+      return session.profile;
+    }
+  } catch (err) {
+    console.warn('Profile sync error:', err);
+  }
+  return session.profile;
+}
+
 /** Ask the app shell to open the sign-in modal (real-app gate). */
 export function requestSignIn(reason?: string) {
   if (typeof window === 'undefined') return;

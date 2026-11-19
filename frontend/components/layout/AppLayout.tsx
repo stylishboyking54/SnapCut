@@ -11,6 +11,7 @@ import {
   getSession,
   isProtectedCustomerPath,
   PICK_ROLE_KEY,
+  syncCurrentProfile,
 } from '@/lib/auth';
 import { getMyShop, getMyNotifications } from '@/lib/api';
 import { subscribeNotifications } from '@/lib/realtime';
@@ -153,6 +154,13 @@ export default function AppLayout({ children }: AppLayoutProps) {
       setRole(r);
     } else {
       setRole(null);
+    }
+    if (session) {
+      void syncCurrentProfile().then((fresh) => {
+        if (fresh?.role) {
+          setRole(fresh.role as UserRole);
+        }
+      });
     }
     setNeedsRole(sessionStorage.getItem(PICK_ROLE_KEY) === '1');
     setReady(true);
