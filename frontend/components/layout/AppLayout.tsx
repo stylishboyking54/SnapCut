@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback, Suspense } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Sidebar from './Sidebar';
 import BottomNav from './BottomNav';
+import Footer from './Footer';
 import Navbar from './Navbar';
 import RoleWelcome, { AppRole } from './RoleWelcome';
 import SignInModal from '@/components/auth/SignInModal';
@@ -326,6 +327,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
           <div className="role-welcome">
             <div className="muted" style={{ fontSize: 14 }}>Loading…</div>
           </div>
+      <Footer />
         ) : (
           <RoleWelcome
             initialStep={needsRole ? 'role' : 'signin'}
@@ -339,6 +341,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
         <div hidden aria-hidden="true">
           {children}
         </div>
+      <Footer />
       </>
     );
   }
@@ -376,6 +379,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
               <span>{toastAlert.type === 'emergency' ? '⚠️' : '🔔'}</span>
               <span>{toastAlert.message}</span>
             </div>
+      <Footer />
             <button
               type="button"
               onClick={() => setToastAlert(null)}
@@ -393,6 +397,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
               ✕
             </button>
           </div>
+      <Footer />
         )}
         <main className="page-content">
           <Suspense
@@ -400,12 +405,14 @@ export default function AppLayout({ children }: AppLayoutProps) {
               <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>
                 Loading…
               </div>
+      <Footer />
             }
           >
             {children}
           </Suspense>
         </main>
       </div>
+      <Footer />
 
       <Suspense fallback={<nav className="bottom-nav" aria-hidden="true" />}>
         <BottomNav navItems={currentNavItems} />
