@@ -15,12 +15,12 @@ function startOfDay(d: Date) {
 
 export function summarizeWeek(rows: any[]): WeekSummary {
   const today = startOfDay(new Date());
-  const days: { key: string; label: string; value: number }[] = [];
+  const days: WeekPoint[] = [];
   for (let i = 6; i >= 0; i--) {
     const d = new Date(today);
     d.setDate(today.getDate() - i);
     days.push({
-      key: d.toDateString(),
+      id: d.toDateString(),
       label: d.toLocaleDateString([], { weekday: 'narrow' }),
       value: 0,
     });
@@ -41,7 +41,7 @@ export function summarizeWeek(rows: any[]): WeekSummary {
     visits += 1;
     minutes += Number(row.services?.duration || row.service_duration || row.estimated_wait_minutes || 0);
     spend += Number(row.services?.price || row.price || 0);
-    const bucket = days.find((d) => d.key === startOfDay(when).toDateString());
+    const bucket = days.find((d) => d.id === startOfDay(when).toDateString());
     if (bucket) bucket.value += 1;
   }
 
