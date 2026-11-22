@@ -12,12 +12,42 @@ function parseTimeToMinutes(timeStr: string): number {
   return h * 60 + m;
 }
 
+/** Read the clock time the customer picked, without the server timezone shifting it. */
+function wallClockFromInput(input: string | Date): { dayOfWeek: number; mins: number; ymd: string; hour: number; minute: number } {
+  if (typeof input === 'string') {
+    const match = input.match(/^(\d{4})-(\d{2})-(\d{2})(?:[T\s](\d{2}):(\d{2}))?/);
+    if (match) {
+      const y = Number(match[1]);
+      const mo = Number(match[2]);
+      const d = Number(match[3]);
+      const hour = Number(match[4] || 0);
+      const minute = Number(match[5] || 0);
+      return {
+        dayOfWeek: new Date(Date.UTC(y, mo - 1, d)).getUTCDay(),
+        mins: hour * 60 + minute,
+        ymd: `${match[1]}-${match[2]}-${match[3]}`,
+        hour,
+        minute,
+      };
+    }
+  }
+  const dt = typeof input === 'string' ? new Date(input) : input;
+  return {
+    dayOfWeek: dt.getUTCDay(),
+    mins: dt.getUTCHours() * 60 + dt.getUTCMinutes(),
+    ymd: dt.toISOString().slice(0, 10),
+    hour: dt.getUTCHours(),
+    minute: dt.getUTCMinutes(),
+  };
+}
+
 function validateWorkingHours(
-  targetDate: Date,
+  target: string | Date,
   workingHours: any[],
   breaks?: any[],
 ) {
-  const dayOfWeek = targetDate.getDay();
+  const wall = wallClockFromInput(target);
+  const dayOfWeek = wall.dayOfWeek;
   const dayName = DAY_NAMES[dayOfWeek];
 
   const list = workingHours || [];
@@ -43,7 +73,7 @@ function validateWorkingHours(
 
   const startMins = parseTimeToMinutes(startTimeStr);
   const endMins = parseTimeToMinutes(endTimeStr);
-  const targetMins = targetDate.getHours() * 60 + targetDate.getMinutes();
+  const targetMins = wall.mins;
 
   if (targetMins < startMins) {
     throw new BadRequestException(
@@ -594,19 +624,21 @@ export class ShopsService {
       let isFutureDate = false;
 
       if (dto.scheduled_at) {
-        scheduledAt = new Date(dto.scheduled_at);
+        const wall = wallClockFromInput(dto.scheduled_at);
+        // Keep the clock the customer picked (e.g. 15:00) — do not shift by server timezone.
+        scheduledAt = new Date(`${wall.ymd}T${String(wall.hour).padStart(2, '0')}:${String(wall.minute).padStart(2, '0')}:00.000Z`);
         if (isNaN(scheduledAt.getTime())) {
           throw new BadRequestException('Invalid date or time provided.');
         }
-        if (scheduledAt.getTime() < Date.now() - 5 * 60 * 1000) {
+        // Allow up to 24 h behind so same-day picks are not rejected across timezones.
+        if (scheduledAt.getTime() < Date.now() - 24 * 60 * 60 * 1000) {
           throw new BadRequestException('Scheduled time cannot be in the past.');
         }
-        validateWorkingHours(scheduledAt, shop.working_hours || [], shop.breaks || []);
-        const targetDay = scheduledAt.toISOString().split('T')[0];
-        isFutureDate = targetDay !== today;
+        validateWorkingHours(dto.scheduled_at, shop.working_hours || [], shop.breaks || []);
+        isFutureDate = wall.ymd !== today;
       } else {
         scheduledAt = new Date();
-        validateWorkingHours(scheduledAt, shop.working_hours || [], shop.breaks || []);
+        validateWorkingHours(scheduledAt.toISOString(), shop.working_hours || [], shop.breaks || []);
       }
 
       const chairCount = Math.max(1, Number(shop.chair_count) || 1);
@@ -710,17 +742,18 @@ export class ShopsService {
 
     let scheduledAt: Date;
     if (dto.scheduled_at) {
-      scheduledAt = new Date(dto.scheduled_at);
+      const wall = wallClockFromInput(dto.scheduled_at);
+      scheduledAt = new Date(`${wall.ymd}T${String(wall.hour).padStart(2, '0')}:${String(wall.minute).padStart(2, '0')}:00.000Z`);
       if (isNaN(scheduledAt.getTime())) {
         throw new BadRequestException('Invalid date or time provided.');
       }
-      if (scheduledAt.getTime() < Date.now() - 5 * 60 * 1000) {
+      if (scheduledAt.getTime() < Date.now() - 24 * 60 * 60 * 1000) {
         throw new BadRequestException('Scheduled time cannot be in the past.');
       }
-      validateWorkingHours(scheduledAt, shop.working_hours || [], shop.breaks || []);
+      validateWorkingHours(dto.scheduled_at, shop.working_hours || [], shop.breaks || []);
     } else {
       scheduledAt = new Date();
-      validateWorkingHours(scheduledAt, shop.working_hours || [], shop.breaks || []);
+      validateWorkingHours(scheduledAt.toISOString(), shop.working_hours || [], shop.breaks || []);
     }
 
     const queue = this.localQueues.get(shopId) || [];

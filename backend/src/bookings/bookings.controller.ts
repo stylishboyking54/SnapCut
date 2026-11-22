@@ -24,8 +24,12 @@ export class BookingsController {
   @Post('shop/:shopId/advance')
   @UseGuards(RolesGuard)
   @Roles('barber', 'salon')
-  advanceQueue(@Param('shopId') shopId: string, @Req() req: any) {
-    return this.bookingsService.advanceQueue(shopId, req.user.id);
+  advanceQueue(
+    @Param('shopId') shopId: string,
+    @Req() req: any,
+    @Body() body?: { booking_id?: string },
+  ) {
+    return this.bookingsService.advanceQueue(shopId, req.user.id, body?.booking_id);
   }
 
   @Post()

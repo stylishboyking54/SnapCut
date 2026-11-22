@@ -24,8 +24,8 @@ function isClientDue(scheduledAt?: string): boolean {
   if (!scheduledAt) return true;
   const t = new Date(scheduledAt).getTime();
   if (isNaN(t)) return true;
-  // Due if within 15 minutes of appointment or past due
-  return t <= Date.now() + 15 * 60 * 1000;
+  // Allow calling up to 12h early so timezone-skewed tickets do not block the line
+  return t <= Date.now() + 12 * 60 * 60 * 1000;
 }
 
 function timeUntilDue(scheduledAt?: string): string {

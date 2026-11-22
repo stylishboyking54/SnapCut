@@ -145,6 +145,12 @@ export class AuthService {
       .select()
       .single();
     if (error) throw new BadRequestException(error.message || 'Could not save your role');
+
+    // Mark that they chose a role so Google sign-in does not ask again or demote them.
+    await this.supabase.auth.admin.updateUserById(userId, {
+      user_metadata: { role, role_picked: true },
+    });
+
     return data;
   }
 
@@ -173,20 +179,48 @@ export class AuthService {
       .maybeSingle();
 
     const isNew = !existing;
-
-    // Keep whatever role is already in the DB; only override if a new role was explicitly passed.
-    // Never demote admin. Never reset an existing barber/salon to customer.
     const existingRole = existing?.role as string | undefined;
+    const alreadyPicked = Boolean(user.user_metadata?.role_picked);
+
+    // Never demote admin / barber / salon. Only set a new role when explicitly passed
+    // and it does not wipe a pro account down to customer.
     let nextRole: string;
     if (existingRole === 'admin') {
       nextRole = 'admin';
+    } else if (existingRole === 'barber' || existingRole === 'salon') {
+      nextRole =
+        role === 'barber' || role === 'salon' ? role : existingRole;
     } else if (role) {
-      // Caller explicitly chose a role (e.g. first-time Google sign-up)
       nextRole = role;
     } else {
-      // Returning user — preserve whatever they already are
       nextRole = existingRole || 'customer';
     }
+
+    // If they already own a shop but the role was wiped to customer, put the pro role back.
+    if (nextRole === 'customer' && !role) {
+      const { data: owned } = await this.supabase
+        .from('shops')
+        .select('shop_type')
+        .eq('owner_id', user.id)
+        .limit(1)
+        .maybeSingle();
+      if (owned) {
+        nextRole = owned.shop_type === 'salon' ? 'salon' : 'barber';
+      }
+    }
+
+    // Fresh Google accounts (or auto-created customer profiles) still need Who are you?
+    const userCreatedMs = new Date(user.created_at).getTime();
+    const profileCreatedMs = existing?.created_at
+      ? new Date(existing.created_at).getTime()
+      : userCreatedMs;
+    const freshlyCreated =
+      isNew || Math.abs(userCreatedMs - profileCreatedMs) < 5 * 60 * 1000;
+    const needsRolePick =
+      !alreadyPicked &&
+      !role &&
+      freshlyCreated &&
+      (!existingRole || existingRole === 'customer');
 
     const { data: profile, error: upsertErr } = await this.supabase
       .from('profiles')
@@ -204,12 +238,17 @@ export class AuthService {
     }
 
     await this.supabase.auth.admin.updateUserById(user.id, {
-      user_metadata: { ...user.user_metadata, full_name: fullName, role: nextRole },
+      user_metadata: {
+        ...user.user_metadata,
+        full_name: fullName,
+        role: nextRole,
+        ...(role || alreadyPicked ? { role_picked: true } : {}),
+      },
     });
 
     return {
       access_token: accessToken,
-      is_new: isNew,
+      is_new: isNew || needsRolePick,
       user,
       profile: profile || {
         id: user.id,

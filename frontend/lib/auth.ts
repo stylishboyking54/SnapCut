@@ -369,6 +369,7 @@ export async function completeOAuthSession(preferredRole?: AuthRole): Promise<Au
     user.user_metadata?.avatar_url || user.user_metadata?.picture || null;
 
   let profile: AuthProfile | null = null;
+  let isNew = false;
 
   // Prefer API sync; fall back to direct Supabase profile if API/CORS is down
   try {
@@ -382,12 +383,17 @@ export async function completeOAuthSession(preferredRole?: AuthRole): Promise<Au
     });
     const data = await res.json().catch(() => ({}));
     if (res.ok && data.profile) {
+      isNew = Boolean(data.is_new);
       const apiRole = (data.profile.role || pendingRole) as AuthRole;
-      // If API still returned customer but user picked pro, keep the pick
+      // Never let a sync wipe a barber/salon down to customer
       const role: AuthRole =
-        apiRole === 'customer' && (pendingRole === 'barber' || pendingRole === 'salon')
+        (apiRole === 'customer' && (pendingRole === 'barber' || pendingRole === 'salon'))
           ? pendingRole
-          : apiRole;
+          : (apiRole === 'customer' &&
+              (user.user_metadata?.role === 'barber' || user.user_metadata?.role === 'salon') &&
+              !pendingRole)
+            ? (user.user_metadata.role as AuthRole)
+            : apiRole;
       profile = {
         id: data.profile.id || user.id,
         full_name: data.profile.full_name || fullName,
@@ -407,10 +413,14 @@ export async function completeOAuthSession(preferredRole?: AuthRole): Promise<Au
       .eq('id', user.id)
       .maybeSingle();
 
+    isNew = !existing || (!user.user_metadata?.role_picked && existing?.role === 'customer');
+
     const nextRole: AuthRole =
       existing?.role === 'admin'
         ? 'admin'
-        : pendingRole || existing?.role || 'customer';
+        : existing?.role === 'barber' || existing?.role === 'salon'
+          ? (pendingRole === 'barber' || pendingRole === 'salon' ? pendingRole : existing.role)
+          : pendingRole || existing?.role || 'customer';
 
     const { data: upserted } = await supabase
       .from('profiles')
@@ -437,6 +447,7 @@ export async function completeOAuthSession(preferredRole?: AuthRole): Promise<Au
     refresh_token: sbSession.refresh_token,
     email: user.email || '',
     profile,
+    is_new: isNew,
   };
   saveSession(session);
   localStorage.setItem(ROLE_KEY, session.profile.role);

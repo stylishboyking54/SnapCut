@@ -262,13 +262,16 @@ export default function JoinLineModal({
     try {
       const [y, m, d] = selectedDate.split('-').map(Number);
       const [hour, minute] = selectedTime.split(':').map(Number);
-      const scheduledDate = new Date(y, m - 1, d, hour, minute, 0);
+      // Send as local-time ISO (no UTC shift) so the server validates the
+      // correct day and hour against the shop's working hours.
+      const pad = (n: number) => String(n).padStart(2, '0');
+      const localIso = `${y}-${pad(m)}-${pad(d)}T${pad(hour)}:${pad(minute)}:00`;
 
       const result = await joinShopQueue(shop.id, {
         serviceId: selectedService?.id,
         customerName: session.profile.full_name,
         notes: notes.trim() || undefined,
-        scheduledAt: scheduledDate.toISOString(),
+        scheduledAt: localIso,
       });
 
       if (onSuccess) {

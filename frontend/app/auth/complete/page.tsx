@@ -40,7 +40,7 @@ function AuthCompleteInner() {
         const session = await completeOAuthSession(preferred);
         if (cancelled) return;
 
-        // Backend tells us if this is a brand-new account with no role chosen yet
+        // New Google account with no role chosen yet → Who are you?
         if (session.is_new && !preferred) {
           setState('pick-role');
         } else {

@@ -227,8 +227,8 @@ export class BookingsService {
     }
   }
 
-  /** Finish current client and call the next person up (only if their time is due, supporting multiple chairs). */
-  async advanceQueue(shopId: string, ownerId: string) {
+  /** Finish current client and call the next person up (supporting multiple chairs). */
+  async advanceQueue(shopId: string, ownerId: string, finishBookingId?: string) {
     const { data: shop } = await this.supabase
       .from('shops')
       .select('owner_id, avg_service_duration, name, chair_count')
@@ -239,25 +239,58 @@ export class BookingsService {
     }
 
     const chairCount = Math.max(1, Number(shop.chair_count) || 1);
-    const today = new Date().toISOString().split('T')[0];
+    // Wide window so timezone skew does not hide today's line
+    const from = new Date();
+    from.setUTCDate(from.getUTCDate() - 1);
+    from.setUTCHours(0, 0, 0, 0);
+    const to = new Date();
+    to.setUTCDate(to.getUTCDate() + 1);
+    to.setUTCHours(23, 59, 59, 999);
     const { data: active } = await this.supabase
       .from('bookings')
       .select('id, status, customer_id, queue_position, scheduled_at, profiles!customer_id(full_name)')
       .eq('shop_id', shopId)
       .in('status', ['pending', 'confirmed', 'in_progress'])
-      .gte('scheduled_at', `${today}T00:00:00`)
-      .lte('scheduled_at', `${today}T23:59:59`)
-      .order('queue_position', { ascending: true });
+      .gte('scheduled_at', from.toISOString())
+      .lte('scheduled_at', to.toISOString())
+      .order('scheduled_at', { ascending: true });
 
     if (!active?.length) {
       return { advanced: false, message: 'Line is empty' };
     }
 
     const now = Date.now();
-    const DUE_THRESHOLD_MS = 15 * 60 * 1000;
+    // Barber can call someone up to 12h ahead (covers clock/timezone mismatch on old tickets)
+    const DUE_THRESHOLD_MS = 12 * 60 * 60 * 1000;
 
-    const inProgressClients = active.filter((b) => b.status === 'in_progress');
-    const waitingClients = active.filter((b) => b.status !== 'in_progress');
+    if (finishBookingId) {
+      const target = active.find((b) => b.id === finishBookingId);
+      if (target && ['in_progress', 'confirmed', 'pending'].includes(target.status)) {
+        await this.supabase.from('bookings').update({ status: 'completed' }).eq('id', target.id);
+        await this.supabase.from('notifications').insert({
+          user_id: target.customer_id,
+          booking_id: target.id,
+          type: 'queue_update',
+          message: 'All done. Thanks for visiting SnapCut.',
+        });
+        target.status = 'completed';
+      }
+    }
+
+    const live = active.filter((b) => b.status !== 'completed');
+    const inProgressClients = live.filter((b) => b.status === 'in_progress');
+    const waitingClients = live.filter((b) => b.status !== 'in_progress');
+    const justFinishedId = finishBookingId && active.some((b) => b.id === finishBookingId && b.status === 'completed')
+      ? finishBookingId
+      : undefined;
+
+    if (!live.length) {
+      if (justFinishedId) {
+        await this.resequenceShopQueue(shopId);
+        return { advanced: true, completed_id: justFinishedId, seat_empty: true };
+      }
+      return { advanced: false, message: 'Line is empty' };
+    }
 
     // If an open chair exists AND there is a waiting client who is due, seat them into an open chair
     if (inProgressClients.length < chairCount && waitingClients.length > 0) {
