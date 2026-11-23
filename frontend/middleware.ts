@@ -2,22 +2,26 @@ import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
 export async function middleware(request: NextRequest) {
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll();
+  try {
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return request.cookies.getAll();
+          },
+          // No custom setAll needed for now
+          setAll() {}
         },
-        // No custom setAll needed for now
-        setAll() {}
-      },
-    }
-  );
+      }
+    );
 
-  // Refresh session / keep PKCE cookies in sync
-  await supabase.auth.getUser();
+    // Refresh session / keep PKCE cookies in sync
+    await supabase.auth.getUser();
+  } catch (err) {
+    console.error('Middleware error:', err);
+  }
 
   // Continue to the requested page
   return NextResponse.next();
