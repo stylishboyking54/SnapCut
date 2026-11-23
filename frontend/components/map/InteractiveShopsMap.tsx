@@ -63,11 +63,12 @@ export default function InteractiveShopsMap({
         }).setView([5.6037, -0.1870], 12);
         mapInstance.current = map;
 
-        // OpenStreetMap tile layer (reliable, fast, no API key needed, never 403s)
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-          maxZoom: 19,
+        // Authentic Google Maps Roadmap tile layer (Google Maps color palette, roads, and typography)
+        L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+          maxZoom: 20,
+          subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
           attribution:
-            '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a>',
+            '&copy; <a href="https://maps.google.com" target="_blank" rel="noopener noreferrer">Google Maps</a>',
         }).addTo(map);
 
         // Force container bounds recalculation after CSS layout finishes
