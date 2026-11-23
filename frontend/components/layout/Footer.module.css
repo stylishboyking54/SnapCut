@@ -6,17 +6,69 @@
   font-family: var(--font-body);
   transition: background var(--transition-base), border var(--transition-base);
   margin-top: auto;
+  position: relative;
+  overflow: hidden;
+}
+
+.footer::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 70%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--brand-accent), transparent);
+  opacity: 0.6;
 }
 
 .inner {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 48px 24px 32px;
+  padding: 48px 24px 36px;
+  position: relative;
+  z-index: 1;
+}
+
+/* Pre-footer Call to Action Banner */
+.ctaCard {
+  border-radius: var(--radius-lg);
+  background: linear-gradient(135deg, var(--bg-elevated) 0%, var(--bg-surface) 100%);
+  border: 1px solid var(--bg-border);
+  padding: 28px 32px;
+  margin-bottom: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.04);
+}
+
+.ctaText h3 {
+  font-size: 19px;
+  font-weight: 750;
+  color: var(--text-primary);
+  margin: 0 0 6px 0;
+  letter-spacing: -0.01em;
+}
+
+.ctaText p {
+  font-size: 13.5px;
+  color: var(--text-muted);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.ctaActions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
 }
 
 .topGrid {
   display: grid;
-  grid-template-columns: 2fr 1fr 1fr 1fr;
+  grid-template-columns: 2.2fr 1.2fr 1.2fr 1.2fr;
   gap: 40px;
   margin-bottom: 40px;
 }
@@ -59,7 +111,7 @@
   font-size: 13.5px;
   line-height: 1.6;
   color: var(--text-muted);
-  max-width: 320px;
+  max-width: 340px;
 }
 
 .statusBadge {
@@ -97,7 +149,7 @@
 
 .colTitle {
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 750;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--text-primary);
@@ -120,9 +172,95 @@
   transform: translateX(2px);
 }
 
-.bottomBar {
-  padding-top: 24px;
+/* Social Media Section */
+.socialSection {
+  padding: 24px 0;
   border-top: 1px solid var(--bg-border-subtle);
+  border-bottom: 1px solid var(--bg-border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.socialLabel {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.socialLabelTitle {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.socialLabelSub {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.socialRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* Modern Colored Social Buttons */
+.socialBtn {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--bg-border-subtle);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+  text-decoration: none;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+  position: relative;
+}
+
+.socialBtn:hover {
+  transform: translateY(-3px) scale(1.06);
+}
+
+/* Platform-specific brand glows and accents */
+.btnWhatsapp:hover {
+  border-color: #25D366;
+  box-shadow: 0 6px 16px rgba(37, 211, 102, 0.35);
+}
+
+.btnInstagram:hover {
+  border-color: #E1306C;
+  box-shadow: 0 6px 16px rgba(225, 48, 108, 0.35);
+}
+
+.btnTiktok:hover {
+  border-color: #25F4EE;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3), 0 0 10px rgba(37, 244, 238, 0.35);
+}
+
+.btnYoutube:hover {
+  border-color: #FF0000;
+  box-shadow: 0 6px 16px rgba(255, 0, 0, 0.35);
+}
+
+.btnFacebook:hover {
+  border-color: #1877F2;
+  box-shadow: 0 6px 16px rgba(24, 119, 242, 0.35);
+}
+
+.btnX:hover {
+  border-color: var(--text-primary);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
+}
+
+.bottomBar {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -135,50 +273,35 @@
   color: var(--text-muted);
 }
 
-.socialRow {
+.legalLinks {
   display: flex;
+  gap: 16px;
   align-items: center;
-  gap: 10px;
 }
 
-.socialBtn {
-  width: 36px;
-  height: 36px;
-  border-radius: var(--radius-sm);
-  background: var(--bg-elevated);
-  border: 1px solid var(--bg-border-subtle);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--text-secondary);
-  transition: all var(--transition-fast);
-  text-decoration: none;
-}
-
-.socialBtn:hover {
-  background: var(--bg-hover);
-  color: var(--brand-accent);
-  border-color: var(--brand-accent);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-}
-
-.craftBadge {
-  font-size: 12.5px;
+.legalLink {
+  font-size: 12px;
   color: var(--text-muted);
-  display: flex;
-  align-items: center;
-  gap: 6px;
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+.legalLink:hover {
+  color: var(--text-primary);
 }
 
 /* Responsive adjustments */
-@media (max-width: 860px) {
+@media (max-width: 900px) {
   .topGrid {
     grid-template-columns: 1fr 1fr;
     gap: 32px;
   }
   .brandCol {
     grid-column: 1 / -1;
+  }
+  .ctaCard {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }
 
@@ -187,6 +310,11 @@
     padding: 36px 16px;
     /* Bottom padding clearance for fixed bottom navigation */
     padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+  }
+  .socialSection {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 14px;
   }
 }
 
@@ -198,10 +326,10 @@
   .bottomBar {
     flex-direction: column;
     align-items: flex-start;
-    gap: 16px;
+    gap: 14px;
   }
-  .socialRow {
-    width: 100%;
-    justify-content: flex-start;
+  .legalLinks {
+    flex-wrap: wrap;
+    gap: 12px;
   }
 }

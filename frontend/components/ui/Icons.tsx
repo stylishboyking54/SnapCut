@@ -220,3 +220,94 @@ export function InstagramIcon({ size = 20, color = 'currentColor', style }: Icon
     </svg>
   );
 }
+
+export function WhatsAppIcon({ size = 20, style }: Omit<IconProps, 'color'>) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" style={style}>
+      <path
+        fill="#25D366"
+        d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91C2.13 13.66 2.59 15.36 3.45 16.86L2.05 22L7.3 20.63C8.75 21.41 10.38 21.83 12.04 21.83C17.5 21.83 21.95 17.38 21.95 11.92C21.95 9.27 20.92 6.78 19.05 4.91C17.18 3.03 14.69 2 12.04 2Z"
+      />
+      <path
+        fill="#FFFFFF"
+        d="M17.5 14.4C17.2 14.25 15.7 13.51 15.42 13.41C15.14 13.31 14.94 13.26 14.74 13.56C14.54 13.86 13.97 14.55 13.8 14.75C13.63 14.95 13.46 14.97 13.16 14.82C12.86 14.67 11.9 14.36 10.77 13.35C9.89 12.56 9.3 11.59 9.13 11.29C8.96 10.99 9.11 10.83 9.26 10.68C9.4 10.54 9.57 10.32 9.72 10.15C9.87 9.98 9.92 9.85 10.02 9.65C10.12 9.45 10.07 9.28 10 9.13C9.93 8.98 9.33 7.5 9.08 6.9C8.84 6.32 8.59 6.4 8.41 6.39L7.84 6.38C7.64 6.38 7.32 6.45 7.05 6.75C6.78 7.05 6.02 7.76 6.02 9.21C6.02 10.66 7.08 12.06 7.23 12.26C7.38 12.46 9.32 15.46 12.29 16.74C13 17.05 13.55 17.23 13.98 17.37C14.7 17.6 15.36 17.57 15.87 17.49C16.44 17.4 17.64 16.76 17.89 16.05C18.14 15.34 18.14 14.74 18.06 14.62C17.98 14.5 17.8 14.45 17.5 14.3"
+      />
+    </svg>
+  );
+}
+
+export function InstagramColorIcon({ size = 20, style }: Omit<IconProps, 'color'>) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" style={style}>
+      <defs>
+        <radialGradient id="igGrad" r="150%" cx="30%" cy="107%">
+          <stop stopColor="#fdf497" offset="0%" />
+          <stop stopColor="#fdf497" offset="5%" />
+          <stop stopColor="#fd5949" offset="45%" />
+          <stop stopColor="#d6249f" offset="60%" />
+          <stop stopColor="#285AEB" offset="90%" />
+        </radialGradient>
+      </defs>
+      <rect x="2" y="2" width="20" height="20" rx="6" fill="url(#igGrad)" />
+      <rect x="5.5" y="5.5" width="13" height="13" rx="4" stroke="#ffffff" strokeWidth="1.8" fill="none" />
+      <circle cx="12" cy="12" r="3.2" stroke="#ffffff" strokeWidth="1.8" fill="none" />
+      <circle cx="15.8" cy="8.2" r="0.9" fill="#ffffff" />
+    </svg>
+  );
+}
+
+export function TikTokColorIcon({ size = 20, style }: Omit<IconProps, 'color'>) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" style={style}>
+      <rect width="24" height="24" rx="6" fill="#000000" />
+      <path
+        d="M16.6 8.2c-1.1-.3-1.9-1.2-2.1-2.2H12v10.5c0 1.4-1.1 2.5-2.5 2.5S7 17.9 7 16.5s1.1-2.5 2.5-2.5c.3 0 .5 0 .8.1V11.5c-.3 0-.5-.1-.8-.1-2.8 0-5 2.2-5 5s2.2 5 5 5 5-2.2 5-5V9.8c1.3.9 2.8 1.4 4.4 1.4V8.7c-.5 0-1-.2-1.5-.5z"
+        fill="#25F4EE"
+      />
+      <path
+        d="M17.4 8.7c-.5-.2-1-.7-1.3-1.2-.3-.5-.4-1.1-.4-1.7h-1.8v10.7c0 1.7-1.4 3-3 3-1.7 0-3-1.4-3-3s1.4-3 3-3c.4 0 .7.1 1.1.2V11.1c-.4-.1-.7-.1-1.1-.1-2.8 0-5 2.2-5 5s2.2 5 5 5 5-2.2 5-5V10.3c1.3.9 2.8 1.4 4.4 1.4V9.2c-.7 0-1.4-.2-2-.5z"
+        fill="#FE2C55"
+      />
+      <path
+        d="M16.9 8.2c-.8-.3-1.5-.9-1.8-1.7H13v10.5c0 1.4-1.1 2.5-2.5 2.5S8 18.4 8 17s1.1-2.5 2.5-2.5c.3 0 .6.1.8.2V12.1c-.3-.1-.5-.1-.8-.1-2.8 0-5 2.2-5 5s2.2 5 5 5 5-2.2 5-5V9.8c1.3.9 2.8 1.4 4.4 1.4V8.7c-.7 0-1.4-.2-2.2-.5z"
+        fill="#FFFFFF"
+      />
+    </svg>
+  );
+}
+
+export function YouTubeColorIcon({ size = 20, style }: Omit<IconProps, 'color'>) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" style={style}>
+      <path
+        fill="#FF0000"
+        d="M23.5 6.2c-.3-1-1-1.8-2-2.1C19.7 3.6 12 3.6 12 3.6s-7.7 0-9.5.5c-1 .3-1.7 1.1-2 2.1C0 8 0 12 0 12s0 4 .5 5.8c.3 1 1 1.8 2 2.1 1.8.5 9.5.5 9.5.5s7.7 0 9.5-.5c1-.3 1.7-1.1 2-2.1.5-1.8.5-5.8.5-5.8s0-4-.5-5.8z"
+      />
+      <polygon points="9.6 15.6 15.8 12 9.6 8.4 9.6 15.6" fill="#FFFFFF" />
+    </svg>
+  );
+}
+
+export function FacebookColorIcon({ size = 20, style }: Omit<IconProps, 'color'>) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" style={style}>
+      <circle cx="12" cy="12" r="11" fill="#1877F2" />
+      <path
+        d="M15.1 12.5h-2.1v6.9h-2.9v-6.9H8.7v-2.5h1.4V8.4c0-1.2.6-3 3-3h2.2v2.5h-1.4c-.3 0-.6.1-.6.6v1.5h2.1l-.3 2.5z"
+        fill="#FFFFFF"
+      />
+    </svg>
+  );
+}
+
+export function XColorIcon({ size = 20, style }: Omit<IconProps, 'color'>) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" style={style}>
+      <rect width="24" height="24" rx="6" fill="#000000" />
+      <path
+        d="M17.4 5h2.1l-4.6 5.3 5.4 7.2h-4.3l-3.3-4.4-3.8 4.4H6.8l4.9-5.6L6.5 5h4.4l3 4 3.5-4zm-.7 11.2h1.2L9.8 6.2H8.5l8.2 10z"
+        fill="#FFFFFF"
+      />
+    </svg>
+  );
+}
