@@ -402,9 +402,11 @@ export default function InteractiveShopsMap({
       {/* Interactive Map Box — always in the DOM, never unmounted */}
       <div
         ref={mapContainer}
+        className="map-container"
         style={{
           width: '100%',
           height: 480,
+          minHeight: 480,
           borderRadius: 'var(--radius-lg)',
           border: '1px solid var(--border)',
           overflow: 'hidden',

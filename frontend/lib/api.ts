@@ -1,5 +1,5 @@
 import { Shop, QueueItem } from './types';
-import { authHeaders, getApiBaseUrl, getSession, ensureFreshToken, handleSessionExpired } from './auth';
+import { authHeaders, getApiBaseUrl, getSession, ensureFreshToken, handleSessionExpired, getAccessToken } from './auth';
 
 const API_BASE_URL = () => getApiBaseUrl();
 
@@ -121,27 +121,28 @@ function mapShop(s: any): Shop {
     address: s.address,
     city: s.city,
     shopType: (s.shop_type || s.shopType || 'barber') === 'salon' ? 'salon' : 'barber',
-    distanceKm: s.distance_km ?? s.distanceKm ?? 1.2,
-    lat: s.lat,
-    lng: s.lng,
+    distanceKm: Number(s.distance_km ?? s.distanceKm ?? 1.2),
+    lat: Number(s.lat) || 0,
+    lng: Number(s.lng) || 0,
     phone: s.phone,
-    rating: s.rating,
-    reviewCount: s.review_count ?? s.reviewCount ?? 50,
+    rating: Number(s.rating) || 5,
+    reviewCount: Number(s.review_count ?? s.reviewCount ?? 50),
     isOpen: s.is_open ?? s.isOpen ?? true,
     isEmergency: s.is_emergency ?? s.isEmergency ?? false,
     emergencyReason: s.emergency_reason ?? s.emergencyReason,
     resumeAt: s.resume_at ?? s.resumeAt ?? undefined,
-    avgDurationPerClient: s.avg_service_duration ?? s.avgDurationPerClient ?? 25,
+    avgDurationPerClient: Number(s.avg_service_duration ?? s.avgDurationPerClient ?? 25),
     chairCount: Math.max(1, Number(s.chair_count ?? s.chairCount ?? 1)),
-    currentQueueCount: s.current_queue_count ?? s.currentQueueCount ?? 0,
-    estimatedWaitMinutes: s.estimated_wait_minutes ?? s.estimatedWaitMinutes ?? 0,
+    currentQueueCount: Number(s.current_queue_count ?? s.currentQueueCount ?? 0),
+    estimatedWaitMinutes: Number(s.estimated_wait_minutes ?? s.estimatedWaitMinutes ?? 0),
     coverImage: photos[0] || '',
+    cover_image_url: photos,
     photos,
     services: (s.services || []).map((srv: any) => ({
       id: srv.id,
       name: srv.name,
-      duration: srv.duration,
-      price: Number(srv.price),
+      duration: Number(srv.duration) || 30,
+      price: Number(srv.price) || 0,
       description: srv.description,
     })),
     workingHours: mapHours(s.working_hours || s.workingHours),
@@ -654,15 +655,17 @@ export async function getMyNotifications(): Promise<
   if (!session?.access_token) return [];
 
   // Automatically refresh the token if it expired
-  const token = (await ensureFreshToken()) || session.access_token;
+  const token = (await ensureFreshToken()) || getAccessToken();
   if (!token) return [];
+
+  const bearerToken = token.startsWith('Bearer ') ? token : `Bearer ${token}`;
 
   try {
     const res = await fetch(`${API_BASE_URL()}/notifications`, {
       cache: 'no-store',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
+        Authorization: bearerToken,
       },
     });
     if (!res.ok) {
@@ -696,14 +699,16 @@ export async function getMyNotifications(): Promise<
 }
 
 export async function markNotificationsRead(): Promise<void> {
-  const token = await ensureFreshToken();
+  const token = (await ensureFreshToken()) || getAccessToken();
   if (!token) return;
+
+  const bearerToken = token.startsWith('Bearer ') ? token : `Bearer ${token}`;
 
   const res = await fetch(`${API_BASE_URL()}/notifications/read-all`, {
     method: 'PATCH',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
+      Authorization: bearerToken,
     },
   });
   if (!res.ok) {

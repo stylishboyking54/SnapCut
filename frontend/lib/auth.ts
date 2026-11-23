@@ -56,7 +56,12 @@ export function getSession(): AuthSession | null {
 }
 
 export function getAccessToken(): string | null {
-  return getSession()?.access_token || null;
+  const session = getSession();
+  if (session?.access_token) return session.access_token;
+  if (typeof window !== 'undefined') {
+    return localStorage.getItem('token') || localStorage.getItem('access_token') || null;
+  }
+  return null;
 }
 
 export function saveSession(session: AuthSession) {
@@ -470,9 +475,10 @@ export function homeForRole(role: AuthRole) {
 
 export function authHeaders(extra: HeadersInit = {}): HeadersInit {
   const token = getAccessToken();
+  const bearer = token ? (token.startsWith('Bearer ') ? token : `Bearer ${token}`) : null;
   return {
     'Content-Type': 'application/json',
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(bearer ? { Authorization: bearer } : {}),
     ...extra,
   };
 }
