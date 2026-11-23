@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/client';
 
-const PROD_API_URL = 'https://snapcut-599t.onrender.com/api';
+const PROD_API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://snapcut-599t.onrender.com/api';
 const SESSION_KEY = 'snapcut_session';
 const PENDING_ROLE_KEY = 'snapcut_pending_role';
 const ROLE_KEY = 'qb_role';

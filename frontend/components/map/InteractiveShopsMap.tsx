@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Shop } from '@/lib/types';
 import 'leaflet/dist/leaflet.css';
+import './InteractiveShopsMap.css';
 
 interface InteractiveShopsMapProps {
   shops: Shop[];
