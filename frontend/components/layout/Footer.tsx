@@ -45,81 +45,89 @@ export default function Footer() {
         <div className={styles.topGrid}>
           {/* Brand Column */}
           <div className={styles.brandCol}>
-            <Link href="/" className={styles.brandHeader}>
-              <div className={styles.brandLogo} aria-hidden="true">
-                <ScissorsIcon size={18} color="#ffffff" />
+            <div className={styles.brandHeaderWrap}>
+              <Link href="/" className={styles.brandHeader}>
+                <div className={styles.brandLogo} aria-hidden="true">
+                  <ScissorsIcon size={18} color="#ffffff" />
+                </div>
+                <span className={styles.brandTitle}>SnapCut</span>
+              </Link>
+
+              <div className={styles.statusBadge}>
+                <span className={styles.statusDot} />
+                <span>Live Queue · Operational</span>
               </div>
-              <span className={styles.brandTitle}>SnapCut</span>
-            </Link>
+            </div>
 
             <p className={styles.brandTagline}>
               Ghana&apos;s premier real-time barbershop and salon queueing network. Eliminating walk-in waiting rooms with live turn tracking and instant alerts.
             </p>
-
-            <div className={styles.statusBadge}>
-              <span className={styles.statusDot} />
-              <span>Live Queue Network · Operational</span>
-            </div>
           </div>
 
           {/* Navigation Column: Explore */}
           <div className={styles.col}>
             <span className={styles.colTitle}>Discover</span>
-            <Link href="/" className={styles.link}>
-              Find Barbers &amp; Salons
-            </Link>
-            <Link href="/map" className={styles.link}>
-              Nearby Live Map
-            </Link>
-            <Link href="/bookings" className={styles.link}>
-              My Queue Tickets
-            </Link>
-            <Link href="/notifications" className={styles.link}>
-              Live Wait Alerts
-            </Link>
+            <div className={styles.linkList}>
+              <Link href="/" className={styles.link}>
+                Find Barbers &amp; Salons
+              </Link>
+              <Link href="/map" className={styles.link}>
+                Nearby Live Map
+              </Link>
+              <Link href="/bookings" className={styles.link}>
+                My Queue Tickets
+              </Link>
+              <Link href="/notifications" className={styles.link}>
+                Live Wait Alerts
+              </Link>
+            </div>
           </div>
 
           {/* Navigation Column: For Professionals */}
           <div className={styles.col}>
-            <span className={styles.colTitle}>For Professionals</span>
-            <Link href="/barber/dashboard" className={styles.link}>
-              Barber Dashboard
-            </Link>
-            <Link href="/barber/shop?setup=1" className={styles.link}>
-              Register Your Shop
-            </Link>
-            <Link href="/barber/schedule" className={styles.link}>
-              Daily Operating Hours
-            </Link>
-            <Link href="/terms#line-rules" className={styles.link}>
-              Fair Line Rules
-            </Link>
+            <span className={styles.colTitle}>Professionals</span>
+            <div className={styles.linkList}>
+              <Link href="/barber/dashboard" className={styles.link}>
+                Barber Dashboard
+              </Link>
+              <Link href="/barber/shop?setup=1" className={styles.link}>
+                Register Your Shop
+              </Link>
+              <Link href="/barber/schedule" className={styles.link}>
+                Operating Hours
+              </Link>
+              <Link href="/terms#line-rules" className={styles.link}>
+                Fair Line Rules
+              </Link>
+            </div>
           </div>
 
           {/* Navigation Column: Legal & Support */}
-          <div className={styles.col}>
+          <div className={`${styles.col} ${styles.colHelp}`}>
             <span className={styles.colTitle}>Company &amp; Help</span>
-            <Link href="/terms" className={styles.link}>
-              Terms of Service
-            </Link>
-            <Link href="/terms#privacy" className={styles.link}>
-              Privacy Policy
-            </Link>
-            <a
-              href="mailto:support@snapcut.vip"
-              className={styles.link}
-            >
-              Email Support
-            </a>
-            <a
-              href="https://wa.me/233504386573"
-              target="_blank"
-              rel="noopener noreferrer"
-              className={styles.link}
-              style={{ color: '#25D366', fontWeight: 600 }}
-            >
-              Direct WhatsApp Support
-            </a>
+            <div className={`${styles.linkList} ${styles.helpList}`}>
+              <Link href="/terms" className={styles.link}>
+                Terms of Service
+              </Link>
+              <Link href="/terms#privacy" className={styles.link}>
+                Privacy Policy
+              </Link>
+              <a
+                href="mailto:support@snapcut.vip"
+                className={styles.link}
+              >
+                Email Support
+              </a>
+              <a
+                href="https://wa.me/233504386573"
+                target="_blank"
+                rel="noopener noreferrer"
+                className={styles.link}
+                style={{ color: '#25D366', fontWeight: 600 }}
+              >
+                Direct WhatsApp Support
+              </a>
+            </div>
           </div>
         </div>
 

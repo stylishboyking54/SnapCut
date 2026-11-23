@@ -79,6 +79,12 @@
   gap: 14px;
 }
 
+.brandHeaderWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
 .brandHeader {
   display: inline-flex;
   align-items: center;
@@ -154,6 +160,12 @@
   letter-spacing: 0.08em;
   color: var(--text-primary);
   margin-bottom: 4px;
+}
+
+.linkList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
 .link {
@@ -307,9 +319,12 @@
 
 @media (max-width: 768px) {
   .inner {
-    padding: 36px 16px;
-    /* Bottom padding clearance for fixed bottom navigation */
-    padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+    padding: 32px 20px;
+    padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px));
+  }
+  .ctaCard {
+    padding: 20px 24px;
+    margin-bottom: 28px;
   }
   .socialSection {
     flex-direction: column;
@@ -318,18 +333,158 @@
   }
 }
 
-@media (max-width: 540px) {
-  .topGrid {
-    grid-template-columns: 1fr;
-    gap: 28px;
+@media (max-width: 640px) {
+  /* Complete mobile vertical space optimization */
+  .ctaCard {
+    display: none !important; /* Removes ~180px bulky CTA banner on mobile viewports */
   }
+
+  .inner {
+    padding: 20px 16px;
+    /* Bottom padding clearance for fixed bottom navigation */
+    padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+  }
+
+  /* Compact 1-line brand header row */
+  .topGrid {
+    grid-template-columns: 1fr 1fr;
+    gap: 16px 14px;
+    margin-bottom: 18px;
+  }
+
+  .brandCol {
+    grid-column: 1 / -1;
+    gap: 0;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--bg-border-subtle);
+  }
+
+  .brandHeaderWrap {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .brandLogo {
+    width: 30px;
+    height: 30px;
+  }
+
+  .brandTitle {
+    font-size: 17px;
+  }
+
+  .brandTagline {
+    display: none; /* Hide verbose prose on mobile to dramatically reduce vertical scroll */
+  }
+
+  .statusBadge {
+    font-size: 11px;
+    padding: 3px 8px;
+    gap: 6px;
+  }
+
+  .statusDot {
+    width: 6px;
+    height: 6px;
+  }
+
+  /* Compact link columns */
+  .col {
+    gap: 6px;
+  }
+
+  .colTitle {
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    margin-bottom: 2px;
+  }
+
+  .linkList {
+    gap: 7px;
+  }
+
+  .link {
+    font-size: 12.5px;
+    line-height: 1.35;
+  }
+
+  /* Support & Legal column spans both columns on mobile so it lays out horizontally / 2-column grid */
+  .colHelp {
+    grid-column: 1 / -1;
+    margin-top: 4px;
+    padding-top: 10px;
+    border-top: 1px dashed var(--bg-border-subtle);
+  }
+
+  .helpList {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px 14px;
+  }
+
+  /* Compact centered social media strip */
+  .socialSection {
+    padding: 12px 0;
+    margin-bottom: 14px;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 8px;
+  }
+
+  .socialLabel {
+    align-items: center;
+  }
+
+  .socialLabelTitle {
+    font-size: 11.5px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  .socialLabelSub {
+    display: none; /* Hide extra sentence to save vertical space */
+  }
+
+  .socialRow {
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .socialBtn {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+  }
+
+  .socialBtn svg {
+    width: 18px !important;
+    height: 18px !important;
+  }
+
+  /* Compact centered bottom bar */
   .bottomBar {
     flex-direction: column;
-    align-items: flex-start;
-    gap: 14px;
+    align-items: center;
+    text-align: center;
+    gap: 6px;
   }
+
+  .copyright {
+    font-size: 11px;
+    line-height: 1.4;
+  }
+
   .legalLinks {
-    flex-wrap: wrap;
-    gap: 12px;
+    justify-content: center;
+    gap: 10px;
+  }
+
+  .legalLink {
+    font-size: 11.5px;
   }
 }
