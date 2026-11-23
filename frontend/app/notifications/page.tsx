@@ -138,6 +138,7 @@ export default function NotificationsPage() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {notifications.map((n) => {
             const isEmergency = n.type === 'emergency';
+            const isBroadcast = n.type === 'system_broadcast';
 
             return (
               <div
@@ -151,6 +152,8 @@ export default function NotificationsPage() {
                   background: n.isRead ? 'transparent' : 'var(--bg-surface)',
                   border: isEmergency
                     ? '1px solid rgba(180, 35, 24, 0.28)'
+                    : isBroadcast
+                    ? '1px solid rgba(234, 179, 8, 0.35)'
                     : '1px solid var(--bg-border)',
                   gap: 12,
                 }}
@@ -171,12 +174,30 @@ export default function NotificationsPage() {
                   >
                     {isEmergency ? (
                       <AlertTriangleIcon size={15} color="var(--brand-danger)" />
+                    ) : isBroadcast ? (
+                      <span style={{ fontSize: 15 }}>📢</span>
                     ) : (
                       <ClockIcon size={15} />
                     )}
                   </div>
                   <div style={{ minWidth: 0 }}>
-                    <div style={{ fontWeight: 650, fontSize: 13.5 }}>{n.title}</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                      <span style={{ fontWeight: 650, fontSize: 13.5 }}>{n.title}</span>
+                      {isBroadcast && (
+                        <span
+                          style={{
+                            fontSize: 10.5,
+                            fontWeight: 700,
+                            padding: '1px 7px',
+                            borderRadius: 4,
+                            background: 'rgba(234, 179, 8, 0.16)',
+                            color: '#ca8a04',
+                          }}
+                        >
+                          Official Announcement
+                        </span>
+                      )}
+                    </div>
                     <div className="secondary" style={{ fontSize: 13, marginTop: 3, lineHeight: 1.4 }}>
                       {n.message}
                     </div>

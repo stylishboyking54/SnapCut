@@ -81,7 +81,7 @@ export interface AppNotification {
   id: string;
   title: string;
   message: string;
-  type: 'queue_update' | 'emergency' | 'shifted' | 'reminder';
+  type: 'queue_update' | 'emergency' | 'shifted' | 'reminder' | 'system_broadcast';
   timestamp: string;
   isRead: boolean;
   shopName?: string;

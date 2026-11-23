@@ -757,13 +757,22 @@ export async function getMyNotifications(): Promise<
           ? 'Emergency'
           : n.type === 'reschedule'
           ? 'Reschedule'
+          : n.type === 'system_broadcast'
+          ? 'Announcement'
           : 'Queue update',
       message: n.message || '',
-      type: (n.type === 'emergency' ? 'emergency' : n.type === 'reschedule' ? 'shifted' : 'queue_update') as
+      type: (n.type === 'emergency'
+        ? 'emergency'
+        : n.type === 'reschedule'
+        ? 'shifted'
+        : n.type === 'system_broadcast'
+        ? 'system_broadcast'
+        : 'queue_update') as
         | 'queue_update'
         | 'emergency'
         | 'shifted'
-        | 'reminder',
+        | 'reminder'
+        | 'system_broadcast',
       timestamp: n.created_at
         ? new Date(n.created_at).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
         : '',

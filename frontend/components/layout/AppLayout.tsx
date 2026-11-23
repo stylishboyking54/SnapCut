@@ -369,7 +369,12 @@ export default function AppLayout({ children }: AppLayoutProps) {
               maxWidth: 640,
               width: '90%',
               borderRadius: 'var(--radius-md)',
-              background: toastAlert.type === 'emergency' ? 'var(--brand-danger, #dc2626)' : 'var(--brand-primary, #f0412b)',
+              background:
+                toastAlert.type === 'emergency'
+                  ? 'var(--brand-danger, #dc2626)'
+                  : toastAlert.type === 'system_broadcast'
+                  ? '#ca8a04'
+                  : 'var(--brand-primary, #f0412b)',
               color: '#ffffff',
               boxShadow: '0 8px 24px rgba(0,0,0,0.25)',
               display: 'flex',
@@ -380,7 +385,13 @@ export default function AppLayout({ children }: AppLayoutProps) {
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13.5, fontWeight: 600 }}>
-              <span>{toastAlert.type === 'emergency' ? '⚠️' : '🔔'}</span>
+              <span>
+                {toastAlert.type === 'emergency'
+                  ? '⚠️'
+                  : toastAlert.type === 'system_broadcast'
+                  ? '📢'
+                  : '🔔'}
+              </span>
               <span>{toastAlert.message}</span>
             </div>
 
