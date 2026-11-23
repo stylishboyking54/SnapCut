@@ -316,6 +316,12 @@ export default function AppLayout({ children }: AppLayoutProps) {
       ? adminNavItems
       : customerNavItems;
 
+  const isDashboard =
+    pathname?.startsWith('/barber') ||
+    pathname?.startsWith('/admin') ||
+    pathname?.startsWith('/auth');
+  const showFooter = !isDashboard && role !== 'barber' && role !== 'salon' && role !== 'admin';
+
   if (pathname?.startsWith('/auth/')) {
     return <>{children}</>;
   }
@@ -327,8 +333,6 @@ export default function AppLayout({ children }: AppLayoutProps) {
           <div className="role-welcome">
             <div className="muted" style={{ fontSize: 14 }}>Loading…</div>
           </div>
-
-
         ) : (
           <RoleWelcome
             initialStep={needsRole ? 'role' : 'signin'}
@@ -342,8 +346,6 @@ export default function AppLayout({ children }: AppLayoutProps) {
         <div hidden aria-hidden="true">
           {children}
         </div>
-
-
       </>
     );
   }
@@ -409,13 +411,12 @@ export default function AppLayout({ children }: AppLayoutProps) {
               <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>
                 Loading…
               </div>
-
-
             }
           >
             {children}
           </Suspense>
         </main>
+        {showFooter && <Footer />}
       </div>
 
 
