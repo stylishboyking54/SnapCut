@@ -73,6 +73,13 @@ export class ShopsController {
       if (error || !data?.user) {
         throw new UnauthorizedException('Your session has expired. Please sign in again.');
       }
+      if (
+        (data.user as any).banned_until ||
+        data.user.app_metadata?.is_banned ||
+        data.user.user_metadata?.is_banned
+      ) {
+        throw new UnauthorizedException('Your account has been suspended by an administrator.');
+      }
       customerId = data.user.id;
     } else {
       throw new UnauthorizedException('Sign in to join the line');

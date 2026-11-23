@@ -129,6 +129,7 @@ function mapShop(s: any): Shop {
     reviewCount: Number(s.review_count ?? s.reviewCount ?? 50),
     isOpen: s.is_open ?? s.isOpen ?? true,
     isEmergency: s.is_emergency ?? s.isEmergency ?? false,
+    isVerified: Boolean(s.is_verified ?? s.isVerified ?? false),
     emergencyReason: s.emergency_reason ?? s.emergencyReason,
     resumeAt: s.resume_at ?? s.resumeAt ?? undefined,
     avgDurationPerClient: Number(s.avg_service_duration ?? s.avgDurationPerClient ?? 25),
@@ -616,6 +617,82 @@ export async function verifyAdminShop(shopId: string) {
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.message || 'Could not verify shop');
+  return data;
+}
+
+export async function unverifyAdminShop(shopId: string) {
+  const res = await fetch(`${API_BASE_URL()}/admin/shops/${shopId}/unverify`, {
+    method: 'PATCH',
+    headers: authHeaders(),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.message || 'Could not unverify shop');
+  return data;
+}
+
+export async function deleteAdminShop(shopId: string) {
+  const res = await fetch(`${API_BASE_URL()}/admin/shops/${shopId}`, {
+    method: 'DELETE',
+    headers: authHeaders(),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.message || 'Could not delete shop');
+  return data;
+}
+
+export async function toggleAdminShopEmergency(shopId: string, isEmergency: boolean, reason?: string) {
+  const res = await fetch(`${API_BASE_URL()}/admin/shops/${shopId}/emergency`, {
+    method: 'PATCH',
+    headers: {
+      ...authHeaders(),
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ is_emergency: isEmergency, reason }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.message || 'Could not update shop emergency status');
+  return data;
+}
+
+export async function toggleAdminUserBan(userId: string, isBanned: boolean) {
+  const res = await fetch(`${API_BASE_URL()}/admin/users/${userId}/ban`, {
+    method: 'PATCH',
+    headers: {
+      ...authHeaders(),
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ is_banned: isBanned }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.message || 'Could not update user ban status');
+  return data;
+}
+
+export async function deleteAdminUser(userId: string) {
+  const res = await fetch(`${API_BASE_URL()}/admin/users/${userId}`, {
+    method: 'DELETE',
+    headers: authHeaders(),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.message || 'Could not delete user');
+  return data;
+}
+
+export async function sendAdminBroadcast(
+  target: 'all' | 'barbers' | 'customers',
+  title: string,
+  message: string,
+) {
+  const res = await fetch(`${API_BASE_URL()}/admin/broadcast`, {
+    method: 'POST',
+    headers: {
+      ...authHeaders(),
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ target, title, message }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.message || 'Could not send broadcast');
   return data;
 }
 

@@ -544,6 +544,31 @@ export default function BarberShopSettingsPage() {
         )}
       </div>
 
+      {shop && shop.isVerified === false && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: 14,
+            padding: '14px 18px',
+            borderRadius: 'var(--radius-md)',
+            background: 'rgba(234, 179, 8, 0.12)',
+            border: '1px solid rgba(234, 179, 8, 0.35)',
+            color: '#b45309',
+          }}
+        >
+          <span style={{ fontSize: 20 }}>⏳</span>
+          <div style={{ flex: 1 }}>
+            <strong style={{ fontSize: 14, color: '#92400e', display: 'block' }}>
+              Pending Admin Verification
+            </strong>
+            <p style={{ margin: '4px 0 0 0', fontSize: 13, lineHeight: 1.5, color: '#78350f' }}>
+              Your shop profile is currently awaiting review. Once approved by an administrator, your shop will appear on the public map and in customer searches.
+            </p>
+          </div>
+        </div>
+      )}
+
       {shop && (
         <section className="panel" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div>

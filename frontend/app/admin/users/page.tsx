@@ -2,11 +2,39 @@
 
 import React, { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
-import { getAdminUsers, updateAdminUserRole } from '@/lib/api';
+import {
+  getAdminUsers,
+  updateAdminUserRole,
+  toggleAdminUserBan,
+  deleteAdminUser,
+} from '@/lib/api';
 import { getSession } from '@/lib/auth';
 import { timeGreeting, todayLabel } from '@/lib/greeting';
+import { AlertTriangleIcon } from '@/components/ui/Icons';
 
-function roleBadge(role?: string) {
+type FilterType = 'all' | 'admin' | 'barbers' | 'customer' | 'banned';
+
+function roleBadge(role?: string, isBanned?: boolean) {
+  if (isBanned) {
+    return (
+      <span
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 5,
+          padding: '3px 10px',
+          borderRadius: 999,
+          fontSize: 12,
+          fontWeight: 700,
+          background: 'rgba(239, 68, 68, 0.16)',
+          color: '#ef4444',
+          border: '1px solid rgba(239, 68, 68, 0.35)',
+        }}
+      >
+        <span>🚫</span> Suspended
+      </span>
+    );
+  }
   if (role === 'admin') {
     return (
       <span
@@ -73,9 +101,10 @@ export default function AdminPeoplePage() {
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [filterRole, setFilterRole] = useState<'all' | 'admin' | 'barbers' | 'customer'>('all');
+  const [filterRole, setFilterRole] = useState<FilterType>('all');
   const [busyId, setBusyId] = useState<string | null>(null);
   const [confirmTarget, setConfirmTarget] = useState<{ person: any; targetRole: string } | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<any | null>(null);
 
   const currentUserId = getSession()?.profile?.id;
 
@@ -97,6 +126,7 @@ export default function AdminPeoplePage() {
       admin: people.filter((p) => p.role === 'admin').length,
       barbers: people.filter((p) => p.role === 'barber' || p.role === 'salon').length,
       customer: people.filter((p) => p.role !== 'admin' && p.role !== 'barber' && p.role !== 'salon').length,
+      banned: people.filter((p) => p.is_banned).length,
     };
   }, [people]);
 
@@ -110,6 +140,7 @@ export default function AdminPeoplePage() {
 
       if (!matchesSearch) return false;
 
+      if (filterRole === 'banned') return person.is_banned;
       if (filterRole === 'admin') return person.role === 'admin';
       if (filterRole === 'barbers') return person.role === 'barber' || person.role === 'salon';
       if (filterRole === 'customer') return person.role !== 'admin' && person.role !== 'barber' && person.role !== 'salon';
@@ -136,17 +167,57 @@ export default function AdminPeoplePage() {
     }
   };
 
+  const handleToggleBan = async (person: any) => {
+    const nextBan = !person.is_banned;
+    setBusyId(person.id);
+    setError(null);
+    setSuccessMsg(null);
+    try {
+      await toggleAdminUserBan(person.id, nextBan);
+      setPeople((prev) =>
+        prev.map((p) => (p.id === person.id ? { ...p, is_banned: nextBan } : p)),
+      );
+      setSuccessMsg(
+        nextBan
+          ? `Suspended account for "${person.full_name || person.email}".`
+          : `Restored account for "${person.full_name || person.email}".`,
+      );
+      setTimeout(() => setSuccessMsg(null), 4000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to toggle account suspension');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const handleDeleteUser = async () => {
+    if (!deleteTarget) return;
+    setBusyId(deleteTarget.id);
+    setError(null);
+    try {
+      await deleteAdminUser(deleteTarget.id);
+      setPeople((prev) => prev.filter((p) => p.id !== deleteTarget.id));
+      setSuccessMsg(`Permanently deleted account for "${deleteTarget.full_name || deleteTarget.email}".`);
+      setTimeout(() => setSuccessMsg(null), 4000);
+      setDeleteTarget(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete account');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   return (
     <div className="page-enter" style={{ maxWidth: 960, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 22 }}>
       <div className="page-header-row">
         <div>
           <div className="date-pill"><span className="status-dot live" />{todayLabel()}</div>
-          <h1 style={{ fontSize: 28, fontWeight: 600, marginTop: 10 }}>{timeGreeting(getSession()?.profile?.full_name)}</h1>
+          <h1 style={{ fontSize: 28, fontWeight: 700, marginTop: 10 }}>{timeGreeting(getSession()?.profile?.full_name)} · Member Directory</h1>
           <p className="secondary" style={{ marginTop: 6, fontSize: 14, maxWidth: 520, lineHeight: 1.45 }}>
-            Manage platform members and assign Super Admin access. Admin privileges cannot be picked at signup and are delegated here.
+            Moderate users, suspend abusive accounts, and assign Super Admin access across the SnapCut platform.
           </p>
         </div>
-        <Link href="/admin" className="btn-secondary">← Admin Home</Link>
+        <Link href="/admin" className="btn-secondary">← Admin Overview</Link>
       </div>
 
       {error && <div className="alert-banner">{error}</div>}
@@ -158,7 +229,7 @@ export default function AdminPeoplePage() {
           padding: '12px 16px',
           borderRadius: 8,
           fontSize: 13.5,
-          fontWeight: 500,
+          fontWeight: 600,
         }}>
           ✓ {successMsg}
         </div>
@@ -178,12 +249,15 @@ export default function AdminPeoplePage() {
         <div className="stat-chip" onClick={() => setFilterRole('customer')} style={{ cursor: 'pointer' }}>
           <div><b>{loading ? '…' : counts.customer}</b><small>Customers</small></div>
         </div>
+        <div className="stat-chip" onClick={() => setFilterRole('banned')} style={{ cursor: 'pointer' }}>
+          <div><b style={{ color: '#ef4444' }}>{loading ? '…' : counts.banned}</b><small>Suspended</small></div>
+        </div>
       </div>
 
       <section className="panel" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         {/* Controls: Search and Filter Tabs */}
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             <button
               type="button"
               className={filterRole === 'all' ? 'btn-primary' : 'btn-secondary'}
@@ -216,12 +290,26 @@ export default function AdminPeoplePage() {
             >
               Customers ({counts.customer})
             </button>
+            <button
+              type="button"
+              className={filterRole === 'banned' ? 'btn-primary' : 'btn-secondary'}
+              style={{
+                fontSize: 13,
+                minHeight: 32,
+                padding: '0 12px',
+                color: filterRole === 'banned' ? undefined : '#ef4444',
+                borderColor: counts.banned > 0 ? '#ef4444' : undefined,
+              }}
+              onClick={() => setFilterRole('banned')}
+            >
+              🚫 Suspended ({counts.banned})
+            </button>
           </div>
 
-          <div style={{ minWidth: 220, flex: '1 1 220px', maxWidth: 360 }}>
+          <div style={{ minWidth: 240 }}>
             <input
-              type="text"
-              placeholder="Search by name, email or phone…"
+              type="search"
+              placeholder="Search by name, email, or phone…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               style={{
@@ -247,6 +335,8 @@ export default function AdminPeoplePage() {
             {filtered.map((person) => {
               const isMe = person.id === currentUserId;
               const isAdmin = person.role === 'admin';
+              const isBanned = Boolean(person.is_banned);
+              const isBusy = busyId === person.id;
 
               return (
                 <div
@@ -267,25 +357,29 @@ export default function AdminPeoplePage() {
                         width: 40,
                         height: 40,
                         borderRadius: '50%',
-                        background: isAdmin ? 'rgba(234, 179, 8, 0.2)' : 'rgba(255, 255, 255, 0.08)',
+                        background: isBanned
+                          ? 'rgba(239, 68, 68, 0.2)'
+                          : isAdmin
+                          ? 'rgba(234, 179, 8, 0.2)'
+                          : 'rgba(255, 255, 255, 0.08)',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         fontWeight: 700,
                         fontSize: 14,
-                        color: isAdmin ? '#eab308' : 'inherit',
+                        color: isBanned ? '#ef4444' : isAdmin ? '#eab308' : 'inherit',
                       }}
                     >
                       {(person.full_name || person.email || 'U').charAt(0).toUpperCase()}
                     </div>
                     <div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                         <span style={{ fontWeight: 650, fontSize: 14.5 }}>
                           {person.full_name || 'Unnamed Account'}
                         </span>
                         {isMe && (
                           <span style={{ fontSize: 11, color: '#eab308', background: 'rgba(234, 179, 8, 0.12)', padding: '1px 6px', borderRadius: 4, fontWeight: 600 }}>
-                            You (Current Super Admin)
+                            You (Super Admin)
                           </span>
                         )}
                       </div>
@@ -295,8 +389,27 @@ export default function AdminPeoplePage() {
                     </div>
                   </div>
 
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-                    {roleBadge(person.role)}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                    {roleBadge(person.role, isBanned)}
+
+                    {/* Suspension / Ban Toggle */}
+                    {!isMe && (
+                      <button
+                        type="button"
+                        className="btn-secondary"
+                        disabled={isBusy}
+                        onClick={() => void handleToggleBan(person)}
+                        style={{
+                          fontSize: 12,
+                          minHeight: 30,
+                          padding: '0 10px',
+                          color: isBanned ? '#4ade80' : '#ef4444',
+                          borderColor: isBanned ? 'rgba(74, 222, 128, 0.3)' : 'rgba(239, 68, 68, 0.3)',
+                        }}
+                      >
+                        {isBusy ? 'Saving…' : isBanned ? 'Unban Account' : 'Suspend / Ban'}
+                      </button>
+                    )}
 
                     {/* Role Delegation Controls */}
                     {!isMe && (
@@ -311,10 +424,10 @@ export default function AdminPeoplePage() {
                               color: '#ef4444',
                               borderColor: 'rgba(239, 68, 68, 0.3)',
                             }}
-                            disabled={busyId === person.id}
+                            disabled={isBusy}
                             onClick={() => setConfirmTarget({ person, targetRole: 'customer' })}
                           >
-                            {busyId === person.id ? 'Updating…' : 'Revoke Admin'}
+                            Revoke Admin
                           </button>
                         ) : (
                           <button
@@ -327,13 +440,34 @@ export default function AdminPeoplePage() {
                               borderColor: 'rgba(234, 179, 8, 0.35)',
                               background: 'rgba(234, 179, 8, 0.08)',
                             }}
-                            disabled={busyId === person.id}
+                            disabled={isBusy}
                             onClick={() => setConfirmTarget({ person, targetRole: 'admin' })}
                           >
-                            {busyId === person.id ? 'Promoting…' : '🛡️ Make Admin'}
+                            Make Admin
                           </button>
                         )}
                       </div>
+                    )}
+
+                    {/* Delete Account Button */}
+                    {!isMe && (
+                      <button
+                        type="button"
+                        disabled={isBusy}
+                        onClick={() => setDeleteTarget(person)}
+                        style={{
+                          background: 'transparent',
+                          border: 'none',
+                          color: '#ef4444',
+                          cursor: 'pointer',
+                          fontSize: 12,
+                          padding: '4px 6px',
+                          textDecoration: 'underline',
+                          opacity: 0.8,
+                        }}
+                      >
+                        Delete
+                      </button>
                     )}
                   </div>
                 </div>
@@ -343,7 +477,7 @@ export default function AdminPeoplePage() {
         )}
       </section>
 
-      {/* Confirmation Modal */}
+      {/* Role Confirmation Modal */}
       {confirmTarget && (
         <div
           style={{
@@ -401,6 +535,71 @@ export default function AdminPeoplePage() {
                 onClick={() => handleRoleChange(confirmTarget.person.id, confirmTarget.targetRole)}
               >
                 {busyId ? 'Processing…' : confirmTarget.targetRole === 'admin' ? 'Confirm Promotion' : 'Confirm Revoke'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete User Modal */}
+      {deleteTarget && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0, 0, 0, 0.65)',
+            backdropFilter: 'blur(4px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: 16,
+          }}
+          onClick={() => !busyId && setDeleteTarget(null)}
+        >
+          <div
+            className="panel"
+            style={{
+              maxWidth: 440,
+              width: '100%',
+              background: 'var(--bg-card, #121218)',
+              border: '1px solid var(--bg-border-subtle, rgba(255,255,255,0.15))',
+              borderRadius: 14,
+              padding: 24,
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#ef4444', marginBottom: 12 }}>
+              <AlertTriangleIcon size={24} color="#ef4444" />
+              <h3 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>
+                Delete User Account?
+              </h3>
+            </div>
+            <p className="secondary" style={{ fontSize: 13.5, lineHeight: 1.5, marginBottom: 20 }}>
+              Are you sure you want to permanently delete the account for <strong>&quot;{deleteTarget.full_name || deleteTarget.email}&quot;</strong>? They will be removed from authentication and the database.
+            </p>
+
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                className="btn-secondary"
+                disabled={busyId !== null}
+                onClick={() => setDeleteTarget(null)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn-primary"
+                style={{
+                  background: '#ef4444',
+                  color: '#fff',
+                  fontWeight: 650,
+                }}
+                disabled={busyId !== null}
+                onClick={() => void handleDeleteUser()}
+              >
+                {busyId ? 'Deleting…' : 'Delete Account'}
               </button>
             </div>
           </div>

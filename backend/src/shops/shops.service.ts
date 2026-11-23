@@ -437,6 +437,7 @@ export class ShopsService {
         let query = this.supabase
           .from('shops')
           .select(`*, services(*), working_hours(*), breaks(*), profiles!owner_id(full_name, avatar_url)`)
+          .eq('is_verified', true)
           .order('name');
         if (filters?.city) query = query.ilike('city', `%${filters.city}%`);
         if (filters?.search) query = query.ilike('name', `%${filters.search}%`);
@@ -484,7 +485,14 @@ export class ShopsService {
           p_lng: lng,
           p_radius_km: radiusKm,
         });
-        if (!error && data) return data;
+        if (!error && data?.length) {
+          const { data: verified } = await this.supabase
+            .from('shops')
+            .select('id')
+            .eq('is_verified', true);
+          const verifiedSet = new Set((verified || []).map((v: any) => v.id));
+          return data.filter((d: any) => verifiedSet.has(d.id));
+        }
       } catch {
         // Fallback
       }
@@ -927,6 +935,7 @@ export class ShopsService {
           avg_service_duration: Number(dto.avg_service_duration) || (shopType === 'salon' ? 45 : 30),
           is_open: true,
           is_emergency: false,
+          is_verified: false,
           lat: dto.lat ?? null,
           lng: dto.lng ?? null,
         })

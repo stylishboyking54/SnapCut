@@ -41,6 +41,7 @@ export interface Shop {
   reviewCount: number;
   isOpen: boolean;
   isEmergency: boolean;
+  isVerified?: boolean;
   emergencyReason?: string;
   resumeAt?: string;
   avgDurationPerClient: number; // minutes
