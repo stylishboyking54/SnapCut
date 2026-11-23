@@ -35,156 +35,181 @@ export default function InteractiveShopsMap({
 
   useEffect(() => {
     let isMounted = true;
+    let resizeTimer: any = null;
 
-    import('leaflet').then((L) => {
-      if (!isMounted || !mapContainer.current || mapInstance.current) return;
+    import('leaflet')
+      .then((leafletModule) => {
+        if (!isMounted || !mapContainer.current) return;
+        const L = (leafletModule as any).default || leafletModule;
 
-      // Default center: first shop, or user coords, or Accra, Ghana
-      const validShop = shops.find((s) => s.lat && s.lng);
-      const centerLat = selectedShop?.lat || validShop?.lat || 5.6037;
-      const centerLng = selectedShop?.lng || validShop?.lng || -0.1870;
+        // If a map was already initialized on this container, clean it up first
+        if (mapInstance.current) {
+          mapInstance.current.remove();
+          mapInstance.current = null;
+        }
+        if ((mapContainer.current as any)._leaflet_id) {
+          delete (mapContainer.current as any)._leaflet_id;
+        }
 
-      const map = L.map(mapContainer.current, {
-        zoomControl: true,
-      }).setView([centerLat, centerLng], 13);
-      mapInstance.current = map;
+        // Default center: first shop with coordinates, or selectedShop, or Accra (5.6037, -0.1870)
+        const validShop = shops.find((s) => Number(s.lat) && Number(s.lng));
+        const centerLat = Number(selectedShop?.lat) || Number(validShop?.lat) || 5.6037;
+        const centerLng = Number(selectedShop?.lng) || Number(validShop?.lng) || -0.1870;
 
-      // Beautiful clean OpenStreetMap tiles
-      // Authentic Google Maps Roadmap tiles
-      L.tileLayer('https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
-        subdomains: ['0', '1', '2', '3'],
-        maxZoom: 20,
-        attribution: '&copy; Google Maps',
-      }).addTo(map);
+        const map = L.map(mapContainer.current, {
+          zoomControl: true,
+        }).setView([centerLat, centerLng], validShop ? 13 : 11);
+        mapInstance.current = map;
 
-      // Render pins for all shops
-      shops.forEach((shop) => {
-        if (!shop.lat || !shop.lng) return;
+        // OpenStreetMap tile layer (reliable, fast, zero auth/CORS issues)
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          maxZoom: 19,
+          attribution:
+            '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a>',
+        }).addTo(map);
 
-        const isBarber = shop.shopType === 'barber';
-        const isEmergency = shop.isEmergency;
-        const waitText = isEmergency
-          ? 'Paused'
-          : shop.estimatedWaitMinutes === 0
-          ? 'Open'
-          : `~${shop.estimatedWaitMinutes}m`;
+        // Invalidate size after container settles to avoid blank/grey tiles
+        resizeTimer = setTimeout(() => {
+          if (mapInstance.current) {
+            mapInstance.current.invalidateSize();
+          }
+        }, 200);
 
-        const pinColor = isEmergency ? '#c02a17' : isBarber ? '#f0412b' : '#9333ea';
+        // Render pins for all shops
+        markersRef.current.clear();
+        shops.forEach((shop) => {
+          const sLat = Number(shop.lat);
+          const sLng = Number(shop.lng);
+          if (!sLat || !sLng || isNaN(sLat) || isNaN(sLng)) return;
 
-        const customIcon = L.divIcon({
-          className: `shop-map-pin-${shop.id}`,
-          html: `
-            <div style="display: flex; flex-direction: column; align-items: center; cursor: pointer;">
-              <!-- Wait Badge -->
-              <span style="
-                background: #141416;
-                color: #fff;
-                font-size: 10.5px;
-                font-weight: 700;
-                padding: 2px 7px;
-                border-radius: 99px;
-                box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-                white-space: nowrap;
-                margin-bottom: 2px;
-                border: 1px solid rgba(255,255,255,0.2);
-              ">
-                ${waitText}
-              </span>
-              <!-- Pin Head -->
-              <div style="
-                background: ${pinColor};
-                color: #fff;
-                width: 32px;
-                height: 32px;
-                border-radius: 50% 50% 50% 0;
-                transform: rotate(-45deg);
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                border: 2px solid #fff;
-                box-shadow: 0 4px 10px rgba(0,0,0,0.35);
-              ">
-                <span style="transform: rotate(45deg); font-size: 14px;">✂</span>
+          const isBarber = shop.shopType === 'barber';
+          const isEmergency = shop.isEmergency;
+          const waitText = isEmergency
+            ? 'Paused'
+            : shop.estimatedWaitMinutes === 0
+            ? 'Open'
+            : `~${shop.estimatedWaitMinutes}m`;
+
+          const pinColor = isEmergency ? '#c02a17' : isBarber ? '#f0412b' : '#9333ea';
+
+          const customIcon = L.divIcon({
+            className: `shop-map-pin-${shop.id}`,
+            html: `
+              <div style="display: flex; flex-direction: column; align-items: center; cursor: pointer;">
+                <!-- Wait Badge -->
+                <span style="
+                  background: #141416;
+                  color: #fff;
+                  font-size: 10.5px;
+                  font-weight: 700;
+                  padding: 2px 7px;
+                  border-radius: 99px;
+                  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+                  white-space: nowrap;
+                  margin-bottom: 2px;
+                  border: 1px solid rgba(255,255,255,0.2);
+                ">
+                  ${waitText}
+                </span>
+                <!-- Pin Head -->
+                <div style="
+                  background: ${pinColor};
+                  color: #fff;
+                  width: 32px;
+                  height: 32px;
+                  border-radius: 50% 50% 50% 0;
+                  transform: rotate(-45deg);
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  border: 2px solid #fff;
+                  box-shadow: 0 4px 10px rgba(0,0,0,0.35);
+                ">
+                  <span style="transform: rotate(45deg); font-size: 14px;">✂</span>
+                </div>
               </div>
-            </div>
-          `,
-          iconSize: [46, 52],
-          iconAnchor: [23, 52],
+            `,
+            iconSize: [46, 52],
+            iconAnchor: [23, 52],
+          });
+
+          const marker = L.marker([sLat, sLng], { icon: customIcon }).addTo(map);
+
+          // Hover tooltip showing shop name, rating and wait time
+          marker.bindTooltip(
+            `
+              <div style="display: flex; flex-direction: column; gap: 2px;">
+                <div style="font-weight: 700; font-size: 13px; color: #fff;">${shop.name}</div>
+                <div style="font-size: 11px; color: #d4d4d8; display: flex; align-items: center; gap: 6px;">
+                  <span>★ ${shop.rating || 5}</span>
+                  <span>·</span>
+                  <span style="color: ${isEmergency ? '#f87171' : '#4ade80'}; font-weight: 600;">${waitText}</span>
+                </div>
+                <div style="font-size: 10px; color: #a1a1aa; margin-top: 2px;">
+                  Click to select · Click again to open
+                </div>
+              </div>
+            `,
+            {
+              direction: 'top',
+              offset: [0, -48],
+              className: 'shop-hover-tooltip',
+              opacity: 1,
+            }
+          );
+
+          // Click popup with direct Open Store link
+          marker.bindPopup(
+            `
+              <div style="font-family: inherit; padding: 4px; min-width: 175px;">
+                <div style="font-size: 14px; font-weight: 700; color: #141416; margin-bottom: 2px;">
+                  ${shop.name}
+                </div>
+                <div style="font-size: 11.5px; color: #666; margin-bottom: 8px;">
+                  ${shop.address || shop.city} · ★ ${shop.rating || 5}
+                </div>
+                <a href="/shops/${shop.id}" style="
+                  display: block;
+                  width: 100%;
+                  text-align: center;
+                  background: #f0412b;
+                  color: #fff;
+                  font-size: 12px;
+                  font-weight: 600;
+                  padding: 7px 12px;
+                  border-radius: 6px;
+                  text-decoration: none;
+                  box-sizing: border-box;
+                ">
+                  Open Store Page →
+                </a>
+              </div>
+            `,
+            {
+              offset: [0, -42],
+              closeButton: true,
+            }
+          );
+
+          marker.on('click', () => {
+            const isAlreadySelected = selectedShopRef.current?.id === shop.id;
+            onSelectShop(shop);
+            marker.openPopup();
+            if (isAlreadySelected) {
+              router.push(`/shops/${shop.id}`);
+            }
+          });
+
+          markersRef.current.set(shop.id, marker);
         });
-
-        const marker = L.marker([shop.lat, shop.lng], { icon: customIcon }).addTo(map);
-
-        // Hover tooltip showing shop name, rating and wait time
-        marker.bindTooltip(
-          `
-            <div style="display: flex; flex-direction: column; gap: 2px;">
-              <div style="font-weight: 700; font-size: 13px; color: #fff;">${shop.name}</div>
-              <div style="font-size: 11px; color: #d4d4d8; display: flex; align-items: center; gap: 6px;">
-                <span>★ ${shop.rating}</span>
-                <span>·</span>
-                <span style="color: ${isEmergency ? '#f87171' : '#4ade80'}; font-weight: 600;">${waitText}</span>
-              </div>
-              <div style="font-size: 10px; color: #a1a1aa; margin-top: 2px;">
-                Click to select · Click again to open
-              </div>
-            </div>
-          `,
-          {
-            direction: 'top',
-            offset: [0, -48],
-            className: 'shop-hover-tooltip',
-            opacity: 1,
-          }
-        );
-
-        // Click popup with direct Open Store link
-        marker.bindPopup(
-          `
-            <div style="font-family: inherit; padding: 4px; min-width: 175px;">
-              <div style="font-size: 14px; font-weight: 700; color: #141416; margin-bottom: 2px;">
-                ${shop.name}
-              </div>
-              <div style="font-size: 11.5px; color: #666; margin-bottom: 8px;">
-                ${shop.address || shop.city} · ★ ${shop.rating}
-              </div>
-              <a href="/shops/${shop.id}" style="
-                display: block;
-                width: 100%;
-                text-align: center;
-                background: #f0412b;
-                color: #fff;
-                font-size: 12px;
-                font-weight: 600;
-                padding: 7px 12px;
-                border-radius: 6px;
-                text-decoration: none;
-                box-sizing: border-box;
-              ">
-                Open Store Page →
-              </a>
-            </div>
-          `,
-          {
-            offset: [0, -42],
-            closeButton: true,
-          }
-        );
-
-        marker.on('click', () => {
-          const isAlreadySelected = selectedShopRef.current?.id === shop.id;
-          onSelectShop(shop);
-          marker.openPopup();
-          if (isAlreadySelected) {
-            router.push(`/shops/${shop.id}`);
-          }
-        });
-
-        markersRef.current.set(shop.id, marker);
+      })
+      .catch((err) => {
+        console.error('[SnapCut Map] Error initializing map:', err);
       });
-    });
 
     return () => {
       isMounted = false;
+      if (resizeTimer) clearTimeout(resizeTimer);
       if (mapInstance.current) {
         mapInstance.current.remove();
         mapInstance.current = null;
@@ -196,43 +221,54 @@ export default function InteractiveShopsMap({
   useEffect(() => {
     if (!mapInstance.current || !selectedShop?.lat || !selectedShop?.lng) return;
 
-    import('leaflet').then((L) => {
-      if (!mapInstance.current) return;
-      if (routeLayerRef.current) {
-        mapInstance.current.removeLayer(routeLayerRef.current);
-        routeLayerRef.current = null;
-      }
+    import('leaflet')
+      .then((leafletModule) => {
+        if (!mapInstance.current) return;
+        const L = (leafletModule as any).default || leafletModule;
 
-      if (userCoords && selectedShop.lat && selectedShop.lng) {
-        routeLayerRef.current = L.polyline(
-          [
-            [userCoords.lat, userCoords.lng],
-            [selectedShop.lat, selectedShop.lng],
-          ],
-          {
-            color: '#2563eb',
-            weight: 4,
-            opacity: 0.85,
-            dashArray: '6, 8',
-          }
-        ).addTo(mapInstance.current);
+        if (routeLayerRef.current) {
+          mapInstance.current.removeLayer(routeLayerRef.current);
+          routeLayerRef.current = null;
+        }
 
-        mapInstance.current.fitBounds(
-          [
-            [userCoords.lat, userCoords.lng],
-            [selectedShop.lat, selectedShop.lng],
-          ],
-          { padding: [60, 60], maxZoom: 16 }
-        );
-      } else {
-        mapInstance.current.flyTo([selectedShop.lat, selectedShop.lng], 15, { duration: 1.2 });
-      }
-    });
+        const sLat = Number(selectedShop.lat);
+        const sLng = Number(selectedShop.lng);
+        if (!sLat || !sLng || isNaN(sLat) || isNaN(sLng)) return;
+
+        if (userCoords) {
+          routeLayerRef.current = L.polyline(
+            [
+              [userCoords.lat, userCoords.lng],
+              [sLat, sLng],
+            ],
+            {
+              color: '#2563eb',
+              weight: 4,
+              opacity: 0.85,
+              dashArray: '6, 8',
+            }
+          ).addTo(mapInstance.current);
+
+          mapInstance.current.fitBounds(
+            [
+              [userCoords.lat, userCoords.lng],
+              [sLat, sLng],
+            ],
+            { padding: [60, 60], maxZoom: 16 }
+          );
+        } else {
+          mapInstance.current.flyTo([sLat, sLng], 15, { duration: 1.2 });
+        }
+      })
+      .catch(console.error);
   }, [selectedShop, userCoords]);
 
   // User location request
   const handleLocateUser = () => {
-    if (!navigator.geolocation) return;
+    if (typeof window === 'undefined' || !navigator.geolocation) {
+      alert('Geolocation is not supported by your browser.');
+      return;
+    }
     setLocating(true);
 
     navigator.geolocation.getCurrentPosition(
@@ -242,33 +278,39 @@ export default function InteractiveShopsMap({
         setUserCoords({ lat: uLat, lng: uLng });
         setLocating(false);
 
-        import('leaflet').then((L) => {
-          if (!mapInstance.current) return;
-          mapInstance.current.flyTo([uLat, uLng], 14, { duration: 1.2 });
+        import('leaflet')
+          .then((leafletModule) => {
+            if (!mapInstance.current) return;
+            const L = (leafletModule as any).default || leafletModule;
+            mapInstance.current.flyTo([uLat, uLng], 14, { duration: 1.2 });
 
-          if (!userMarkerRef.current) {
-            const userIcon = L.divIcon({
-              className: 'user-pulse-dot',
-              html: `
-                <div style="
-                  width: 18px;
-                  height: 18px;
-                  background: #2563eb;
-                  border: 3px solid #fff;
-                  border-radius: 50%;
-                  box-shadow: 0 0 0 6px rgba(37,99,235,0.35);
-                "></div>
-              `,
-              iconSize: [18, 18],
-              iconAnchor: [9, 9],
-            });
-            userMarkerRef.current = L.marker([uLat, uLng], { icon: userIcon }).addTo(mapInstance.current);
-          } else {
-            userMarkerRef.current.setLatLng([uLat, uLng]);
-          }
-        });
+            if (!userMarkerRef.current) {
+              const userIcon = L.divIcon({
+                className: 'user-pulse-dot',
+                html: `
+                  <div style="
+                    width: 18px;
+                    height: 18px;
+                    background: #2563eb;
+                    border: 3px solid #fff;
+                    border-radius: 50%;
+                    box-shadow: 0 0 0 6px rgba(37,99,235,0.35);
+                  "></div>
+                `,
+                iconSize: [18, 18],
+                iconAnchor: [9, 9],
+              });
+              userMarkerRef.current = L.marker([uLat, uLng], { icon: userIcon }).addTo(
+                mapInstance.current
+              );
+            } else {
+              userMarkerRef.current.setLatLng([uLat, uLng]);
+            }
+          })
+          .catch(console.error);
       },
-      () => {
+      (err) => {
+        console.warn('Geolocation error:', err);
         setLocating(false);
       },
       { enableHighAccuracy: true, timeout: 10000 }
@@ -278,9 +320,17 @@ export default function InteractiveShopsMap({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {/* Map Header Controls */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: 10,
+        }}
+      >
         <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>
-          Showing <strong>{shops.length}</strong> shops on the live map
+          Showing <strong>{shops.length}</strong> {shops.length === 1 ? 'shop' : 'shops'} on the live map
         </span>
 
         <button
@@ -315,7 +365,7 @@ export default function InteractiveShopsMap({
         }}
       />
 
-      {/* Selected Shop Floating / Details Card with Google Maps Navigation */}
+      {/* Selected Shop Details Card with Google Maps Navigation */}
       {selectedShop && (
         <div
           className="panel"
@@ -351,15 +401,19 @@ export default function InteractiveShopsMap({
                     fontWeight: 700,
                     padding: '2px 8px',
                     borderRadius: 99,
-                    background: selectedShop.isEmergency ? 'var(--brand-danger-soft)' : 'var(--brand-success-soft)',
+                    background: selectedShop.isEmergency
+                      ? 'var(--brand-danger-soft)'
+                      : 'var(--brand-success-soft)',
                     color: selectedShop.isEmergency ? 'var(--brand-danger)' : 'var(--brand-success)',
                   }}
                 >
-                  {selectedShop.isEmergency ? 'Paused' : `~${selectedShop.estimatedWaitMinutes}m wait`}
+                  {selectedShop.isEmergency
+                    ? 'Paused'
+                    : `~${selectedShop.estimatedWaitMinutes}m wait`}
                 </span>
               </div>
               <p className="muted" style={{ fontSize: 13, marginTop: 4 }}>
-                {selectedShop.address} · {selectedShop.city} · ★ {selectedShop.rating}
+                {selectedShop.address} · {selectedShop.city} · ★ {selectedShop.rating || 5}
               </p>
               <span className="muted" style={{ fontSize: 12 }}>
                 {selectedShop.currentQueueCount} people waiting in line
@@ -368,7 +422,6 @@ export default function InteractiveShopsMap({
           </div>
 
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            {/* Free Google Maps Navigation button */}
             {selectedShop.lat && selectedShop.lng ? (
               <a
                 href={`https://www.google.com/maps/dir/?api=1&destination=${selectedShop.lat},${selectedShop.lng}`}
@@ -388,7 +441,9 @@ export default function InteractiveShopsMap({
               </a>
             ) : (
               <a
-                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(selectedShop.name + ' ' + selectedShop.address)}`}
+                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                  selectedShop.name + ' ' + selectedShop.address
+                )}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="btn-secondary"
@@ -416,6 +471,7 @@ export default function InteractiveShopsMap({
           </div>
         </div>
       )}
+
       <style jsx global>{`
         .leaflet-tooltip.shop-hover-tooltip {
           background: rgba(20, 20, 22, 0.95);
@@ -433,4 +489,3 @@ export default function InteractiveShopsMap({
     </div>
   );
 }
-

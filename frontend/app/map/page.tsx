@@ -44,16 +44,20 @@ export default function MapPage() {
     getShops()
       .then((rows) => {
         setShops(rows);
-        setSelectedShop((current) => current ?? rows[0] ?? null);
+        const withCoords = rows.filter((s) => Number(s.lat) && Number(s.lng));
+        setSelectedShop(withCoords[0] || rows[0] || null);
       })
-      .catch(() => setShops([]))
+      .catch((err) => {
+        console.warn('Failed to load shops for map:', err);
+        setShops([]);
+      })
       .finally(() => setLoading(false));
   }, []);
 
   const handleFindOptimal = () => {
     const sorted = [...shops].sort((a, b) => {
-      const scoreA = a.estimatedWaitMinutes * 1.5 + a.distanceKm * 10;
-      const scoreB = b.estimatedWaitMinutes * 1.5 + b.distanceKm * 10;
+      const scoreA = (a.estimatedWaitMinutes || 0) * 1.5 + (a.distanceKm || 0) * 10;
+      const scoreB = (b.estimatedWaitMinutes || 0) * 1.5 + (b.distanceKm || 0) * 10;
       return scoreA - scoreB;
     });
     const best = sorted[0];
@@ -118,22 +122,25 @@ export default function MapPage() {
         <div className="panel" style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)' }}>
           Loading live map…
         </div>
-      ) : shops.length === 0 ? (
-        <div className="panel" style={{ textAlign: 'center', padding: 36 }}>
-          <div style={{ fontWeight: 650, fontSize: 16 }}>No shops on the map yet</div>
-          <p className="muted" style={{ marginTop: 8, fontSize: 13.5 }}>
-            They show up here automatically when a barber or salon pins their location and opens their line.
-          </p>
-        </div>
       ) : (
-        <InteractiveShopsMap
-          shops={shops}
-          selectedShop={selectedShop}
-          onSelectShop={(shop) => {
-            setSelectedShop(shop);
-            setRecommendedId(null);
-          }}
-        />
+        <>
+          {shops.length === 0 && (
+            <div className="panel" style={{ textAlign: 'center', padding: '16px 20px', marginBottom: 6 }}>
+              <div style={{ fontWeight: 650, fontSize: 14 }}>No shops pinned with active lines right now</div>
+              <p className="muted" style={{ marginTop: 4, fontSize: 13 }}>
+                You can still view the map below or check back soon as barbers and salons open their lines.
+              </p>
+            </div>
+          )}
+          <InteractiveShopsMap
+            shops={shops}
+            selectedShop={selectedShop}
+            onSelectShop={(shop) => {
+              setSelectedShop(shop);
+              setRecommendedId(null);
+            }}
+          />
+        </>
       )}
     </div>
   );
