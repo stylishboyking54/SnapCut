@@ -650,11 +650,15 @@ export async function toggleShopEmergency(
 export async function getMyNotifications(): Promise<
   import('./types').AppNotification[]
 > {
+  const session = getSession();
+  if (!session?.access_token) return [];
+
   const res = await fetch(`${API_BASE_URL()}/notifications`, {
     cache: 'no-store',
     headers: authHeaders(),
   });
   if (!res.ok) {
+    if (res.status === 401) return [];
     const err = await res.json().catch(() => ({}));
     throw new Error(err.message || `Notifications failed (${res.status})`);
   }
