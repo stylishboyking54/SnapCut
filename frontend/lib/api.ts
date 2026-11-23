@@ -166,7 +166,7 @@ export async function getShops(filters?: {
     }
 
     const res = await fetch(`${API_BASE_URL()}/shops?${params.toString()}`, {
-      next: { revalidate: 10 },
+      cache: 'no-store',
       headers: { 'Content-Type': 'application/json' },
     });
 

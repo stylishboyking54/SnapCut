@@ -30,9 +30,11 @@ export default function InteractiveShopsMap({
   const userMarkerRef = useRef<any>(null);
   const routeLayerRef = useRef<any>(null);
 
+  const [mapReady, setMapReady] = useState(false);
   const [userCoords, setUserCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [locating, setLocating] = useState(false);
 
+  // 1. Initialize map instance ONCE on mount
   useEffect(() => {
     let isMounted = true;
     let resizeTimer: any = null;
@@ -42,45 +44,95 @@ export default function InteractiveShopsMap({
         if (!isMounted || !mapContainer.current) return;
         const L = (leafletModule as any).default || leafletModule;
 
-        // If a map was already initialized on this container, clean it up first
+        // Clean up any stale map or leaflet ID on this DOM node
         if (mapInstance.current) {
-          mapInstance.current.remove();
+          try {
+            mapInstance.current.remove();
+          } catch {
+            /* ignore */
+          }
           mapInstance.current = null;
         }
         if ((mapContainer.current as any)._leaflet_id) {
           delete (mapContainer.current as any)._leaflet_id;
         }
 
-        // Default center: first shop with coordinates, or selectedShop, or Accra (5.6037, -0.1870)
-        const validShop = shops.find((s) => Number(s.lat) && Number(s.lng));
-        const centerLat = Number(selectedShop?.lat) || Number(validShop?.lat) || 5.6037;
-        const centerLng = Number(selectedShop?.lng) || Number(validShop?.lng) || -0.1870;
-
+        // Center on Accra, Ghana default (5.6037, -0.1870)
         const map = L.map(mapContainer.current, {
           zoomControl: true,
-        }).setView([centerLat, centerLng], validShop ? 13 : 11);
+        }).setView([5.6037, -0.1870], 12);
         mapInstance.current = map;
 
-        // OpenStreetMap tile layer (reliable, fast, zero auth/CORS issues)
+        // OpenStreetMap tile layer (reliable, fast, no API key needed, never 403s)
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
           maxZoom: 19,
           attribution:
             '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a>',
         }).addTo(map);
 
-        // Invalidate size after container settles to avoid blank/grey tiles
+        // Force container bounds recalculation after CSS layout finishes
         resizeTimer = setTimeout(() => {
           if (mapInstance.current) {
             mapInstance.current.invalidateSize();
           }
         }, 200);
 
-        // Render pins for all shops
+        if (isMounted) {
+          setMapReady(true);
+        }
+      })
+      .catch((err) => {
+        console.error('[SnapCut Map] Error initializing map:', err);
+      });
+
+    return () => {
+      isMounted = false;
+      if (resizeTimer) clearTimeout(resizeTimer);
+      if (mapInstance.current) {
+        try {
+          mapInstance.current.remove();
+        } catch {
+          /* ignore */
+        }
+        mapInstance.current = null;
+      }
+    };
+  }, []);
+
+  // 2. Render and synchronize shop pins whenever shops change
+  useEffect(() => {
+    if (!mapReady || !mapInstance.current) return;
+
+    import('leaflet')
+      .then((leafletModule) => {
+        if (!mapInstance.current) return;
+        const L = (leafletModule as any).default || leafletModule;
+        const map = mapInstance.current;
+
+        // Clear existing markers
+        markersRef.current.forEach((marker) => {
+          try {
+            map.removeLayer(marker);
+          } catch {
+            /* ignore */
+          }
+        });
         markersRef.current.clear();
-        shops.forEach((shop) => {
+
+        const validShops = shops.filter((s) => Number(s.lat) && Number(s.lng));
+
+        // Pan to first shop or selected shop
+        if (validShops.length > 0) {
+          const target = selectedShopRef.current || validShops[0];
+          if (target && Number(target.lat) && Number(target.lng)) {
+            map.setView([Number(target.lat), Number(target.lng)], 13);
+          }
+        }
+
+        // Add pins for all valid shops
+        validShops.forEach((shop) => {
           const sLat = Number(shop.lat);
           const sLng = Number(shop.lng);
-          if (!sLat || !sLng || isNaN(sLat) || isNaN(sLng)) return;
 
           const isBarber = shop.shopType === 'barber';
           const isEmergency = shop.isEmergency;
@@ -135,7 +187,7 @@ export default function InteractiveShopsMap({
 
           const marker = L.marker([sLat, sLng], { icon: customIcon }).addTo(map);
 
-          // Hover tooltip showing shop name, rating and wait time
+          // Hover tooltip
           marker.bindTooltip(
             `
               <div style="display: flex; flex-direction: column; gap: 2px;">
@@ -158,7 +210,7 @@ export default function InteractiveShopsMap({
             }
           );
 
-          // Click popup with direct Open Store link
+          // Popup with direct shop link
           marker.bindPopup(
             `
               <div style="font-family: inherit; padding: 4px; min-width: 175px;">
@@ -204,22 +256,13 @@ export default function InteractiveShopsMap({
         });
       })
       .catch((err) => {
-        console.error('[SnapCut Map] Error initializing map:', err);
+        console.error('[SnapCut Map] Error updating markers:', err);
       });
+  }, [shops, mapReady]);
 
-    return () => {
-      isMounted = false;
-      if (resizeTimer) clearTimeout(resizeTimer);
-      if (mapInstance.current) {
-        mapInstance.current.remove();
-        mapInstance.current = null;
-      }
-    };
-  }, [shops]);
-
-  // When selected shop changes, smoothly pan to it and draw route if user location is known
+  // 3. Pan or draw route when selected shop changes
   useEffect(() => {
-    if (!mapInstance.current || !selectedShop?.lat || !selectedShop?.lng) return;
+    if (!mapReady || !mapInstance.current || !selectedShop?.lat || !selectedShop?.lng) return;
 
     import('leaflet')
       .then((leafletModule) => {
@@ -227,7 +270,11 @@ export default function InteractiveShopsMap({
         const L = (leafletModule as any).default || leafletModule;
 
         if (routeLayerRef.current) {
-          mapInstance.current.removeLayer(routeLayerRef.current);
+          try {
+            mapInstance.current.removeLayer(routeLayerRef.current);
+          } catch {
+            /* ignore */
+          }
           routeLayerRef.current = null;
         }
 
@@ -261,7 +308,7 @@ export default function InteractiveShopsMap({
         }
       })
       .catch(console.error);
-  }, [selectedShop, userCoords]);
+  }, [selectedShop, userCoords, mapReady]);
 
   // User location request
   const handleLocateUser = () => {
@@ -352,7 +399,7 @@ export default function InteractiveShopsMap({
         </button>
       </div>
 
-      {/* Interactive Map Box */}
+      {/* Interactive Map Box — always in the DOM, never unmounted */}
       <div
         ref={mapContainer}
         style={{
@@ -365,7 +412,7 @@ export default function InteractiveShopsMap({
         }}
       />
 
-      {/* Selected Shop Details Card with Google Maps Navigation */}
+      {/* Selected Shop Details Card */}
       {selectedShop && (
         <div
           className="panel"

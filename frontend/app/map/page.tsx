@@ -2,13 +2,12 @@
 
 import React, { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
-import Link from 'next/link';
 import { getShops } from '@/lib/api';
 import { Shop } from '@/lib/types';
 import { CompassIcon } from '@/components/ui/Icons';
 import { todayLabel } from '@/lib/greeting';
 
-// Dynamically import InteractiveShopsMap to ensure Leaflet runs only on the client
+// Dynamically import InteractiveShopsMap to ensure Leaflet runs strictly on the client
 const InteractiveShopsMap = dynamic(
   () => import('@/components/map/InteractiveShopsMap'),
   {
@@ -28,7 +27,7 @@ const InteractiveShopsMap = dynamic(
           fontSize: 14,
         }}
       >
-        Loading interactive map…
+        Initializing live map…
       </div>
     ),
   }
@@ -38,20 +37,24 @@ export default function MapPage() {
   const [shops, setShops] = useState<Shop[]>([]);
   const [selectedShop, setSelectedShop] = useState<Shop | null>(null);
   const [recommendedId, setRecommendedId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let isMounted = true;
     getShops()
       .then((rows) => {
+        if (!isMounted) return;
         setShops(rows);
         const withCoords = rows.filter((s) => Number(s.lat) && Number(s.lng));
         setSelectedShop(withCoords[0] || rows[0] || null);
       })
       .catch((err) => {
         console.warn('Failed to load shops for map:', err);
-        setShops([]);
-      })
-      .finally(() => setLoading(false));
+        if (isMounted) setShops([]);
+      });
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const handleFindOptimal = () => {
@@ -118,30 +121,15 @@ export default function MapPage() {
         </div>
       )}
 
-      {loading ? (
-        <div className="panel" style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)' }}>
-          Loading live map…
-        </div>
-      ) : (
-        <>
-          {shops.length === 0 && (
-            <div className="panel" style={{ textAlign: 'center', padding: '16px 20px', marginBottom: 6 }}>
-              <div style={{ fontWeight: 650, fontSize: 14 }}>No shops pinned with active lines right now</div>
-              <p className="muted" style={{ marginTop: 4, fontSize: 13 }}>
-                You can still view the map below or check back soon as barbers and salons open their lines.
-              </p>
-            </div>
-          )}
-          <InteractiveShopsMap
-            shops={shops}
-            selectedShop={selectedShop}
-            onSelectShop={(shop) => {
-              setSelectedShop(shop);
-              setRecommendedId(null);
-            }}
-          />
-        </>
-      )}
+      {/* Renders the map component directly — no blocking placeholder */}
+      <InteractiveShopsMap
+        shops={shops}
+        selectedShop={selectedShop}
+        onSelectShop={(shop) => {
+          setSelectedShop(shop);
+          setRecommendedId(null);
+        }}
+      />
     </div>
   );
 }

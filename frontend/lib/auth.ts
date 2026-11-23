@@ -5,15 +5,23 @@ const SESSION_KEY = 'snapcut_session';
 const PENDING_ROLE_KEY = 'snapcut_pending_role';
 const ROLE_KEY = 'qb_role';
 
-/** Prefer env; never call localhost from a deployed host */
+/** Prefer env; never call localhost from a deployed host or during production SSR */
 export function getApiBaseUrl() {
   const fromEnv = process.env.NEXT_PUBLIC_API_URL || '';
+  if (fromEnv && !fromEnv.includes('localhost')) {
+    return fromEnv;
+  }
   if (typeof window !== 'undefined') {
     const host = window.location.hostname;
     const onLocal = host === 'localhost' || host === '127.0.0.1';
-    if (!onLocal && (!fromEnv || fromEnv.includes('localhost'))) {
+    if (!onLocal) {
       return PROD_API_URL;
     }
+    return fromEnv || 'http://localhost:3001/api';
+  }
+  // Server-side / SSR: if in production or running on Vercel, always use PROD_API_URL
+  if (process.env.NODE_ENV === 'production' || process.env.VERCEL) {
+    return PROD_API_URL;
   }
   return fromEnv || 'http://localhost:3001/api';
 }
