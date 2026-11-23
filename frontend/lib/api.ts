@@ -653,44 +653,61 @@ export async function getMyNotifications(): Promise<
   const session = getSession();
   if (!session?.access_token) return [];
 
-  const res = await fetch(`${API_BASE_URL()}/notifications`, {
-    cache: 'no-store',
-    headers: authHeaders(),
-  });
-  if (!res.ok) {
-    if (res.status === 401) return [];
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.message || `Notifications failed (${res.status})`);
+  // Automatically refresh the token if it expired
+  const token = (await ensureFreshToken()) || session.access_token;
+  if (!token) return [];
+
+  try {
+    const res = await fetch(`${API_BASE_URL()}/notifications`, {
+      cache: 'no-store',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    if (!res.ok) {
+      if (res.status === 401) return [];
+      return [];
+    }
+    const data = await res.json();
+    return (data || []).map((n: any) => ({
+      id: n.id,
+      title:
+        n.type === 'emergency'
+          ? 'Emergency'
+          : n.type === 'reschedule'
+          ? 'Reschedule'
+          : 'Queue update',
+      message: n.message || '',
+      type: (n.type === 'emergency' ? 'emergency' : n.type === 'reschedule' ? 'shifted' : 'queue_update') as
+        | 'queue_update'
+        | 'emergency'
+        | 'shifted'
+        | 'reminder',
+      timestamp: n.created_at
+        ? new Date(n.created_at).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+        : '',
+      isRead: Boolean(n.is_read),
+      shopName: n.bookings?.shops?.name,
+    }));
+  } catch {
+    return [];
   }
-  const data = await res.json();
-  return (data || []).map((n: any) => ({
-    id: n.id,
-    title:
-      n.type === 'emergency'
-        ? 'Emergency'
-        : n.type === 'reschedule'
-        ? 'Reschedule'
-        : 'Queue update',
-    message: n.message || '',
-    type: (n.type === 'emergency' ? 'emergency' : n.type === 'reschedule' ? 'shifted' : 'queue_update') as
-      | 'queue_update'
-      | 'emergency'
-      | 'shifted'
-      | 'reminder',
-    timestamp: n.created_at
-      ? new Date(n.created_at).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
-      : '',
-    isRead: Boolean(n.is_read),
-    shopName: n.bookings?.shops?.name,
-  }));
 }
 
 export async function markNotificationsRead(): Promise<void> {
+  const token = await ensureFreshToken();
+  if (!token) return;
+
   const res = await fetch(`${API_BASE_URL()}/notifications/read-all`, {
     method: 'PATCH',
-    headers: authHeaders(),
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
   });
   if (!res.ok) {
+    if (res.status === 401) return;
     const err = await res.json().catch(() => ({}));
     throw new Error(err.message || 'Could not mark read');
   }
