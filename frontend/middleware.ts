@@ -2,29 +2,37 @@ import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
 export async function middleware(request: NextRequest) {
-  try {
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return request.cookies.getAll();
-          },
-          // No custom setAll needed for now
-          setAll() {}
-        },
-      }
-    );
+  // Create a response that we will augment with any cookies Supabase sets (e.g., PKCE verifier)
+  const response = NextResponse.next();
 
-    // Refresh session / keep PKCE cookies in sync
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        // Read all incoming cookies (including any PKCE verifier stored previously)
+        getAll() {
+          return request.cookies.getAll();
+        },
+        // When Supabase wants to set cookies, attach them to the response we will return
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value, options }) => {
+            response.cookies.set(name, value, options);
+          });
+        },
+      },
+    },
+  );
+
+  try {
+    // Refresh the session – this will also sync PKCE cookies if present
     await supabase.auth.getUser();
   } catch (err) {
     console.error('Middleware error:', err);
   }
 
-  // Continue to the requested page
-  return NextResponse.next();
+  // Return the response (with any cookies added)
+  return response;
 }
 
 export const config = {
