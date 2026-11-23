@@ -18,10 +18,15 @@ async function bootstrap() {
   );
 
   // CORS — comma-separated FRONTEND_URL allowed (e.g. prod + localhost)
-  const allowedOrigins = (process.env.FRONTEND_URL || 'http://localhost:3000')
-    .split(',')
-    .map((o) => o.trim())
-    .filter(Boolean);
+  const allowedOrigins = [
+    'https://snapcut.vip',
+    'https://www.snapcut.vip',
+    'https://snap-cut-ud2a.vercel.app',
+    ...(process.env.FRONTEND_URL || 'http://localhost:3000')
+      .split(',')
+      .map((o) => o.trim())
+      .filter(Boolean),
+  ];
   app.enableCors({
     origin: (origin, callback) => {
       if (!origin || allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
@@ -33,12 +38,10 @@ async function bootstrap() {
         callback(null, true);
         return;
       }
-      if (origin === 'https://snap-cut-ud2a.vercel.app') {
-        callback(null, true);
-        return;
-      }
       callback(null, false);
     },
+    allowedHeaders: ['Authorization', 'Content-Type', 'Accept', 'Origin', 'X-Requested-With'],
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     credentials: true,
   });
 

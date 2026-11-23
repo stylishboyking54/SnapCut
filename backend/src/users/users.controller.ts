@@ -1,9 +1,9 @@
 import { Controller, Get, Patch, Body, UseGuards, Req } from '@nestjs/common';
-import { AuthGuard } from '@nestjs/passport';
+import { SupabaseAuthGuard } from '../auth/supabase-auth.guard';
 import { UsersService } from './users.service';
 
 @Controller('users')
-@UseGuards(AuthGuard('jwt'))
+@UseGuards(SupabaseAuthGuard)
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 

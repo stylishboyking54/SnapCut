@@ -1,9 +1,9 @@
 import { Controller, Get, Patch, Param, UseGuards, Req } from '@nestjs/common';
-import { AuthGuard } from '@nestjs/passport';
+import { SupabaseAuthGuard } from '../auth/supabase-auth.guard';
 import { NotificationsService } from './notifications.service';
 
 @Controller('notifications')
-@UseGuards(AuthGuard('jwt'))
+@UseGuards(SupabaseAuthGuard)
 export class NotificationsController {
   constructor(private readonly notificationsService: NotificationsService) {}
 
