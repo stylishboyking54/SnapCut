@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { GoogleIcon, ScissorsIcon, UserIcon } from '@/components/ui/Icons';
+import { GoogleIcon, EyeIcon, EyeOffIcon, ScissorsIcon, UserIcon } from '@/components/ui/Icons';
 import { login, loginWithGoogle, PICK_ROLE_KEY, register, setAccountRole } from '@/lib/auth';
 
 export type AppRole = 'customer' | 'barber' | 'salon';
@@ -17,6 +17,7 @@ export default function RoleWelcome({ onComplete, initialStep = 'signin' }: Role
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -47,6 +48,10 @@ export default function RoleWelcome({ onComplete, initialStep = 'signin' }: Role
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!password || password.length < 6) {
+      setError('Password must be at least 6 characters long.');
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
@@ -61,6 +66,10 @@ export default function RoleWelcome({ onComplete, initialStep = 'signin' }: Role
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!password || password.length < 6) {
+      setError('Password must be at least 6 characters long.');
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
@@ -170,16 +179,45 @@ export default function RoleWelcome({ onComplete, initialStep = 'signin' }: Role
                 <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@email.com" required autoComplete="email" />
               </div>
               <div className="field">
-                <label>Password</label>
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  minLength={6}
-                  required
-                  placeholder="At least 6 characters"
-                  autoComplete={step === 'signup' ? 'new-password' : 'current-password'}
-                />
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                  <label style={{ margin: 0 }}>Password</label>
+                  <span className="muted" style={{ fontSize: 11.5 }}>
+                    Min. 6 characters
+                  </span>
+                </div>
+                <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    minLength={6}
+                    required
+                    placeholder="At least 6 characters"
+                    autoComplete={step === 'signup' ? 'new-password' : 'current-password'}
+                    style={{ width: '100%', paddingRight: 40 }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((prev) => !prev)}
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    title={showPassword ? 'Hide password' : 'Show password'}
+                    style={{
+                      position: 'absolute',
+                      right: 8,
+                      background: 'transparent',
+                      border: 'none',
+                      padding: '6px',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                      color: 'var(--text-muted)',
+                      borderRadius: 'var(--radius-xs)',
+                    }}
+                  >
+                    {showPassword ? <EyeOffIcon size={18} /> : <EyeIcon size={18} />}
+                  </button>
+                </div>
               </div>
               <button type="submit" className="btn-primary" disabled={busy}>
                 {busy ? 'Please wait…' : step === 'signup' ? 'Create account' : 'Sign in'}

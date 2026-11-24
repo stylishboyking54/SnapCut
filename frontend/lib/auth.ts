@@ -185,21 +185,25 @@ export function isProtectedCustomerPath(pathname: string | null | undefined) {
 }
 
 export async function login(email: string, password: string): Promise<AuthSession> {
+  const normalizedEmail = email.trim().toLowerCase();
   const res = await fetch(`${getApiBaseUrl()}/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({ email: normalizedEmail, password }),
   });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.message || data.error || 'Login failed');
+  if (!res.ok) {
+    const errorText = Array.isArray(data.message) ? data.message.join('. ') : data.message || data.error || 'Login failed';
+    throw new Error(errorText);
+  }
 
   const session: AuthSession = {
     access_token: data.access_token,
     refresh_token: data.refresh_token,
-    email: data.user?.email || email,
+    email: data.user?.email || normalizedEmail,
     profile: {
       id: data.profile?.id || data.user?.id,
-      full_name: data.profile?.full_name || data.user?.user_metadata?.full_name || email,
+      full_name: data.profile?.full_name || data.user?.user_metadata?.full_name || normalizedEmail,
       role: data.profile?.role || 'customer',
       phone: data.profile?.phone,
       avatar_url: data.profile?.avatar_url,
@@ -215,23 +219,27 @@ export async function register(
   fullName: string,
   role: AuthRole = 'customer',
 ): Promise<AuthSession> {
+  const normalizedEmail = email.trim().toLowerCase();
   const res = await fetch(`${getApiBaseUrl()}/auth/register`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, password, full_name: fullName, role }),
+    body: JSON.stringify({ email: normalizedEmail, password, full_name: fullName.trim(), role }),
   });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.message || data.error || 'Register failed');
+  if (!res.ok) {
+    const errorText = Array.isArray(data.message) ? data.message.join('. ') : data.message || data.error || 'Registration failed';
+    throw new Error(errorText);
+  }
 
   // register now returns a login payload
   if (data.access_token) {
     const session: AuthSession = {
       access_token: data.access_token,
       refresh_token: data.refresh_token,
-      email: data.user?.email || email,
+      email: data.user?.email || normalizedEmail,
       profile: {
         id: data.profile?.id || data.user?.id,
-        full_name: data.profile?.full_name || fullName,
+        full_name: data.profile?.full_name || fullName.trim(),
         role: data.profile?.role || role,
         phone: data.profile?.phone,
         avatar_url: data.profile?.avatar_url,
@@ -241,7 +249,7 @@ export async function register(
     return session;
   }
 
-  return login(email, password);
+  return login(normalizedEmail, password);
 }
 
 export async function logout() {

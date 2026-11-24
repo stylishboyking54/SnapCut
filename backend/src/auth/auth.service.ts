@@ -14,32 +14,56 @@ export class AuthService {
     fullName: string,
     role: 'customer' | 'barber' | 'salon' = 'customer',
   ) {
+    if (!password || password.length < 6) {
+      throw new BadRequestException('Password must be at least 6 characters long');
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
     const { data, error } = await this.supabase.auth.admin.createUser({
-      email,
+      email: normalizedEmail,
       password,
       email_confirm: true,
-      user_metadata: { full_name: fullName, role },
+      user_metadata: { full_name: fullName.trim(), role },
     });
 
-    if (error) throw error;
+    if (error) {
+      if (error.message?.toLowerCase().includes('already') || error.message?.toLowerCase().includes('exists')) {
+        throw new BadRequestException('An account with this email already exists. Please sign in instead.');
+      }
+      throw new BadRequestException(error.message || 'Could not create account');
+    }
 
     await this.supabase.from('profiles').upsert({
       id: data.user.id,
-      full_name: fullName,
+      full_name: fullName.trim(),
       role,
     });
 
     // Auto sign-in after register
-    return this.login(email, password);
+    return this.login(normalizedEmail, password);
   }
 
   async login(email: string, password: string) {
+    if (!password || password.length < 6) {
+      throw new UnauthorizedException('Password must be at least 6 characters long');
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
     const { data, error } = await this.supabase.auth.signInWithPassword({
-      email,
+      email: normalizedEmail,
       password,
     });
 
-    if (error) throw error;
+    if (error) {
+      if (error.message?.toLowerCase().includes('invalid') || error.message?.toLowerCase().includes('credentials')) {
+        throw new UnauthorizedException('Incorrect email or password. Please try again.');
+      }
+      throw new UnauthorizedException(error.message || 'Incorrect email or password');
+    }
+
+    if (!data.user || !data.session) {
+      throw new UnauthorizedException('Could not create session. Please try again.');
+    }
 
     const { data: profile } = await this.supabase
       .from('profiles')
@@ -53,7 +77,7 @@ export class AuthService {
       user: data.user,
       profile: profile || {
         id: data.user.id,
-        full_name: data.user.user_metadata?.full_name || email,
+        full_name: data.user.user_metadata?.full_name || normalizedEmail,
         role: data.user.user_metadata?.role || 'customer',
       },
     };

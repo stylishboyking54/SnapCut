@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { GoogleIcon } from '@/components/ui/Icons';
+import { GoogleIcon, EyeIcon, EyeOffIcon, ScissorsIcon, UserIcon } from '@/components/ui/Icons';
 import {
   login,
   loginWithGoogle,
@@ -10,7 +10,6 @@ import {
   register,
   setAccountRole,
 } from '@/lib/auth';
-import { ScissorsIcon, UserIcon } from '@/components/ui/Icons';
 import TermsModal from '@/components/auth/TermsModal';
 
 type Mode = 'login' | 'register' | 'role';
@@ -34,6 +33,7 @@ export default function SignInModal({
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [termsOpen, setTermsOpen] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -71,6 +71,11 @@ export default function SignInModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    if (!password || password.length < 6) {
+      setError('Password must be at least 6 characters long.');
+      return;
+    }
 
     if (mode === 'register' && !agreedToTerms) {
       setError('Please read and agree to the Terms & Conditions to create an account.');
@@ -228,16 +233,45 @@ export default function SignInModal({
               />
             </div>
             <div className="field">
-              <label>Password</label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                minLength={6}
-                required
-                placeholder="At least 6 characters"
-                autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-              />
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                <label style={{ margin: 0 }}>Password</label>
+                <span className="muted" style={{ fontSize: 11.5 }}>
+                  Min. 6 characters
+                </span>
+              </div>
+              <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  minLength={6}
+                  required
+                  placeholder="At least 6 characters"
+                  autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+                  style={{ width: '100%', paddingRight: 40 }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  title={showPassword ? 'Hide password' : 'Show password'}
+                  style={{
+                    position: 'absolute',
+                    right: 8,
+                    background: 'transparent',
+                    border: 'none',
+                    padding: '6px',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    color: 'var(--text-muted)',
+                    borderRadius: 'var(--radius-xs)',
+                  }}
+                >
+                  {showPassword ? <EyeOffIcon size={18} /> : <EyeIcon size={18} />}
+                </button>
+              </div>
             </div>
 
             {/* Terms and Conditions Checkbox for registration */}
