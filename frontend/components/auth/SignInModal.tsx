@@ -72,8 +72,8 @@ export default function SignInModal({
     e.preventDefault();
     setError(null);
 
-    if (!password || password.length < 6) {
-      setError('Password must be at least 6 characters long.');
+    if (!password || password.length < 8) {
+      setError('Password must be at least 8 characters long.');
       return;
     }
 
@@ -236,7 +236,7 @@ export default function SignInModal({
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
                 <label style={{ margin: 0 }}>Password</label>
                 <span className="muted" style={{ fontSize: 11.5 }}>
-                  Min. 6 characters
+                  Min. 8 characters
                 </span>
               </div>
               <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
@@ -244,9 +244,9 @@ export default function SignInModal({
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  minLength={6}
+                  minLength={8}
                   required
-                  placeholder="At least 6 characters"
+                  placeholder="At least 8 characters"
                   autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
                   style={{ width: '100%', paddingRight: 40 }}
                 />

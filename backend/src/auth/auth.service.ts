@@ -14,8 +14,8 @@ export class AuthService {
     fullName: string,
     role: 'customer' | 'barber' | 'salon' = 'customer',
   ) {
-    if (!password || password.length < 6) {
-      throw new BadRequestException('Password must be at least 6 characters long');
+    if (!password || password.length < 8) {
+      throw new BadRequestException('Password must be at least 8 characters long');
     }
 
     const normalizedEmail = email.trim().toLowerCase();
@@ -44,8 +44,8 @@ export class AuthService {
   }
 
   async login(email: string, password: string) {
-    if (!password || password.length < 6) {
-      throw new UnauthorizedException('Password must be at least 6 characters long');
+    if (!password || password.length < 8) {
+      throw new UnauthorizedException('Password must be at least 8 characters long');
     }
 
     const normalizedEmail = email.trim().toLowerCase();

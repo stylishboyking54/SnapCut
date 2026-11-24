@@ -48,8 +48,8 @@ export default function RoleWelcome({ onComplete, initialStep = 'signin' }: Role
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!password || password.length < 6) {
-      setError('Password must be at least 6 characters long.');
+    if (!password || password.length < 8) {
+      setError('Password must be at least 8 characters long.');
       return;
     }
     setBusy(true);
@@ -66,8 +66,8 @@ export default function RoleWelcome({ onComplete, initialStep = 'signin' }: Role
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!password || password.length < 6) {
-      setError('Password must be at least 6 characters long.');
+    if (!password || password.length < 8) {
+      setError('Password must be at least 8 characters long.');
       return;
     }
     setBusy(true);
@@ -182,7 +182,7 @@ export default function RoleWelcome({ onComplete, initialStep = 'signin' }: Role
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
                   <label style={{ margin: 0 }}>Password</label>
                   <span className="muted" style={{ fontSize: 11.5 }}>
-                    Min. 6 characters
+                    Min. 8 characters
                   </span>
                 </div>
                 <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
@@ -190,9 +190,9 @@ export default function RoleWelcome({ onComplete, initialStep = 'signin' }: Role
                     type={showPassword ? 'text' : 'password'}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    minLength={6}
+                    minLength={8}
                     required
-                    placeholder="At least 6 characters"
+                    placeholder="At least 8 characters"
                     autoComplete={step === 'signup' ? 'new-password' : 'current-password'}
                     style={{ width: '100%', paddingRight: 40 }}
                   />
