@@ -33,10 +33,11 @@ function homeForRole(role: UserRole) {
 
 function reasonForPath(pathname: string | null) {
   if (!pathname) return undefined;
-  if (pathname.startsWith('/bookings')) return 'Needed for your ticket.';
-  if (pathname.startsWith('/notifications')) return 'Needed for queue alerts.';
-  if (pathname.startsWith('/profile')) return undefined;
-  if (pathname.startsWith('/barber')) return 'Needed for your shop.';
+  if (pathname.startsWith('/bookings')) return 'Sign in to view your tickets.';
+  if (pathname.startsWith('/notifications')) return 'Sign in to view queue alerts.';
+  if (pathname.startsWith('/profile')) return 'Sign in to access your profile.';
+  if (pathname.startsWith('/barber')) return 'Sign in to access your barber dashboard.';
+  if (pathname.startsWith('/admin')) return 'Sign in to access admin panel.';
   return undefined;
 }
 
@@ -154,7 +155,8 @@ export default function AppLayout({ children }: AppLayoutProps) {
       localStorage.setItem(ROLE_KEY, r);
       setRole(r);
     } else {
-      setRole(null);
+      // Default guests to 'customer' so they can browse shops, map, and queues freely
+      setRole('customer');
     }
     if (session) {
       void syncCurrentProfile().then((fresh) => {
@@ -176,11 +178,12 @@ export default function AppLayout({ children }: AppLayoutProps) {
         const saved = localStorage.getItem(ROLE_KEY) as UserRole | null;
         if (saved === 'barber' || saved === 'salon' || saved === 'admin') {
           localStorage.removeItem(ROLE_KEY);
-          setRole(null);
+          setRole('customer');
           setAuthOpen(false);
           router.replace('/');
           return;
         }
+        setRole('customer');
         return;
       }
 
@@ -205,14 +208,16 @@ export default function AppLayout({ children }: AppLayoutProps) {
     };
   }, [router, openAuthGate]);
 
-  // Guest hits a gated URL → stay on Explore, open role → sign-in
+  // Guest hits a gated URL → redirect to home and open sign-in modal
   useEffect(() => {
-    if (!ready || !role) return;
+    if (!ready) return;
     const session = getSession();
     setSignedIn(!!session);
 
-    if (role === 'barber' || role === 'salon' || role === 'admin') {
-      if (!session) openAuthGate(reasonForPath(pathname));
+    if (pathname && (pathname.startsWith('/barber') || pathname.startsWith('/admin')) && !session) {
+      sessionStorage.setItem('snapcut_after_signin', pathname);
+      router.replace('/');
+      openAuthGate(reasonForPath(pathname));
       return;
     }
 
@@ -221,7 +226,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
       router.replace('/');
       openAuthGate(reasonForPath(pathname));
     }
-  }, [ready, role, pathname, openAuthGate, router]);
+  }, [ready, pathname, openAuthGate, router]);
 
   useEffect(() => {
     if (!ready || !role) return;
@@ -326,38 +331,35 @@ export default function AppLayout({ children }: AppLayoutProps) {
     return <>{children}</>;
   }
 
-  if (!ready || !role || needsRole) {
+  if (!ready) {
     return (
-      <>
-        {!ready ? (
-          <div className="role-welcome">
-            <div className="muted" style={{ fontSize: 14 }}>Loading…</div>
-          </div>
-        ) : (
-          <RoleWelcome
-            initialStep={needsRole ? 'role' : 'signin'}
-            onComplete={(next) => {
-              sessionStorage.removeItem(PICK_ROLE_KEY);
-              setNeedsRole(false);
-              void handleWelcomeComplete(next);
-            }}
-          />
-        )}
-        <div hidden aria-hidden="true">
-          {children}
-        </div>
-      </>
+      <div className="role-welcome">
+        <div className="muted" style={{ fontSize: 14 }}>Loading…</div>
+      </div>
+    );
+  }
+
+  if (needsRole) {
+    return (
+      <RoleWelcome
+        initialStep="role"
+        onComplete={(next) => {
+          sessionStorage.removeItem(PICK_ROLE_KEY);
+          setNeedsRole(false);
+          void handleWelcomeComplete(next);
+        }}
+      />
     );
   }
 
   return (
     <div className="app-layout">
       <Suspense fallback={<aside className="sidebar" />}>
-        <Sidebar navItems={currentNavItems} role={role} onSignIn={() => openAuthGate()} />
+        <Sidebar navItems={currentNavItems} role={role || undefined} onSignIn={() => openAuthGate()} />
       </Suspense>
 
       <div className="main-content">
-                <Navbar currentRole={role} notificationCount={unreadCount} />
+        <Navbar currentRole={role || 'customer'} notificationCount={unreadCount} />
         {toastAlert && (
           <div
             style={{

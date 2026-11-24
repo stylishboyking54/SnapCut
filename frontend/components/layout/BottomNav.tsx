@@ -44,8 +44,9 @@ function renderBottomIcon(name: string, isActive: boolean) {
 }
 
 function reasonForHref(href: string) {
-  if (href.startsWith('/bookings')) return 'Needed for your ticket.';
-  if (href.startsWith('/notifications')) return 'Needed for queue alerts.';
+  if (href.startsWith('/bookings')) return 'Sign in to view your tickets.';
+  if (href.startsWith('/notifications')) return 'Sign in to view queue alerts.';
+  if (href.startsWith('/profile')) return 'Sign in to access your profile.';
   return undefined;
 }
 

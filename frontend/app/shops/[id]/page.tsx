@@ -5,7 +5,7 @@ import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { useParams } from 'next/navigation';
 import { getMyBookings, getShopById, getShopLiveQueue, joinShopQueue } from '@/lib/api';
-import { getSession, requestSignIn } from '@/lib/auth';
+import { AuthSession, getSession, requestSignIn } from '@/lib/auth';
 import { Shop, Service, QueueItem } from '@/lib/types';
 import { CoffeeIcon } from '@/components/ui/Icons';
 import CountUp from '@/components/ui/CountUp';
@@ -195,16 +195,33 @@ function ShopDetailContent() {
   const [joinedShopId, setJoinedShopId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [ratingModalOpen, setRatingModalOpen] = useState(false);
+  const [session, setSession] = useState<AuthSession | null>(null);
 
   useEffect(() => {
     let active = true;
-    const session = getSession();
-    if (session?.profile.full_name) setCustomerName(session.profile.full_name);
-    if (session) {
-      getMyBookings()
-        .then((rows) => setJoinedShopId(rows[0]?.shopId || null))
-        .catch(() => setJoinedShopId(null));
-    }
+
+    const syncAuth = () => {
+      const s = getSession();
+      if (!active) return;
+      setSession(s);
+      if (s?.profile.full_name) {
+        setCustomerName(s.profile.full_name);
+      }
+      if (s) {
+        getMyBookings()
+          .then((rows) => {
+            if (active) setJoinedShopId(rows[0]?.shopId || null);
+          })
+          .catch(() => {
+            if (active) setJoinedShopId(null);
+          });
+      } else {
+        setJoinedShopId(null);
+      }
+    };
+
+    syncAuth();
+    window.addEventListener('snapcut-auth', syncAuth);
 
     if (!shopId) {
       setNotFound(true);
@@ -238,6 +255,7 @@ function ShopDetailContent() {
 
     return () => {
       active = false;
+      window.removeEventListener('snapcut-auth', syncAuth);
     };
   }, [shopId]);
 
@@ -276,15 +294,25 @@ function ShopDetailContent() {
 
   const handleJoinQueue = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedService || !customerName.trim() || shop.isEmergency || isJoining) return;
+    if (shop.isEmergency || isJoining) return;
 
-    if (!validation.valid) {
-      setJoinError(validation.error || 'Please select a valid working time.');
+    if (!getSession()) {
+      requestSignIn('Sign in to join the queue and get your ticket.');
       return;
     }
 
-    if (!getSession()) {
-      requestSignIn('Join the line with an account.');
+    if (!selectedService) {
+      setJoinError('Please select a service.');
+      return;
+    }
+
+    if (!customerName.trim()) {
+      setJoinError('Please enter your name.');
+      return;
+    }
+
+    if (!validation.valid) {
+      setJoinError(validation.error || 'Please select a valid working time.');
       return;
     }
 
@@ -690,10 +718,9 @@ function ShopDetailContent() {
               <label>Your name</label>
               <input
                 type="text"
-                placeholder="Alex Johnson"
+                placeholder={session ? "Alex Johnson" : "Enter your name (sign in required to join)"}
                 value={customerName}
                 onChange={(e) => setCustomerName(e.target.value)}
-                required
               />
             </div>
 
@@ -709,12 +736,12 @@ function ShopDetailContent() {
 
             <button
               type="submit"
-              disabled={shop.isEmergency || !customerName.trim() || isJoining || joinedShopId === shop.id || !validation.valid}
+              disabled={shop.isEmergency || isJoining || joinedShopId === shop.id || !validation.valid}
               className={joinedShopId === shop.id ? 'btn-secondary' : 'btn-primary'}
               style={{
                 marginTop: 4,
-                opacity: shop.isEmergency || !customerName.trim() || !validation.valid ? 0.5 : 1,
-                cursor: shop.isEmergency || !customerName.trim() || isJoining || joinedShopId === shop.id || !validation.valid ? 'default' : 'pointer',
+                opacity: shop.isEmergency || !validation.valid ? 0.5 : 1,
+                cursor: shop.isEmergency || isJoining || joinedShopId === shop.id || !validation.valid ? 'default' : 'pointer',
               }}
             >
               {shop.isEmergency
@@ -725,6 +752,8 @@ function ShopDetailContent() {
                 ? (validation.error?.includes('closed') ? 'Shop Closed on this day' : 'Barber Off at this time')
                 : isJoining
                 ? 'Joining…'
+                : !session
+                ? 'Sign in to join line'
                 : 'Join line'}
             </button>
           </form>

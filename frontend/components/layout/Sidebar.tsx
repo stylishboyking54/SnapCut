@@ -113,10 +113,10 @@ export default function Sidebar({ navItems, role, onSignIn }: SidebarProps) {
             sessionStorage.setItem('snapcut_after_signin', item.href);
             const reason =
               item.href.startsWith('/bookings')
-                ? 'Needed for your ticket.'
+                ? 'Sign in to view your tickets.'
                 : item.href.startsWith('/notifications')
-                ? 'Needed for queue alerts.'
-                : undefined;
+                ? 'Sign in to view queue alerts.'
+                : 'Sign in to access your profile.';
             requestSignIn(reason);
           };
 

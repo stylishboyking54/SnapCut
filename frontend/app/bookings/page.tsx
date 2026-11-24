@@ -6,7 +6,7 @@ import dynamic from 'next/dynamic';
 import { QueueItem } from '@/lib/types';
 import { askShopForMoreTime, cancelBooking, getMyBookings, getAllMyBookings, tellShopIAmHere, ticketSaysHere, getCompletedUnratedBooking } from '@/lib/api';
 import RatingModal from '@/components/reviews/RatingModal';
-import { getSession } from '@/lib/auth';
+import { getSession, requestSignIn } from '@/lib/auth';
 import { subscribeBookings } from '@/lib/realtime';
 import { ClockIcon, MapPinIcon, ScissorsIcon } from '@/components/ui/Icons';
 import { timeGreeting, todayLabel } from '@/lib/greeting';
@@ -256,6 +256,14 @@ export default function BookingsPage() {
           <p className="secondary" style={{ fontSize: 14, maxWidth: 340, margin: '8px auto 0', lineHeight: 1.5 }}>
             Your place in line, past visits, and updates show up here after you join a shop.
           </p>
+          <button
+            type="button"
+            className="btn-primary"
+            style={{ marginTop: 16 }}
+            onClick={() => requestSignIn('Sign in to view your tickets.')}
+          >
+            Sign in
+          </button>
         </div>
       ) : activeTab === 'past' ? (
         pastBookings.length === 0 ? (
